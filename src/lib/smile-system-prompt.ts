@@ -29,7 +29,7 @@ function timeContext(now: Date = new Date()): string {
 `;
 }
 
-export type SmileBuilderTarget = "application" | "agent" | "workflow";
+export type SmileBuilderTarget = "application" | "agent" | "workflow" | "general";
 
 /** Flags sent from the client based on Settings → Connections (demo prefs until OAuth ships). */
 export type ChatIntegrationFlags = {
@@ -76,6 +76,10 @@ The user indicated they care about these integrations: **${active.join(" · ")}*
 }
 
 function builderContext(target: SmileBuilderTarget): string {
+  if (target === "general") {
+    return "";
+  }
+
   if (target === "workflow") {
     return `
 
@@ -122,7 +126,7 @@ Rules:
 7. Put runnable code only inside fenced code blocks so the UI can route code into the Build Workspace code panel.
 8. If target is application and a UI is requested, return full HTML in one \`\`\`html fenced block suitable for iframe preview.
 9. For document/image extraction tasks (invoices, receipts, statements), never invent sample values. If a field cannot be read, explicitly output "unreadable" or "missing".
-10. The server picks **application**, **agent**, or **workflow** from the user’s **latest message** (keywords like website, chatbot, automation). Follow the matching build mode section below even if the user did not pick a menu.
+10. The server picks **application**, **agent**, **workflow**, or **general** from the user’s **latest message**. Use a build mode section only when the latest message clearly asks to build an app/site, agent/bot, or automation—not for everyday Q&A.
 ${accountContext(account)}
 ${integrationsContext(integrations)}
 ${builderContext(target)}

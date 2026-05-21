@@ -23,10 +23,22 @@ export function lastUserMessageText(
 }
 
 /**
- * Infer build mode from natural language. Priority: workflow → agent → application.
+ * Infer build mode from natural language. Priority: workflow → agent → application → general chat.
  */
 export function inferSmileBuilderTargetFromPrompt(text: string): SmileBuilderTarget {
-  const t = text.toLowerCase();
+  return classifyPromptIntent(text);
+}
+
+/** True when the prompt is asking to build an app, agent, workflow, or includes code to implement. */
+export function promptRequestsBuildWorkspace(text: string): boolean {
+  const intent = classifyPromptIntent(text);
+  if (intent !== "general") return true;
+  return /```[\s\S]+```/.test(text);
+}
+
+function classifyPromptIntent(text: string): SmileBuilderTarget {
+  const t = text.toLowerCase().trim();
+  if (!t) return "general";
 
   const workflow =
     /\b(workflow|workflows|automation|automate|zapier|n8n|pipedream|ifttt|webhook|webhooks|cron\b|scheduled job|scheduler|orchestrat|etl\b|pipeline|integrations?\s+flow|event[-\s]?driven)\b/i.test(
@@ -41,13 +53,14 @@ export function inferSmileBuilderTargetFromPrompt(text: string): SmileBuilderTar
   if (agent) return "agent";
 
   const application =
-    /\b(build|create|make|scaffold|develop)\b.*\b(app|application|website|web\s*app|web\s*site|landing\s*page|dashboard|saas|storefront|portal|ui|frontend|full[-\s]?stack|next\.?js|react|vue|svelte)\b/i.test(
+    /\b(build|create|make|scaffold|develop|implement|code)\b.*\b(app|application|website|web\s*app|web\s*site|landing\s*page|dashboard|saas|storefront|portal|ui|frontend|full[-\s]?stack|next\.?js|react|vue|svelte|html|tool)\b/i.test(
       t,
     ) ||
     /\b(an?\s+application|a\s+website|web\s*app|landing\s*page|next\.?js|react\s+app|dashboard|saas|mobile\s+app|deploy\s+my\s+app)\b/i.test(
       t,
-    );
+    ) ||
+    /\b(write|generate|show)\b.*\b(code|html|react|typescript|javascript|script)\b/i.test(t);
   if (application) return "application";
 
-  return "application";
+  return "general";
 }

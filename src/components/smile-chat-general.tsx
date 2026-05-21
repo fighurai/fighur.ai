@@ -7,6 +7,7 @@ import type { ChangeEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
+import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
 import {
   clearSessionAndServer,
   hydrateServerSession,
@@ -477,8 +478,10 @@ export function SmileChatGeneral() {
     setAttachments([]);
     setError(null);
     setPending(true);
-    setBuildSidebarOpen(true);
-    setBuildPanelTab("preview");
+    if (promptRequestsBuildWorkspace(trimmed)) {
+      setBuildSidebarOpen(true);
+      setBuildPanelTab("preview");
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -525,6 +528,7 @@ export function SmileChatGeneral() {
         if (artifact) {
           setLatestBuildArtifact(artifact);
           setBuildSidebarOpen(true);
+          setBuildPanelTab("preview");
         }
         const narration = stripCodeFences(snapshot);
         setMessages((prev) =>
@@ -533,7 +537,12 @@ export function SmileChatGeneral() {
               ? {
                   ...m,
                   content:
-                    narration || "Building now. Code is being placed in the Build Workspace tab.",
+                    narration ||
+                    (artifact
+                      ? "Code is in the Build Workspace."
+                      : pending
+                        ? " "
+                        : ""),
                 }
               : m,
           ),
@@ -806,8 +815,6 @@ export function SmileChatGeneral() {
                 className="flex w-full min-w-0 max-w-full flex-col"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  setBuildSidebarOpen(true);
-                  setBuildPanelTab("preview");
                   void send();
                 }}
               >
@@ -914,13 +921,9 @@ export function SmileChatGeneral() {
                       <button
                         type="submit"
                         disabled={busy || !input.trim()}
-                        onClick={() => {
-                          setBuildSidebarOpen(true);
-                          setBuildPanelTab("preview");
-                        }}
                         className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 sm:px-4 sm:py-2"
                       >
-                        Build
+                        Send
                       </button>
                     </div>
                   </div>
