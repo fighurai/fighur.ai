@@ -58,6 +58,35 @@ body {
   border-radius: 999px;
 }
 
+/* Live assistant stream — plain text + cursor (Markdown after complete) */
+.stream-plain {
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  contain: layout style;
+}
+
+.stream-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: stream-cursor-blink 1.05s ease-in-out infinite;
+}
+
+@keyframes stream-cursor-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
 .studio-md {
   overflow-wrap: break-word;
   text-wrap: pretty;

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import type { ChangeEvent, MouseEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
@@ -112,6 +112,29 @@ function sanitizeAssistantMessages(list: ChatMessage[]): ChatMessage[] {
   );
 }
 
+const AssistantMessageBody = memo(function AssistantMessageBody({
+  content,
+  isStreaming,
+}: {
+  content: string;
+  isStreaming: boolean;
+}) {
+  if (isStreaming) {
+    return (
+      <p className="stream-plain whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
+        {content || "\u00a0"}
+        <span className="stream-cursor" aria-hidden />
+      </p>
+    );
+  }
+  if (!content) return null;
+  return (
+    <div className="studio-md">
+      <Markdown>{content}</Markdown>
+    </div>
+  );
+});
+
 function humanFileSize(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -165,6 +188,7 @@ export function SmileChatGeneral() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [translatingSpeech, setTranslatingSpeech] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -520,15 +544,24 @@ export function SmileChatGeneral() {
       const decoder = new TextDecoder();
       let fullText = "";
       let rafId: number | null = null;
+      let streamPumpActive = true;
+      let lastArtifactCheck = 0;
 
-      const flushToUi = () => {
-        rafId = null;
+      setStreamingMessageId(assistantId);
+
+      const applyStreamToUi = () => {
         const snapshot = fullText;
-        const artifact = extractBuildArtifact(snapshot);
-        if (artifact) {
-          setLatestBuildArtifact(artifact);
-          setBuildSidebarOpen(true);
-          setBuildPanelTab("preview");
+        if (snapshot.includes("```")) {
+          const now = performance.now();
+          if (now - lastArtifactCheck > 280) {
+            lastArtifactCheck = now;
+            const artifact = extractBuildArtifact(snapshot);
+            if (artifact) {
+              setLatestBuildArtifact(artifact);
+              setBuildSidebarOpen(true);
+              setBuildPanelTab("preview");
+            }
+          }
         }
         const narration = stripCodeFences(snapshot);
         setMessages((prev) =>
@@ -538,37 +571,37 @@ export function SmileChatGeneral() {
                   ...m,
                   content:
                     narration ||
-                    (artifact
-                      ? "Code is in the Build Workspace."
-                      : pending
-                        ? " "
-                        : ""),
+                    (snapshot.includes("```") ? "Code is in the Build Workspace." : ""),
                 }
               : m,
           ),
         );
+        const el = listRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
       };
 
-      const scheduleFlush = () => {
-        if (rafId !== null) return;
-        rafId = requestAnimationFrame(flushToUi);
+      const pumpFrames = () => {
+        if (!streamPumpActive) return;
+        applyStreamToUi();
+        rafId = requestAnimationFrame(pumpFrames);
       };
+      rafId = requestAnimationFrame(pumpFrames);
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           fullText += decoder.decode(value, { stream: true });
-          scheduleFlush();
         }
         fullText += decoder.decode();
-        scheduleFlush();
       } finally {
+        streamPumpActive = false;
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
-        flushToUi();
+        applyStreamToUi();
+        setStreamingMessageId(null);
       }
 
       if (!fullText.trim()) {
@@ -593,6 +626,7 @@ export function SmileChatGeneral() {
     } finally {
       clearTimeout(reqTid);
       setPending(false);
+      setStreamingMessageId(null);
       abortRef.current = null;
       sendInFlightRef.current = false;
     }
@@ -772,7 +806,14 @@ export function SmileChatGeneral() {
               messages.map((m) => (
                 <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[94%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${m.role === "user" ? "bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20" : "bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06]"}`}>
-                    {m.role === "assistant" ? <div className="studio-md"><Markdown>{m.content || (pending ? " " : "")}</Markdown></div> : <p className="whitespace-pre-wrap">{m.content}</p>}
+                    {m.role === "assistant" ? (
+                      <AssistantMessageBody
+                        content={m.content}
+                        isStreaming={pending && streamingMessageId === m.id}
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                    )}
                   </div>
                 </div>
               ))
