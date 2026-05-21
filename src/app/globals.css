@@ -37,8 +37,16 @@ body {
 }
 
 .chat-scroll {
-  max-height: min(calc(100dvh - 13.5rem), 560px);
+  max-height: min(calc(100dvh - 17rem), 560px);
   scrollbar-gutter: stable;
+}
+
+/* Floating chat composer — lifted above bottom edge */
+.composer-float {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .chat-scroll::-webkit-scrollbar {
