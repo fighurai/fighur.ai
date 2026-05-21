@@ -71,12 +71,17 @@ body {
   box-sizing: border-box;
 }
 
-#smile-chat-input {
+#smile-chat-input,
+.chat-input-auto {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow-wrap: break-word;
   word-break: break-word;
+  min-height: 2.5rem;
+  max-height: min(40dvh, 12.5rem);
+  overflow-y: auto;
+  field-sizing: content;
 }
 
 /* Floating chat composer — lifted above bottom edge */

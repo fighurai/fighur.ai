@@ -277,6 +277,16 @@ export function SmileChatGeneral() {
   const messagesRef = useRef<ChatMessage[]>([]);
   const sendInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const resizeChatInput = useCallback(() => {
+    const el = chatInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxPx = Math.min(window.innerHeight * 0.4, 200);
+    const minPx = 40;
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -365,6 +375,10 @@ export function SmileChatGeneral() {
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: pending ? "auto" : "smooth" });
   }, [messages, pending]);
+
+  useEffect(() => {
+    resizeChatInput();
+  }, [input, resizeChatInput]);
 
   useEffect(() => {
     if (!hydrated || !activeId || messages.length === 0) return;
@@ -801,9 +815,13 @@ export function SmileChatGeneral() {
             <p className="px-3 py-2 text-xs text-[var(--accent)]">Refining your speech into clean text…</p>
           ) : null}
           <textarea
+            ref={chatInputRef}
             id="smile-chat-input"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              requestAnimationFrame(resizeChatInput);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -811,8 +829,8 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
-            rows={showEmpty ? 3 : 2}
-            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
+            rows={1}
+            className="chat-input-auto box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
             disabled={busy}
           />
           <input
