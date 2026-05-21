@@ -12,9 +12,9 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
           <Image
             src="/images/smile-logo-transparent.png"
             alt="Smile AI"
-            width={34}
-            height={34}
-            className="h-[2.125rem] w-[2.125rem] object-contain"
+            width={28}
+            height={28}
+            className="h-7 w-7 object-contain"
             priority
           />
           <HeaderControls />

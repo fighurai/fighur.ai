@@ -738,22 +738,24 @@ export function SmileChatGeneral() {
 
           <div ref={listRef} className="chat-scroll mb-3 min-h-0 flex-1 space-y-4 overflow-y-auto">
             {showEmpty ? (
-              <div className="flex flex-col items-center justify-center px-2 pb-8 pt-8 text-center">
+              <div className="flex flex-col items-center justify-center px-2 pb-6 pt-6 text-center">
                 <Image
                   src="/images/smile-logo-transparent.png"
                   alt="Smile AI"
-                  width={84}
-                  height={84}
-                  className="h-20 w-20 object-contain"
+                  width={52}
+                  height={52}
+                  className="h-12 w-12 object-contain"
                   priority
                 />
-                <p className="mt-3 max-w-md text-sm text-[var(--text-muted)]">
-                  Build apps and sites, plan agents and workflows. Sign in, then use Settings to connect
-                  Google, Microsoft, and Slack — your connections stay on the server for your account.
-                </p>
-                <div className="mt-6 flex max-w-lg flex-wrap justify-center gap-2">
+                <div className="mt-4 flex max-w-lg flex-wrap justify-center gap-1.5">
                   {SUGGESTIONS.map((s) => (
-                    <button key={s} onClick={() => setInput(s)} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-[var(--text-muted)] hover:border-[var(--accent)]/25 hover:text-[var(--text-primary)]">{s}</button>
+                    <button
+                      key={s}
+                      onClick={() => setInput(s)}
+                      className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[0.65rem] leading-snug text-[var(--text-muted)] hover:border-[var(--accent)]/25 hover:text-[var(--text-primary)]"
+                    >
+                      {s}
+                    </button>
                   ))}
                 </div>
               </div>
