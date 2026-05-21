@@ -127,6 +127,8 @@ export function resolveChatModelOption(requestedId?: string | null): ChatModelOp
   return null;
 }
 
+const PREFERRED_DEFAULT_MODEL_ID = "anthropic:claude-sonnet-4-5-20250929";
+
 export function pickDefaultModelId(): string | null {
   const envModel =
     process.env.SMILE_DEFAULT_CHAT_MODEL?.trim() ||
@@ -135,6 +137,8 @@ export function pickDefaultModelId(): string | null {
     const opt = CHAT_MODEL_OPTIONS.find((m) => m.id === envModel);
     if (opt && envHas(opt.provider)) return envModel;
   }
+  const claude = CHAT_MODEL_OPTIONS.find((m) => m.id === PREFERRED_DEFAULT_MODEL_ID);
+  if (claude && envHas(claude.provider)) return claude.id;
   for (const m of CHAT_MODEL_OPTIONS) {
     if (envHas(m.provider)) return m.id;
   }

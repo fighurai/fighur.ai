@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import type { ChangeEvent, MouseEvent } from "react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
@@ -15,7 +14,7 @@ import {
   type SmileSession,
 } from "@/lib/auth-storage";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
-import { SITE_ICON, SITE_TITLE } from "@/lib/site-brand";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import {
   deriveTitle,
   loadConversations,
@@ -54,14 +53,6 @@ const MAX_ATTACHMENTS = 6;
 const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_IMAGE_DATA_URL_CHARS = 120_000;
-
-const SUGGESTIONS = [
-  "Build a small Next.js web app that lists tasks and saves them in localStorage.",
-  "Build a single-page marketing site in HTML/CSS for a local coffee shop.",
-  "Design a Gmail + Calendar workflow to follow up on leads (no sending — plan only).",
-  "Explain async/await like I'm brand new to JavaScript.",
-  "Help me write a polite follow-up email after an interview.",
-];
 
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -269,11 +260,12 @@ export function SmileChatGeneral() {
         const next = Array.isArray(data.models) ? data.models : [];
         setModels(next);
         setChatReady(data.chatReady === true);
-        const fallback = next.find((m) => m.available)?.id ?? "";
+        const available = next.filter((m) => m.available);
+        const claude = available.find((m) => m.id === DEFAULT_CHAT_MODEL_ID);
         const def = data.defaultModel;
-        const defOk = def && next.some((m) => m.id === def && m.available);
-        setSelectedModel(defOk ? def : fallback);
-        if (!defOk && !fallback) {
+        const defOk = def && available.some((m) => m.id === def);
+        setSelectedModel(defOk ? def! : claude?.id ?? available[0]?.id ?? "");
+        if (available.length === 0) {
           setError(
             data.setupHint ??
               "Chat is not configured: add an API key in Vercel for the fighur.ai project and redeploy.",
@@ -285,13 +277,14 @@ export function SmileChatGeneral() {
       });
   }, []);
 
+  const availableModels = useMemo(() => models.filter((m) => m.available), [models]);
+
   useEffect(() => {
-    if (models.length === 0) return;
-    const selected = models.find((m) => m.id === selectedModel);
-    if (selected?.available) return;
-    const firstAvailable = models.find((m) => m.available);
-    if (firstAvailable) setSelectedModel(firstAvailable.id);
-  }, [models, selectedModel]);
+    if (availableModels.length === 0) return;
+    if (availableModels.some((m) => m.id === selectedModel)) return;
+    const claude = availableModels.find((m) => m.id === DEFAULT_CHAT_MODEL_ID);
+    setSelectedModel(claude?.id ?? availableModels[0].id);
+  }, [availableModels, selectedModel]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -480,7 +473,7 @@ export function SmileChatGeneral() {
     const trimmed = input.trim();
     if (!trimmed || pending || translatingSpeech || sendInFlightRef.current) return;
 
-    const modelMeta = models.find((m) => m.id === selectedModel);
+    const modelMeta = availableModels.find((m) => m.id === selectedModel);
     if (!modelMeta?.available) {
       setError(
         modelMeta
@@ -637,7 +630,7 @@ export function SmileChatGeneral() {
       abortRef.current = null;
       sendInFlightRef.current = false;
     }
-  }, [input, pending, translatingSpeech, activeId, selectedModel, attachments, session]);
+  }, [input, pending, translatingSpeech, activeId, selectedModel, attachments, session, availableModels]);
 
   const toggleListen = useCallback(() => {
     if (listening && speechRef.current) {
@@ -681,6 +674,141 @@ export function SmileChatGeneral() {
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const canPreviewHtml =
     latestBuildArtifact?.language === "html" && latestBuildArtifact.code.trim().length > 0;
+
+  const composerPanel = (
+    <>
+      <div className="composer-float box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl">
+        <form
+          className="box-border flex w-full min-w-0 max-w-full flex-col"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          {translatingSpeech ? (
+            <p className="px-3 py-2 text-xs text-[var(--accent)]">Refining your speech into clean text…</p>
+          ) : null}
+          <textarea
+            id="smile-chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            placeholder={PROMPT_PLACEHOLDER}
+            rows={showEmpty ? 3 : 2}
+            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
+            disabled={busy}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={onPickFiles}
+            className="hidden"
+            accept="*/*"
+          />
+          {attachments.length > 0 ? (
+            <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
+              {attachments.map((a) => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1 text-[0.7rem] text-[var(--text-muted)]"
+                >
+                  {a.name} ({humanFileSize(a.size)})
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(a.id)}
+                    className="text-[var(--text-faint)] hover:text-red-300"
+                    aria-label={`Remove ${a.name}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <div className="flex min-w-0 flex-col gap-2 border-t border-white/[0.06] px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={toggleListen}
+                disabled={busy}
+                className="shrink-0 rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+              >
+                {listening ? "Stop" : "Speak"}
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+                className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40"
+              >
+                Attach
+              </button>
+              {!showEmpty ? (
+                <button
+                  type="button"
+                  onClick={() => setBuildSidebarOpen((v) => !v)}
+                  className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40"
+                >
+                  <span className="sm:hidden">Space</span>
+                  <span className="hidden sm:inline">Workspace</span>
+                </button>
+              ) : null}
+            </div>
+            <div className="grid min-w-0 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                disabled={busy || availableModels.length === 0}
+                className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
+                aria-label="Select model"
+              >
+                {availableModels.length === 0 ? (
+                  <option value="">No models</option>
+                ) : (
+                  availableModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))
+                )}
+              </select>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {busy ? (
+                  <button
+                    type="button"
+                    onClick={stopAll}
+                    className="rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+                  >
+                    Stop
+                  </button>
+                ) : null}
+                <button
+                  type="submit"
+                  disabled={busy || !input.trim()}
+                  className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 sm:px-4 sm:py-2"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      {error ? (
+        <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
+      ) : !showEmpty ? (
+        <p className="mt-1 hidden px-1 text-center text-[0.65rem] text-[var(--text-faint)] sm:block">
+          Chats saved in this browser · Model picker enabled · Speech can refine your input
+        </p>
+      ) : null}
+    </>
+  );
 
   const sidebarContent = (
     <>
@@ -863,26 +991,7 @@ export function SmileChatGeneral() {
 
           {showEmpty ? (
             <div className="home-empty-hero">
-              <Image
-                src={SITE_ICON}
-                alt={SITE_TITLE}
-                width={80}
-                height={80}
-                className="h-20 w-20 object-contain sm:h-24 sm:w-24"
-                priority
-              />
-              <div className="mt-8 flex w-full max-w-2xl flex-wrap items-center justify-center gap-2">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setInput(s)}
-                    className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs leading-snug text-[var(--text-muted)] hover:border-[var(--accent)]/25 hover:text-[var(--text-primary)] sm:text-[0.7rem]"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+              <div className="w-full max-w-2xl">{composerPanel}</div>
             </div>
           ) : (
             <>
@@ -928,172 +1037,48 @@ export function SmileChatGeneral() {
 
         </div>
 
-        <div
-          className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
-        >
-          <div className="composer-dock-inner pointer-events-auto w-full min-w-0 max-w-full px-3 sm:px-4 md:px-5">
-            <div
-              className="pointer-events-none mb-1 h-6 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
-              aria-hidden
-            />
-            <div className="mb-1.5 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1.5 md:hidden">
-              {session ? (
-                <>
-                  <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void clearSessionAndServer().then(() => setSession(null));
-                    }}
-                    className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                  >
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/sign-in" className="text-xs font-semibold text-[var(--accent)]">
-                    Sign in
-                  </Link>
-                  <span className="text-[var(--text-faint)]">·</span>
-                  <Link href="/sign-up" className="text-xs font-medium text-[var(--text-muted)]">
-                    Create account
-                  </Link>
-                </>
-              )}
-            </div>
-            <div className="composer-float box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl">
-              <form
-                className="box-border flex w-full min-w-0 max-w-full flex-col"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void send();
-                }}
-              >
-                {translatingSpeech ? <p className="px-3 py-2 text-xs text-[var(--accent)]">Refining your speech into clean text…</p> : null}
-                <textarea
-                  id="smile-chat-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void send();
-                    }
-                  }}
-                  placeholder="Ask anything, or describe an app or site to build…"
-                  rows={2}
-                  className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
-                  disabled={busy}
-                />
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={onPickFiles}
-                  className="hidden"
-                  accept="*/*"
-                />
-                {attachments.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
-                    {attachments.map((a) => (
-                      <span
-                        key={a.id}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1 text-[0.7rem] text-[var(--text-muted)]"
-                      >
-                        {a.name} ({humanFileSize(a.size)})
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(a.id)}
-                          className="text-[var(--text-faint)] hover:text-red-300"
-                          aria-label={`Remove ${a.name}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="flex min-w-0 flex-col gap-2 border-t border-white/[0.06] px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {!showEmpty ? (
+          <div
+            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
+          >
+            <div className="composer-dock-inner pointer-events-auto w-full min-w-0 max-w-full px-3 sm:px-4 md:px-5">
+              <div
+                className="pointer-events-none mb-1 h-6 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
+                aria-hidden
+              />
+              <div className="mb-1.5 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1.5 md:hidden">
+                {session ? (
+                  <>
+                    <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
                     <button
                       type="button"
-                      onClick={toggleListen}
-                      disabled={busy}
-                      className="shrink-0 rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+                      onClick={() => {
+                        void clearSessionAndServer().then(() => setSession(null));
+                      }}
+                      className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline"
                     >
-                      {listening ? "Stop" : "Speak"}
+                      Sign out
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={busy}
-                      className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40"
-                    >
-                      Attach
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBuildSidebarOpen((v) => !v)}
-                      className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40"
-                    >
-                      <span className="sm:hidden">Space</span>
-                      <span className="hidden sm:inline">Workspace</span>
-                    </button>
-                  </div>
-                  <div className="grid min-w-0 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      disabled={busy}
-                      className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
-                      aria-label="Select model"
-                    >
-                      {models.length === 0 ? (
-                        <option value="">Loading…</option>
-                      ) : (
-                        models.map((m) => (
-                          <option key={m.id} value={m.id} disabled={!m.available}>
-                            {m.label}
-                            {m.available ? "" : " (unavailable)"}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {busy ? (
-                        <button
-                          type="button"
-                          onClick={stopAll}
-                          className="rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
-                        >
-                          Stop
-                        </button>
-                      ) : null}
-                      <button
-                        type="submit"
-                        disabled={busy || !input.trim()}
-                        className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 sm:px-4 sm:py-2"
-                      >
-                        Send
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            </div>
-            {error ? (
-              <p className="mt-1 px-1 text-center text-xs text-red-300/90">{error}</p>
-            ) : (
-              <p className="mt-1 hidden px-1 text-center text-[0.65rem] text-[var(--text-faint)] sm:block">
-                Chats saved in this browser · Model picker enabled · Speech can refine your input
+                  </>
+                ) : (
+                  <>
+                    <Link href="/sign-in" className="text-xs font-semibold text-[var(--accent)]">
+                      Sign in
+                    </Link>
+                    <span className="text-[var(--text-faint)]">·</span>
+                    <Link href="/sign-up" className="text-xs font-medium text-[var(--text-muted)]">
+                      Create account
+                    </Link>
+                  </>
+                )}
+              </div>
+              {composerPanel}
+              <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
+                © {new Date().getFullYear()} FIGHURAI
               </p>
-            )}
-            <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
-              © {new Date().getFullYear()} FIGHURAI
-            </p>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       {buildSidebarOpen ? (
         <aside className="hidden w-[min(40rem,42vw)] shrink-0 border-l border-white/[0.08] bg-[var(--bg-elevated)]/80 backdrop-blur-md md:flex md:flex-col">
