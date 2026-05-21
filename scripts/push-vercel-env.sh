@@ -12,9 +12,23 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Load local keys if present (gitignored); never committed.
+if [[ -f .env.local ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+fi
+
 if [[ -z "${VERCEL_TOKEN:-}" ]]; then
-  echo "Missing VERCEL_TOKEN. Create one at https://vercel.com/account/tokens"
-  exit 1
+  if [[ -s "$HOME/.local/share/com.vercel.cli/auth.json" ]] && grep -q '"token"' "$HOME/.local/share/com.vercel.cli/auth.json" 2>/dev/null; then
+    echo "Using Vercel CLI login (auth.json)."
+  else
+    echo "Not logged in to Vercel CLI."
+    echo "  Option A: npx vercel login   (open the device URL it prints)"
+    echo "  Option B: export VERCEL_TOKEN=... from https://vercel.com/account/tokens"
+    exit 1
+  fi
 fi
 
 PROJECT="${VERCEL_PROJECT:-fighur.ai}"
