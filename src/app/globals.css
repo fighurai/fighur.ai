@@ -37,8 +37,13 @@ body {
 }
 
 .chat-scroll {
-  max-height: min(calc(100dvh - 17rem), 560px);
+  max-height: min(calc(100dvh - 3.25rem - 11.5rem), 560px);
   scrollbar-gutter: stable;
+}
+
+/* Fixed prompt dock — reserve space so messages scroll above it */
+.composer-dock {
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
 }
 
 /* Floating chat composer — lifted above bottom edge */

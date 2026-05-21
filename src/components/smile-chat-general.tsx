@@ -739,7 +739,7 @@ export function SmileChatGeneral() {
       </aside>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-2 pb-4 pt-3 sm:px-4 sm:pt-4 md:pt-6">
+        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-2 pb-2 pt-3 sm:px-4 sm:pt-4 md:pt-6">
           {chatReady === false ? (
             <div
               className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
@@ -779,7 +779,7 @@ export function SmileChatGeneral() {
             </button>
           </div>
 
-          <div ref={listRef} className="chat-scroll mb-3 min-h-0 flex-1 space-y-4 overflow-y-auto">
+          <div ref={listRef} className="chat-scroll mb-2 min-h-0 flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32">
             {showEmpty ? (
               <div className="flex flex-col items-center justify-center px-2 pb-6 pt-6 text-center">
                 <Image
@@ -820,12 +820,15 @@ export function SmileChatGeneral() {
             )}
           </div>
 
-          <div className="sticky bottom-0 z-30 mx-auto w-full min-w-0 max-w-2xl shrink-0 px-1 pb-[max(0.65rem,env(safe-area-inset-bottom,0px))] pt-3 sm:px-2">
+        </div>
+
+        <div className="composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56">
+          <div className="pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-2 sm:px-4">
             <div
-              className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
+              className="pointer-events-none mb-1 h-6 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
               aria-hidden
             />
-            <div className="mb-2 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/80 py-2 md:hidden">
+            <div className="mb-1.5 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1.5 md:hidden">
               {session ? (
                 <>
                   <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
@@ -851,7 +854,7 @@ export function SmileChatGeneral() {
                 </>
               )}
             </div>
-            <div className="composer-float min-w-0 -translate-y-0.5 overflow-hidden rounded-2xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl">
+            <div className="composer-float min-w-0 overflow-hidden rounded-2xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl">
               <form
                 className="flex w-full min-w-0 max-w-full flex-col"
                 onSubmit={(e) => {
@@ -972,12 +975,15 @@ export function SmileChatGeneral() {
               </form>
             </div>
             {error ? (
-              <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
+              <p className="mt-1 px-1 text-center text-xs text-red-300/90">{error}</p>
             ) : (
-              <p className="mt-2 px-1 text-center text-[0.65rem] text-[var(--text-faint)]">
+              <p className="mt-1 hidden px-1 text-center text-[0.65rem] text-[var(--text-faint)] sm:block">
                 Chats saved in this browser · Model picker enabled · Speech can refine your input
               </p>
             )}
+            <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
+              © {new Date().getFullYear()} FIGHURAI
+            </p>
           </div>
         </div>
       </div>
