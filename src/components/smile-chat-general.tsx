@@ -104,6 +104,15 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+function finalizeAssistantContent(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "I'm here — try that again and I'll answer.";
+  const narration = stripCodeFences(trimmed);
+  if (narration) return narration;
+  if (trimmed.includes("```")) return "Build details are in the workspace.";
+  return trimmed;
+}
+
 function sanitizeAssistantMessages(list: ChatMessage[]): ChatMessage[] {
   return list.map((m) =>
     m.role === "assistant"
@@ -186,15 +195,17 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
 
   if (isStreaming) {
     return (
-      <p className="stream-plain w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
-        {content || "\u00a0"}
-        <span className="stream-cursor" aria-hidden />
-      </p>
+      <div className="stream-live" aria-live="polite" aria-atomic="false">
+        <p className="stream-plain m-0 w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
+          {content || "\u00a0"}
+          <span className="stream-cursor" aria-hidden />
+        </p>
+      </div>
     );
   }
   if (!displayContent.trim()) return null;
   return (
-    <div className="studio-md w-full min-w-0 max-w-full">
+    <div className="message-body-complete studio-md w-full min-w-0 max-w-full">
       <Markdown components={assistantMarkdownComponents}>{displayContent}</Markdown>
     </div>
   );
@@ -254,6 +265,7 @@ export function SmileChatGeneral() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamBuffer, setStreamBuffer] = useState("");
   const [translatingSpeech, setTranslatingSpeech] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -360,11 +372,19 @@ export function SmileChatGeneral() {
     setSelectedModel(claude?.id ?? availableModels[0].id);
   }, [availableModels, selectedModel]);
 
-  useEffect(() => {
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     const el = listRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: pending ? "auto" : "smooth" });
-  }, [messages, pending]);
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  useEffect(() => {
+    if (pending && streamingMessageId) {
+      scrollChatToBottom("auto");
+      return;
+    }
+    scrollChatToBottom("smooth");
+  }, [messages, pending, streamingMessageId, streamBuffer, scrollChatToBottom]);
 
   useEffect(() => {
     if (!hydrated || !activeId || messages.length === 0) return;
@@ -389,6 +409,8 @@ export function SmileChatGeneral() {
     promptifyAbortRef.current = null;
     setPending(false);
     setTranslatingSpeech(false);
+    setStreamBuffer("");
+    setStreamingMessageId(null);
   }, []);
 
   const newChat = useCallback(() => {
@@ -618,16 +640,18 @@ export function SmileChatGeneral() {
       const decoder = new TextDecoder();
       let fullText = "";
       let rafId: number | null = null;
-      let streamPumpActive = true;
       let lastArtifactCheck = 0;
 
       setStreamingMessageId(assistantId);
+      setStreamBuffer("");
 
-      const applyStreamToUi = () => {
+      const flushStreamToUi = () => {
+        rafId = null;
         const snapshot = fullText;
+        setStreamBuffer(snapshot);
         if (snapshot.includes("```") || snapshot.includes("data:image") || snapshot.includes("![")) {
           const now = performance.now();
-          if (now - lastArtifactCheck > 280) {
+          if (now - lastArtifactCheck > 400) {
             lastArtifactCheck = now;
             const artifact = extractBuildArtifact(snapshot);
             if (artifact) {
@@ -637,55 +661,35 @@ export function SmileChatGeneral() {
             }
           }
         }
-        const narration = stripCodeFences(snapshot);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content:
-                    narration ||
-                    (snapshot.includes("```") ? "Code is in the Build Workspace." : ""),
-                }
-              : m,
-          ),
-        );
-        const el = listRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
+        requestAnimationFrame(() => scrollChatToBottom("auto"));
       };
 
-      const pumpFrames = () => {
-        if (!streamPumpActive) return;
-        applyStreamToUi();
-        rafId = requestAnimationFrame(pumpFrames);
+      const scheduleStreamFlush = () => {
+        if (rafId !== null) return;
+        rafId = requestAnimationFrame(flushStreamToUi);
       };
-      rafId = requestAnimationFrame(pumpFrames);
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           fullText += decoder.decode(value, { stream: true });
+          scheduleStreamFlush();
         }
         fullText += decoder.decode();
       } finally {
-        streamPumpActive = false;
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
-        applyStreamToUi();
-        setStreamingMessageId(null);
-      }
+        flushStreamToUi();
 
-      if (!fullText.trim()) {
+        const finalContent = finalizeAssistantContent(fullText);
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, content: "I'm here — try that again and I'll answer." }
-              : m,
-          ),
+          prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
         );
+        setStreamBuffer("");
+        setStreamingMessageId(null);
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
@@ -697,6 +701,7 @@ export function SmileChatGeneral() {
           ),
         );
       }
+      setStreamBuffer("");
     } finally {
       clearTimeout(reqTid);
       setPending(false);
@@ -704,7 +709,17 @@ export function SmileChatGeneral() {
       abortRef.current = null;
       sendInFlightRef.current = false;
     }
-  }, [input, pending, translatingSpeech, activeId, selectedModel, attachments, session, availableModels]);
+  }, [
+    input,
+    pending,
+    translatingSpeech,
+    activeId,
+    selectedModel,
+    attachments,
+    session,
+    availableModels,
+    scrollChatToBottom,
+  ]);
 
   const toggleListen = useCallback(() => {
     if (listening && speechRef.current) {
@@ -1200,6 +1215,8 @@ export function SmileChatGeneral() {
                   isAssistant && copyableAssistantText(m.content).length > 0 && !isStreaming;
                 const imageFallback =
                   isAssistant && m.id === lastAssistantMessageId ? previewImageUrl : null;
+                const liveContent =
+                  isStreaming && streamingMessageId === m.id ? streamBuffer : m.content;
                 return (
                   <div
                     key={m.id}
@@ -1209,7 +1226,9 @@ export function SmileChatGeneral() {
                       className={`relative min-w-0 rounded-2xl px-4 py-3 text-sm leading-relaxed sm:px-5 ${
                         m.role === "user"
                           ? "ml-auto w-fit max-w-[88%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
-                          : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
+                          : isStreaming
+                            ? "w-full max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
+                            : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
                       }`}
                     >
                       {canCopy ? (
@@ -1225,7 +1244,7 @@ export function SmileChatGeneral() {
                       {isAssistant ? (
                         <div className={canCopy ? "pt-5" : undefined}>
                           <AssistantMessageBody
-                            content={m.content}
+                            content={liveContent}
                             isStreaming={isStreaming}
                             imageFallback={imageFallback}
                           />

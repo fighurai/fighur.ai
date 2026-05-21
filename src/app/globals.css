@@ -128,11 +128,16 @@ body {
   border-radius: 999px;
 }
 
-/* Live assistant stream — plain text + cursor (Markdown after complete) */
+/* Live assistant stream — token-by-token like ChatGPT/Claude */
+.stream-live {
+  width: 100%;
+  min-width: 0;
+}
+
 .stream-plain {
   overflow-wrap: break-word;
+  word-break: break-word;
   text-wrap: pretty;
-  contain: layout style;
 }
 
 .stream-cursor {
@@ -155,6 +160,19 @@ body {
   100% {
     opacity: 0.2;
   }
+}
+
+@keyframes message-body-in {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.message-body-complete {
+  animation: message-body-in 0.22s ease-out;
 }
 
 .studio-md {
