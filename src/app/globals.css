@@ -79,6 +79,19 @@ body {
   word-break: break-word;
 }
 
+/* Chat messages — centered column with side breathing room */
+.chat-thread {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .chat-thread {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
 /* Assistant reply bubbles — width fits content, not full row */
 .chat-output-bubble {
   width: fit-content;
@@ -160,6 +173,12 @@ body {
 .studio-md p {
   margin-bottom: 0.75em;
   line-height: 1.65;
+}
+
+.chat-output-bubble .studio-md p,
+.chat-output-bubble .studio-md li {
+  padding-left: 0.125rem;
+  padding-right: 0.125rem;
 }
 
 .studio-md strong {

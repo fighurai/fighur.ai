@@ -1148,7 +1148,7 @@ export function SmileChatGeneral() {
         </div>
 
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col px-3 pb-2 sm:px-4 md:px-5 ${showEmpty ? "min-h-0 pt-0" : "pt-3 sm:pt-4 md:pt-6"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col px-4 pb-2 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "pt-3 sm:pt-4 md:pt-6"}`}
         >
           {chatReady === false ? (
             <div
@@ -1191,7 +1191,7 @@ export function SmileChatGeneral() {
           ) : (
             <div
               ref={listRef}
-              className="chat-scroll mb-2 min-h-0 flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32"
+              className="chat-scroll chat-thread mx-auto mb-2 min-h-0 w-full max-w-2xl flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32"
             >
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
@@ -1206,10 +1206,10 @@ export function SmileChatGeneral() {
                     className={`group flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`relative min-w-0 rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                      className={`relative min-w-0 rounded-2xl px-4 py-3 text-sm leading-relaxed sm:px-5 ${
                         m.role === "user"
-                          ? "ml-auto w-fit max-w-[92%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
-                          : "chat-output-bubble w-fit max-w-full bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[92%]"
+                          ? "ml-auto w-fit max-w-[88%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
+                          : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
                       }`}
                     >
                       {canCopy ? (
