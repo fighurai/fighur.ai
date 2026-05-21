@@ -71,17 +71,31 @@ body {
   box-sizing: border-box;
 }
 
-#smile-chat-input,
-.chat-input-auto {
+#smile-chat-input {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow-wrap: break-word;
   word-break: break-word;
-  min-height: 2.5rem;
-  max-height: min(40dvh, 12.5rem);
-  overflow-y: auto;
-  field-sizing: content;
+}
+
+/* Assistant reply bubbles — width fits content, not full row */
+.chat-output-bubble {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.chat-output-bubble .studio-md {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.chat-output-bubble .studio-md > :first-child {
+  margin-top: 0;
+}
+
+.chat-output-bubble .studio-md > :last-child {
+  margin-bottom: 0;
 }
 
 /* Floating chat composer — lifted above bottom edge */

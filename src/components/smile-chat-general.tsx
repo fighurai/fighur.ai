@@ -277,16 +277,6 @@ export function SmileChatGeneral() {
   const messagesRef = useRef<ChatMessage[]>([]);
   const sendInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const chatInputRef = useRef<HTMLTextAreaElement>(null);
-
-  const resizeChatInput = useCallback(() => {
-    const el = chatInputRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const maxPx = Math.min(window.innerHeight * 0.4, 200);
-    const minPx = 40;
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
-  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -375,10 +365,6 @@ export function SmileChatGeneral() {
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: pending ? "auto" : "smooth" });
   }, [messages, pending]);
-
-  useEffect(() => {
-    resizeChatInput();
-  }, [input, resizeChatInput]);
 
   useEffect(() => {
     if (!hydrated || !activeId || messages.length === 0) return;
@@ -815,13 +801,9 @@ export function SmileChatGeneral() {
             <p className="px-3 py-2 text-xs text-[var(--accent)]">Refining your speech into clean text…</p>
           ) : null}
           <textarea
-            ref={chatInputRef}
             id="smile-chat-input"
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              requestAnimationFrame(resizeChatInput);
-            }}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -829,8 +811,8 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
-            rows={1}
-            className="chat-input-auto box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
+            rows={showEmpty ? 3 : 2}
+            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
             disabled={busy}
           />
           <input
@@ -1224,7 +1206,11 @@ export function SmileChatGeneral() {
                     className={`group flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`relative w-full min-w-0 max-w-full rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:max-w-[92%] ${m.role === "user" ? "bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20" : "bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06]"}`}
+                      className={`relative min-w-0 rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                        m.role === "user"
+                          ? "ml-auto w-fit max-w-[92%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
+                          : "chat-output-bubble w-fit max-w-full bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[92%]"
+                      }`}
                     >
                       {canCopy ? (
                         <button
