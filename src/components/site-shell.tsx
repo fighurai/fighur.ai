@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { ThemeControls } from "@/components/theme-controls";
+import { SITE_TITLE } from "@/lib/site-brand";
 import { BOOKING_URL } from "@/lib/site-links";
 
 const tabs = [
@@ -28,7 +29,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
               href="/"
               className="shrink-0 font-display text-lg tracking-tight text-[var(--text-primary)] transition hover:text-[var(--accent)] sm:text-xl"
             >
-              fighur it out with ai
+              {SITE_TITLE}
             </Link>
             <div className="flex shrink-0 items-center gap-2 sm:hidden">
               <a

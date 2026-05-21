@@ -488,7 +488,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
           budgetedMessages,
           {
             "HTTP-Referer": process.env.OPENROUTER_REFERER?.trim() || "http://localhost:3010",
-            "X-Title": "fighur it out with ai",
+            "X-Title": "FIGHURAI",
           },
         );
       case "nvidia":

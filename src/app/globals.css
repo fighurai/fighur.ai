@@ -64,9 +64,10 @@ body {
   padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
 }
 
-.composer-dock-inner {
+.composer-dock-inner,
+.composer-column {
   width: 100%;
-  max-width: 100%;
+  max-width: 42rem;
   box-sizing: border-box;
 }
 

@@ -991,7 +991,7 @@ export function SmileChatGeneral() {
 
           {showEmpty ? (
             <div className="home-empty-hero">
-              <div className="w-full max-w-2xl">{composerPanel}</div>
+              <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
             <>
@@ -1041,7 +1041,7 @@ export function SmileChatGeneral() {
           <div
             className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
           >
-            <div className="composer-dock-inner pointer-events-auto w-full min-w-0 max-w-full px-3 sm:px-4 md:px-5">
+            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
               <div
                 className="pointer-events-none mb-1 h-6 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
                 aria-hidden

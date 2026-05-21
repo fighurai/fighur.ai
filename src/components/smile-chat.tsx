@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ChatMessage } from "@/lib/chat-types";
 import { resolveBookingHref } from "@/lib/booking-from-prompt";
+import { SITE_TITLE } from "@/lib/site-brand";
 import { BOOKING_URL } from "@/lib/site-links";
 import {
   deriveTitle,
@@ -531,7 +532,7 @@ export function SmileChat() {
             {showEmpty ? (
               <div className="flex flex-col items-center justify-center px-2 pb-8 pt-4 text-center sm:min-h-[38vh] sm:pt-12">
                 <p className="font-display text-2xl font-medium tracking-tight text-[var(--text-primary)] sm:text-3xl">
-                  fighur it out with ai
+                  {SITE_TITLE}
                 </p>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--text-muted)]">
                   Services, booking, and how to work with us — local assistant for fighur.ai.
@@ -615,9 +616,9 @@ export function SmileChat() {
                 <div
                   className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 text-xs text-[var(--text-muted)]"
                   role="status"
-                  aria-label="fighur it out with ai chat"
+                  aria-label={`${SITE_TITLE} chat`}
                 >
-                  <span className="font-semibold text-[var(--text-primary)]">fighur it out with ai</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{SITE_TITLE}</span>
                   <span className="font-normal text-[var(--text-faint)]">Ask</span>
                   <span className="font-normal text-[0.65rem] text-[var(--text-faint)]">
                     · AI assistant
