@@ -1,0 +1,33 @@
+# Sync API keys from GitHub Secrets → Vercel (same repo as site code; secrets never committed).
+# Add secrets: https://github.com/fighurai/fighur.ai/settings/secrets/actions
+
+name: Sync API keys to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync-env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Push env vars to Vercel and redeploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SMILE_APP_SECRET: ${{ secrets.SMILE_APP_SECRET }}
+          SMILE_OAUTH_COOKIE_SECRET: ${{ secrets.SMILE_OAUTH_COOKIE_SECRET }}
+          SMILE_DEFAULT_CHAT_MODEL: ${{ secrets.SMILE_DEFAULT_CHAT_MODEL }}
+          NEXT_PUBLIC_SITE_URL: https://fighur.ai
+          SMILE_OAUTH_BASE_URL: https://fighur.ai
+        run: bash scripts/github-sync-vercel-env.sh

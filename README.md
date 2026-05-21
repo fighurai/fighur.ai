@@ -43,4 +43,6 @@ Chat requires **at least one** model API key on the **fighur.ai** Vercel project
 
 Set for **Production**, then **Redeploy**. See `env.example` for OAuth and `SMILE_APP_SECRET`.
 
+**Same flow as code edits:** add keys as [GitHub Actions secrets](docs/GITHUB-SECRETS.md) (`VERCEL_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, …). Each push to `main` runs `.github/workflows/sync-vercel-env.yml` and copies them to Vercel — nothing secret is committed to git.
+
 Verify: `https://fighur.ai/api/chat/models` should show `"chatReady": true` and some `"available": true` models.
