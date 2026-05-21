@@ -171,6 +171,7 @@ export function SmileChatGeneral() {
   const [hydrated, setHydrated] = useState(false);
   const [models, setModels] = useState<ChatModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [chatReady, setChatReady] = useState<boolean | null>(null);
   const [buildSidebarOpen, setBuildSidebarOpen] = useState(false);
   const [buildPanelTab, setBuildPanelTab] = useState<BuildPanelTab>("preview");
   const [latestBuildArtifact, setLatestBuildArtifact] = useState<BuildArtifact | null>(null);
@@ -233,16 +234,23 @@ export function SmileChatGeneral() {
   useEffect(() => {
     void fetch("/api/chat/models")
       .then((r) => r.json())
-      .then((data: { models?: ChatModelInfo[]; defaultModel?: string }) => {
+      .then((data: {
+        models?: ChatModelInfo[];
+        defaultModel?: string | null;
+        chatReady?: boolean;
+        setupHint?: string;
+      }) => {
         const next = Array.isArray(data.models) ? data.models : [];
         setModels(next);
+        setChatReady(data.chatReady === true);
         const fallback = next.find((m) => m.available)?.id ?? "";
         const def = data.defaultModel;
         const defOk = def && next.some((m) => m.id === def && m.available);
         setSelectedModel(defOk ? def : fallback);
         if (!defOk && !fallback) {
           setError(
-            "Chat is not configured yet: add an API key in Vercel (ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, etc.) and redeploy.",
+            data.setupHint ??
+              "Chat is not configured: add an API key in Vercel for the fighur.ai project and redeploy.",
           );
         }
       })
@@ -689,6 +697,39 @@ export function SmileChatGeneral() {
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-3 pb-2 pt-3 sm:px-4 sm:pt-4 md:pt-6">
+          {chatReady === false ? (
+            <div
+              className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
+              role="status"
+            >
+              <p className="font-semibold text-amber-50">Chat models are unavailable on the server</p>
+              <p className="mt-1.5 text-amber-100/90">
+                Every model shows “unavailable” because this Vercel project has{" "}
+                <strong>no API keys</strong> yet. Keys on another site (e.g. fighurai.com) do not apply here —
+                add them to the <strong>fighur.ai</strong> project.
+              </p>
+              <ol className="mt-2 list-decimal space-y-1 pl-4 text-amber-100/85">
+                <li>
+                  Vercel → <strong>fighur.ai</strong> project → Settings → Environment Variables
+                </li>
+                <li>
+                  Add one key for <strong>Production</strong> (easiest free option:{" "}
+                  <code className="text-[0.65rem]">GROQ_API_KEY</code> from{" "}
+                  <a
+                    href="https://console.groq.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    console.groq.com
+                  </a>
+                  , or <code className="text-[0.65rem]">ANTHROPIC_API_KEY</code> for Claude)
+                </li>
+                <li>Deployments → Redeploy (required after adding variables)</li>
+                <li>Refresh this page — models should no longer say unavailable</li>
+              </ol>
+            </div>
+          ) : null}
           <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
             <button onClick={() => lastAssistant?.content && navigator.clipboard.writeText(lastAssistant.content)} disabled={!lastAssistant?.content} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[var(--text-muted)] disabled:opacity-40">
               Copy last reply

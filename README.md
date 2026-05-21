@@ -29,8 +29,18 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deploy on Vercel (fighur.ai)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Chat requires **at least one** model API key on the **fighur.ai** Vercel project (not a different project):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Provider |
+|----------|----------|
+| `ANTHROPIC_API_KEY` | Claude |
+| `GROQ_API_KEY` | Groq (free tier at [console.groq.com](https://console.groq.com)) |
+| `OPENAI_API_KEY` | OpenAI |
+| `OPENROUTER_API_KEY` | OpenRouter |
+| `NVIDIA_API_KEY` | NVIDIA NIM |
+
+Set for **Production**, then **Redeploy**. See `env.example` for OAuth and `SMILE_APP_SECRET`.
+
+Verify: `https://fighur.ai/api/chat/models` should show `"chatReady": true` and some `"available": true` models.
