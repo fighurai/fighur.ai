@@ -689,8 +689,8 @@ export function SmileChatGeneral() {
                   priority
                 />
                 <p className="mt-3 max-w-md text-sm text-[var(--text-muted)]">
-                  Build apps and sites, plan agents and workflows, and use Settings to mark Gmail, Outlook,
-                  and more — we add real OAuth next; today connections guide how Smile AI drafts and plans.
+                  Build apps and sites, plan agents and workflows. Sign in, then use Settings to connect
+                  Google, Microsoft, and Slack — your connections stay on the server for your account.
                 </p>
                 <div className="mt-6 flex max-w-lg flex-wrap justify-center gap-2">
                   {SUGGESTIONS.map((s) => (
