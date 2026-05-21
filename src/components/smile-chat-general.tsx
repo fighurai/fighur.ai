@@ -681,7 +681,6 @@ export function SmileChatGeneral() {
 
   const showEmpty = messages.length === 0;
   const busy = pending || translatingSpeech;
-  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
   const previewImageUrl = useMemo(
     () => resolveImagePreviewUrl(latestBuildArtifact),
     [latestBuildArtifact],
