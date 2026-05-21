@@ -78,6 +78,30 @@ function formatTime(ts: number) {
   }
 }
 
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  try {
+    await navigator.clipboard.writeText(trimmed);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = trimmed;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 function sanitizeAssistantMessages(list: ChatMessage[]): ChatMessage[] {
   return list.map((m) =>
     m.role === "assistant"
@@ -179,6 +203,7 @@ export function SmileChatGeneral() {
   const [latestBuildArtifact, setLatestBuildArtifact] = useState<BuildArtifact | null>(null);
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [session, setSession] = useState<SmileSession | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const promptifyAbortRef = useRef<AbortController | null>(null);
@@ -681,6 +706,18 @@ export function SmileChatGeneral() {
     }
   }, [previewImageUrl]);
 
+  const copyMessage = useCallback(async (messageId: string, content: string) => {
+    const ok = await copyTextToClipboard(content);
+    if (!ok) {
+      setError("Could not copy to clipboard.");
+      return;
+    }
+    setCopiedMessageId(messageId);
+    window.setTimeout(() => {
+      setCopiedMessageId((current) => (current === messageId ? null : current));
+    }, 2000);
+  }, []);
+
   const composerPanel = (
     <>
       <div className="composer-float box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl">
@@ -1083,45 +1120,43 @@ export function SmileChatGeneral() {
               <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
-            <>
-              <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    lastAssistant?.content && navigator.clipboard.writeText(lastAssistant.content)
-                  }
-                  disabled={!lastAssistant?.content}
-                  className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[var(--text-muted)] disabled:opacity-40"
-                >
-                  Copy last reply
-                </button>
-              </div>
-
-              <div
-                ref={listRef}
-                className="chat-scroll mb-2 min-h-0 flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32"
-              >
-                {messages.map((m) => (
+            <div
+              ref={listRef}
+              className="chat-scroll mb-2 min-h-0 flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32"
+            >
+              {messages.map((m) => {
+                const isStreaming = pending && streamingMessageId === m.id;
+                const canCopy = m.content.trim().length > 0 && !isStreaming;
+                return (
                   <div
                     key={m.id}
-                    className={`flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`group flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`w-full min-w-0 max-w-full rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:max-w-[92%] ${m.role === "user" ? "bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20" : "bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06]"}`}
+                      className={`relative w-full min-w-0 max-w-full rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:max-w-[92%] ${m.role === "user" ? "bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20" : "bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06]"}`}
                     >
+                      {canCopy ? (
+                        <button
+                          type="button"
+                          onClick={() => void copyMessage(m.id, m.content)}
+                          className={`absolute top-2 rounded-full border border-white/[0.1] bg-[var(--bg-deep)]/80 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--text-muted)] backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-[var(--text-primary)] sm:opacity-0 sm:group-hover:opacity-100 ${m.role === "user" ? "left-2" : "right-2"} ${copiedMessageId === m.id ? "opacity-100 text-[var(--accent)]" : "opacity-100"}`}
+                          aria-label={copiedMessageId === m.id ? "Copied" : "Copy message"}
+                        >
+                          {copiedMessageId === m.id ? "Copied" : "Copy"}
+                        </button>
+                      ) : null}
                       {m.role === "assistant" ? (
-                        <AssistantMessageBody
-                          content={m.content}
-                          isStreaming={pending && streamingMessageId === m.id}
-                        />
+                        <div className={canCopy ? "pt-5" : undefined}>
+                          <AssistantMessageBody content={m.content} isStreaming={isStreaming} />
+                        </div>
                       ) : (
-                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        <p className={`whitespace-pre-wrap ${canCopy ? "pt-5 pr-1" : ""}`}>{m.content}</p>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            </>
+                );
+              })}
+            </div>
           )}
 
         </div>
