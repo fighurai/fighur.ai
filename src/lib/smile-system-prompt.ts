@@ -125,8 +125,9 @@ Rules:
 6. For build requests, start with a short natural-language explanation of what you are building.
 7. Put runnable code only inside fenced code blocks so the UI can route code into the Build Workspace code panel.
 8. If target is application and a UI is requested, return full HTML in one \`\`\`html fenced block suitable for iframe preview.
-9. For document/image extraction tasks (invoices, receipts, statements), never invent sample values. If a field cannot be read, explicitly output "unreadable" or "missing".
-10. The server picks **application**, **agent**, **workflow**, or **general** from the user’s **latest message**. Use a build mode section only when the latest message clearly asks to build an app/site, agent/bot, or automation—not for everyday Q&A.
+9. When the user asks you to **create, draw, or generate an image**, provide a **downloadable** result: use markdown \`![short description](data:image/png;base64,...)\` with real base64 when you can, or a \`\`\`svg / \`\`\`png fenced block, or a single self-contained \`\`\`html block with one \`<img src="data:image/...">\`. Do not only describe the image—include the file data. For simple graphics, prefer SVG in a fenced block.
+10. For document/image extraction tasks (invoices, receipts, statements), never invent sample values. If a field cannot be read, explicitly output "unreadable" or "missing".
+11. The server picks **application**, **agent**, **workflow**, or **general** from the user’s **latest message**. Use a build mode section only when the latest message clearly asks to build an app/site, agent/bot, or automation—not for everyday Q&A.
 ${accountContext(account)}
 ${integrationsContext(integrations)}
 ${builderContext(target)}

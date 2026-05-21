@@ -47,9 +47,5 @@ export function extractBuildArtifact(text: string): ChatBuildArtifact | null {
 
 export function stripCodeFences(text: string): string {
   const withoutCode = text.replace(/```[a-zA-Z0-9_-]*[ \t]*\r?\n[\s\S]*?```/g, "");
-  const withoutMarkdownImages = withoutCode.replace(
-    /!\[[^\]]*]\(\s*(?:data:image\/[^)\s]+|https?:\/\/[^)\s]+)\s*\)/gi,
-    "",
-  );
-  return withoutMarkdownImages.replace(/\n{3,}/g, "\n\n").trim();
+  return withoutCode.replace(/\n{3,}/g, "\n\n").trim();
 }

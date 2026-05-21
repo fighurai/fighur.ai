@@ -63,18 +63,31 @@ export function downloadBuildCode(artifact: ChatBuildArtifact) {
   triggerDownload(buildCodeFilename(artifact), blob);
 }
 
+const IMAGE_URL_PATTERN =
+  /(?:!\[[^\]]*]\(\s*(data:image\/[^)\s]+|https?:\/\/[^)\s]+)\s*\)|<img[^>]+src=["'](data:image\/[^"']+|https?:\/\/[^"']+)["']|(data:image\/[a-z0-9+.-]+;base64,[a-z0-9+/=\s]+))/gi;
+
+function normalizeImageMatch(match: RegExpExecArray): string | null {
+  const raw = (match[1] || match[2] || match[3] || "").trim();
+  if (!raw) return null;
+  return raw.startsWith("data:image/") ? raw.replace(/\s/g, "") : raw;
+}
+
 /** Pull the first inline or markdown image URL from assistant text. */
 export function extractImagePreviewUrl(text: string): string | null {
-  const markdown = /!\[[^\]]*]\(\s*(data:image\/[^)\s]+|https?:\/\/[^)\s]+)\s*\)/i.exec(text);
-  if (markdown?.[1]) return markdown[1].trim();
+  const all = extractAllImagePreviewUrls(text);
+  return all[0] ?? null;
+}
 
-  const html = /<img[^>]+src=["'](data:image\/[^"']+|https?:\/\/[^"']+)["']/i.exec(text);
-  if (html?.[1]) return html[1].trim();
-
-  const bare = /(data:image\/[a-z0-9+.-]+;base64,[a-z0-9+/=\s]+)/i.exec(text);
-  if (bare?.[1]) return bare[1].replace(/\s/g, "");
-
-  return null;
+/** All downloadable image URLs in assistant output. */
+export function extractAllImagePreviewUrls(text: string): string[] {
+  const found: string[] = [];
+  let match: RegExpExecArray | null = null;
+  const re = new RegExp(IMAGE_URL_PATTERN.source, IMAGE_URL_PATTERN.flags);
+  while ((match = re.exec(text)) !== null) {
+    const url = normalizeImageMatch(match);
+    if (url) found.push(url);
+  }
+  return [...new Set(found)];
 }
 
 export function isImageArtifact(artifact: ChatBuildArtifact | null): boolean {

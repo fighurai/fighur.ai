@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Markdown from "react-markdown";
 import type { ChangeEvent, MouseEvent } from "react";
+import type { Components } from "react-markdown";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
@@ -19,6 +20,7 @@ import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import {
   downloadBuildCode,
   downloadImageUrl,
+  extractAllImagePreviewUrls,
   isImageArtifact,
   resolveImagePreviewUrl,
 } from "@/lib/workspace-download";
@@ -107,19 +109,81 @@ function sanitizeAssistantMessages(list: ChatMessage[]): ChatMessage[] {
     m.role === "assistant"
       ? {
           ...m,
-          content: stripCodeFences(m.content) || "Build details are in the workspace tabs.",
+          content:
+            stripCodeFences(m.content) ||
+            (extractAllImagePreviewUrls(m.content).length > 0
+              ? m.content
+              : "Build details are in the workspace tabs."),
         }
       : m,
   );
 }
 
+/** Text to copy — excludes huge base64 payloads and code fences. */
+function copyableAssistantText(content: string): string {
+  return content
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/!\[([^\]]*)]\(data:image\/[^)]+\)/gi, (_, alt: string) =>
+      alt?.trim() ? `${alt.trim()} [image — use Download in chat]` : "[image — use Download in chat]",
+    )
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function ChatOutputImage({ src, alt }: { src?: string; alt?: string }) {
+  const [downloading, setDownloading] = useState(false);
+  if (!src?.trim()) return null;
+  return (
+    <figure className="my-3 overflow-hidden rounded-xl border border-white/[0.1] bg-black/25">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt ?? "Generated image"}
+        className="max-h-[min(70vh,28rem)] w-full object-contain"
+      />
+      <figcaption className="flex items-center justify-between gap-2 border-t border-white/[0.08] px-3 py-2">
+        <span className="truncate text-[0.65rem] text-[var(--text-faint)]">{alt ?? "Generated image"}</span>
+        <button
+          type="button"
+          disabled={downloading}
+          onClick={() => {
+            setDownloading(true);
+            void downloadImageUrl(src, (alt ?? "generated-image").replace(/[^\w.-]+/g, "-").slice(0, 40))
+              .catch(() => undefined)
+              .finally(() => setDownloading(false));
+          }}
+          className="shrink-0 rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-2.5 py-1 text-[0.65rem] font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20 disabled:opacity-50"
+        >
+          {downloading ? "Saving…" : "Download image"}
+        </button>
+      </figcaption>
+    </figure>
+  );
+}
+
+const assistantMarkdownComponents: Components = {
+  img: ({ src, alt }) => (
+    <ChatOutputImage src={typeof src === "string" ? src : undefined} alt={alt} />
+  ),
+};
+
 const AssistantMessageBody = memo(function AssistantMessageBody({
   content,
   isStreaming,
+  imageFallback,
 }: {
   content: string;
   isStreaming: boolean;
+  imageFallback?: string | null;
 }) {
+  const displayContent = useMemo(() => {
+    if (isStreaming) return content;
+    const narration = stripCodeFences(content);
+    if (narration) return narration;
+    if (imageFallback) return `![Generated image](${imageFallback})`;
+    return content;
+  }, [content, isStreaming, imageFallback]);
+
   if (isStreaming) {
     return (
       <p className="stream-plain w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
@@ -128,10 +192,10 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
       </p>
     );
   }
-  if (!content) return null;
+  if (!displayContent.trim()) return null;
   return (
     <div className="studio-md w-full min-w-0 max-w-full">
-      <Markdown>{content}</Markdown>
+      <Markdown components={assistantMarkdownComponents}>{displayContent}</Markdown>
     </div>
   );
 });
@@ -681,6 +745,12 @@ export function SmileChatGeneral() {
 
   const showEmpty = messages.length === 0;
   const busy = pending || translatingSpeech;
+  const lastAssistantMessageId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messages[i].id;
+    }
+    return null;
+  }, [messages]);
   const previewImageUrl = useMemo(
     () => resolveImagePreviewUrl(latestBuildArtifact),
     [latestBuildArtifact],
@@ -1125,7 +1195,11 @@ export function SmileChatGeneral() {
             >
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
-                const canCopy = m.content.trim().length > 0 && !isStreaming;
+                const isAssistant = m.role === "assistant";
+                const canCopy =
+                  isAssistant && copyableAssistantText(m.content).length > 0 && !isStreaming;
+                const imageFallback =
+                  isAssistant && m.id === lastAssistantMessageId ? previewImageUrl : null;
                 return (
                   <div
                     key={m.id}
@@ -1137,19 +1211,23 @@ export function SmileChatGeneral() {
                       {canCopy ? (
                         <button
                           type="button"
-                          onClick={() => void copyMessage(m.id, m.content)}
-                          className={`absolute top-2 rounded-full border border-white/[0.1] bg-[var(--bg-deep)]/80 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--text-muted)] backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-[var(--text-primary)] sm:opacity-0 sm:group-hover:opacity-100 ${m.role === "user" ? "left-2" : "right-2"} ${copiedMessageId === m.id ? "opacity-100 text-[var(--accent)]" : "opacity-100"}`}
-                          aria-label={copiedMessageId === m.id ? "Copied" : "Copy message"}
+                          onClick={() => void copyMessage(m.id, copyableAssistantText(m.content))}
+                          className={`absolute right-2 top-2 rounded-full border border-white/[0.1] bg-[var(--bg-deep)]/80 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--text-muted)] backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-[var(--text-primary)] sm:opacity-0 sm:group-hover:opacity-100 ${copiedMessageId === m.id ? "opacity-100 text-[var(--accent)]" : "opacity-100"}`}
+                          aria-label={copiedMessageId === m.id ? "Copied" : "Copy reply"}
                         >
                           {copiedMessageId === m.id ? "Copied" : "Copy"}
                         </button>
                       ) : null}
-                      {m.role === "assistant" ? (
+                      {isAssistant ? (
                         <div className={canCopy ? "pt-5" : undefined}>
-                          <AssistantMessageBody content={m.content} isStreaming={isStreaming} />
+                          <AssistantMessageBody
+                            content={m.content}
+                            isStreaming={isStreaming}
+                            imageFallback={imageFallback}
+                          />
                         </div>
                       ) : (
-                        <p className={`whitespace-pre-wrap ${canCopy ? "pt-5 pr-1" : ""}`}>{m.content}</p>
+                        <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
                     </div>
                   </div>
