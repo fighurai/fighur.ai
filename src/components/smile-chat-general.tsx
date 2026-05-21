@@ -14,7 +14,14 @@ import {
   type SmileSession,
 } from "@/lib/auth-storage";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
+import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
+import {
+  downloadBuildCode,
+  downloadImageUrl,
+  isImageArtifact,
+  resolveImagePreviewUrl,
+} from "@/lib/workspace-download";
 import {
   deriveTitle,
   loadConversations,
@@ -69,28 +76,6 @@ function formatTime(ts: number) {
   } catch {
     return "";
   }
-}
-
-function extractBuildArtifact(text: string): BuildArtifact | null {
-  const fence = /```([a-zA-Z0-9_-]*)[ \t]*\r?\n([\s\S]*?)```/g;
-  const matches: BuildArtifact[] = [];
-  let match: RegExpExecArray | null = null;
-  while ((match = fence.exec(text)) !== null) {
-    matches.push({
-      language: (match[1] || "text").toLowerCase(),
-      code: match[2].trim(),
-    });
-  }
-  if (matches.length === 0) return null;
-  const preferred = matches.find((m) =>
-    ["html", "tsx", "jsx", "javascript", "typescript"].includes(m.language),
-  );
-  return preferred ?? matches[0];
-}
-
-function stripCodeFences(text: string): string {
-  const withoutCode = text.replace(/```[a-zA-Z0-9_-]*[ \t]*\r?\n[\s\S]*?```/g, "");
-  return withoutCode.replace(/\n{3,}/g, "\n\n").trim();
 }
 
 function sanitizeAssistantMessages(list: ChatMessage[]): ChatMessage[] {
@@ -551,7 +536,7 @@ export function SmileChatGeneral() {
 
       const applyStreamToUi = () => {
         const snapshot = fullText;
-        if (snapshot.includes("```")) {
+        if (snapshot.includes("```") || snapshot.includes("data:image") || snapshot.includes("![")) {
           const now = performance.now();
           if (now - lastArtifactCheck > 280) {
             lastArtifactCheck = now;
@@ -672,8 +657,29 @@ export function SmileChatGeneral() {
   const showEmpty = messages.length === 0;
   const busy = pending || translatingSpeech;
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const previewImageUrl = useMemo(
+    () => resolveImagePreviewUrl(latestBuildArtifact),
+    [latestBuildArtifact],
+  );
+  const canPreviewImage = Boolean(previewImageUrl);
   const canPreviewHtml =
-    latestBuildArtifact?.language === "html" && latestBuildArtifact.code.trim().length > 0;
+    !canPreviewImage &&
+    (latestBuildArtifact?.language === "html" || latestBuildArtifact?.language === "htm") &&
+    Boolean(latestBuildArtifact?.code.trim());
+
+  const downloadWorkspaceCode = useCallback(() => {
+    if (!latestBuildArtifact) return;
+    downloadBuildCode(latestBuildArtifact);
+  }, [latestBuildArtifact]);
+
+  const downloadWorkspaceImage = useCallback(async () => {
+    if (!previewImageUrl) return;
+    try {
+      await downloadImageUrl(previewImageUrl);
+    } catch {
+      setError("Could not download image. Try again or save from preview.");
+    }
+  }, [previewImageUrl]);
 
   const composerPanel = (
     <>
@@ -808,6 +814,89 @@ export function SmileChatGeneral() {
         </p>
       ) : null}
     </>
+  );
+
+  const workspaceDownloadButtons =
+    latestBuildArtifact || previewImageUrl ? (
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+        {latestBuildArtifact && !isImageArtifact(latestBuildArtifact) ? (
+          <button
+            type="button"
+            onClick={downloadWorkspaceCode}
+            className="rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-primary)] hover:bg-white/[0.08]"
+          >
+            {canPreviewHtml ? "Download HTML" : "Download code"}
+          </button>
+        ) : null}
+        {previewImageUrl ? (
+          <button
+            type="button"
+            onClick={() => void downloadWorkspaceImage()}
+            className="rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-2.5 py-1 text-[0.65rem] font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
+          >
+            Download image
+          </button>
+        ) : null}
+      </div>
+    ) : null;
+
+  const workspacePreviewBody = previewImageUrl ? (
+    <img
+      src={previewImageUrl}
+      alt="Generated preview"
+      className="mx-auto max-h-[min(70vh,32rem)] w-full rounded-xl border border-white/[0.12] bg-black/20 object-contain"
+    />
+  ) : canPreviewHtml ? (
+    <iframe
+      title="Build preview"
+      sandbox="allow-scripts allow-forms allow-modals"
+      srcDoc={latestBuildArtifact?.code ?? ""}
+      className="h-full min-h-[24rem] w-full rounded-xl border border-white/[0.12] bg-white"
+    />
+  ) : (
+    <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
+      {latestBuildArtifact
+        ? "Preview works for HTML pages and images. Ask for a full ```html block or an image."
+        : "Build output will appear here after you generate code or an image."}
+    </div>
+  );
+
+  const workspaceCodeBody = latestBuildArtifact ? (
+    <pre className="overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 text-xs text-[var(--text-primary)]">
+      <code>{latestBuildArtifact.code}</code>
+    </pre>
+  ) : (
+    <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
+      No code artifact yet. Describe what you are building to generate code here.
+    </div>
+  );
+
+  const workspaceTabRow = (
+    <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3 py-2">
+      <button
+        type="button"
+        onClick={() => setBuildPanelTab("preview")}
+        className={`rounded-full px-3 py-1 text-xs ${
+          buildPanelTab === "preview"
+            ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
+            : "text-[var(--text-muted)] hover:bg-white/[0.06]"
+        }`}
+      >
+        Preview
+      </button>
+      <button
+        type="button"
+        onClick={() => setBuildPanelTab("code")}
+        className={`rounded-full px-3 py-1 text-xs ${
+          buildPanelTab === "code"
+            ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
+            : "text-[var(--text-muted)] hover:bg-white/[0.06]"
+        }`}
+      >
+        Code
+      </button>
+      {workspaceDownloadButtons}
+    </div>
   );
 
   const sidebarContent = (
@@ -1092,56 +1181,9 @@ export function SmileChatGeneral() {
               Close
             </button>
           </div>
-          <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2">
-            <button
-              type="button"
-              onClick={() => setBuildPanelTab("preview")}
-              className={`rounded-full px-3 py-1 text-xs ${
-                buildPanelTab === "preview"
-                  ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
-                  : "text-[var(--text-muted)] hover:bg-white/[0.06]"
-              }`}
-            >
-              Preview
-            </button>
-            <button
-              type="button"
-              onClick={() => setBuildPanelTab("code")}
-              className={`rounded-full px-3 py-1 text-xs ${
-                buildPanelTab === "code"
-                  ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
-                  : "text-[var(--text-muted)] hover:bg-white/[0.06]"
-              }`}
-            >
-              Code
-            </button>
-            <span className="ml-auto text-[0.65rem] tracking-wide text-[var(--text-faint)]">Prompt</span>
-          </div>
+          {workspaceTabRow}
           <div className="min-h-0 flex-1 overflow-auto p-3">
-            {buildPanelTab === "preview" ? (
-              canPreviewHtml ? (
-                <iframe
-                  title="Build preview"
-                  sandbox="allow-scripts allow-forms allow-modals"
-                  srcDoc={latestBuildArtifact?.code ?? ""}
-                  className="h-full min-h-[24rem] w-full rounded-xl border border-white/[0.12] bg-white"
-                />
-              ) : (
-                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-                  {latestBuildArtifact
-                    ? "Preview is available for HTML artifacts. Ask for a full ```html block for live website preview."
-                    : "Build output will appear here after you click Build."}
-                </div>
-              )
-            ) : latestBuildArtifact ? (
-              <pre className="overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 text-xs text-[var(--text-primary)]">
-                <code>{latestBuildArtifact.code}</code>
-              </pre>
-            ) : (
-              <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-                No code artifact yet. Describe what you are building to generate code here.
-              </div>
-            )}
+            {buildPanelTab === "preview" ? workspacePreviewBody : workspaceCodeBody}
           </div>
         </aside>
       ) : null}
@@ -1157,53 +1199,9 @@ export function SmileChatGeneral() {
               Close
             </button>
           </div>
-          <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2">
-            <button
-              type="button"
-              onClick={() => setBuildPanelTab("preview")}
-              className={`rounded-full px-3 py-1 text-xs ${
-                buildPanelTab === "preview"
-                  ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
-                  : "text-[var(--text-muted)] hover:bg-white/[0.06]"
-              }`}
-            >
-              Preview
-            </button>
-            <button
-              type="button"
-              onClick={() => setBuildPanelTab("code")}
-              className={`rounded-full px-3 py-1 text-xs ${
-                buildPanelTab === "code"
-                  ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
-                  : "text-[var(--text-muted)] hover:bg-white/[0.06]"
-              }`}
-            >
-              Code
-            </button>
-          </div>
+          {workspaceTabRow}
           <div className="h-[calc(100%-5.5rem)] overflow-auto p-3">
-            {buildPanelTab === "preview" ? (
-              canPreviewHtml ? (
-                <iframe
-                  title="Build preview mobile"
-                  sandbox="allow-scripts allow-forms allow-modals"
-                  srcDoc={latestBuildArtifact?.code ?? ""}
-                  className="h-full min-h-[22rem] w-full rounded-xl border border-white/[0.12] bg-white"
-                />
-              ) : (
-                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-                  Preview is available for HTML artifacts.
-                </div>
-              )
-            ) : latestBuildArtifact ? (
-              <pre className="overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 text-xs text-[var(--text-primary)]">
-                <code>{latestBuildArtifact.code}</code>
-              </pre>
-            ) : (
-              <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-                No code artifact yet. Describe what you are building to generate code here.
-              </div>
-            )}
+            {buildPanelTab === "preview" ? workspacePreviewBody : workspaceCodeBody}
           </div>
         </div>
       ) : null}
