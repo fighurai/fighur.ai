@@ -696,7 +696,7 @@ export function SmileChatGeneral() {
       </aside>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-3 pb-2 pt-3 sm:px-4 sm:pt-4 md:pt-6">
+        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-3 pb-2 pt-3 sm:px-4 sm:pt-4 md:pt-6">
           {chatReady === false ? (
             <div
               className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
@@ -770,7 +770,7 @@ export function SmileChatGeneral() {
             )}
           </div>
 
-          <div className="relative z-20 shrink-0 pb-1">
+          <div className="relative z-20 min-w-0 shrink-0 pb-1">
             <div className="mb-2 flex flex-wrap items-center justify-center gap-3 border-y border-white/[0.06] py-2 md:hidden">
               {session ? (
                 <>
@@ -797,9 +797,9 @@ export function SmileChatGeneral() {
                 </>
               )}
             </div>
-            <div className="rounded-2xl border border-white/[0.12] bg-[var(--bg-elevated)]/90 p-1 backdrop-blur-md">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.12] bg-[var(--bg-elevated)]/90 p-1 backdrop-blur-md">
               <form
-                className="flex w-full min-w-0 flex-col"
+                className="flex w-full min-w-0 max-w-full flex-col"
                 onSubmit={(e) => {
                   e.preventDefault();
                   setBuildSidebarOpen(true);
@@ -851,35 +851,43 @@ export function SmileChatGeneral() {
                     ))}
                   </div>
                 ) : null}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-2 py-2">
-                  <button type="button" onClick={toggleListen} disabled={busy} className="rounded-full px-3 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]">
-                    {listening ? "Stop & translate" : "Speak"}
-                  </button>
-                  <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-col gap-2 border-t border-white/[0.06] px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={toggleListen}
+                      disabled={busy}
+                      className="shrink-0 rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+                    >
+                      {listening ? "Stop" : "Speak"}
+                    </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={busy}
-                      className="rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40"
+                      className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40"
                     >
                       Attach
                     </button>
                     <button
                       type="button"
                       onClick={() => setBuildSidebarOpen((v) => !v)}
-                      className="rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40"
+                      className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40"
                     >
-                      Workspace
+                      <span className="sm:hidden">Space</span>
+                      <span className="hidden sm:inline">Workspace</span>
                     </button>
+                  </div>
+                  <div className="grid min-w-0 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
                     <select
                       value={selectedModel}
                       onChange={(e) => setSelectedModel(e.target.value)}
                       disabled={busy}
-                      className="max-w-[13rem] appearance-none rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
                       aria-label="Select model"
                     >
                       {models.length === 0 ? (
-                        <option value="">Loading models...</option>
+                        <option value="">Loading…</option>
                       ) : (
                         models.map((m) => (
                           <option key={m.id} value={m.id} disabled={!m.available}>
@@ -889,20 +897,28 @@ export function SmileChatGeneral() {
                         ))
                       )}
                     </select>
-                    {busy ? (
-                      <button type="button" onClick={stopAll} className="rounded-full px-3 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]">Stop</button>
-                    ) : null}
-                    <button
-                      type="submit"
-                      disabled={busy || !input.trim()}
-                      onClick={() => {
-                        setBuildSidebarOpen(true);
-                        setBuildPanelTab("preview");
-                      }}
-                      className="rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40"
-                    >
-                      Build
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {busy ? (
+                        <button
+                          type="button"
+                          onClick={stopAll}
+                          className="rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+                        >
+                          Stop
+                        </button>
+                      ) : null}
+                      <button
+                        type="submit"
+                        disabled={busy || !input.trim()}
+                        onClick={() => {
+                          setBuildSidebarOpen(true);
+                          setBuildPanelTab("preview");
+                        }}
+                        className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 sm:px-4 sm:py-2"
+                      >
+                        Build
+                      </button>
+                    </div>
                   </div>
                 </div>
               </form>
