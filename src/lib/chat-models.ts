@@ -113,18 +113,21 @@ export function getChatModelById(id: string): ChatModelOption | undefined {
   return CHAT_MODEL_OPTIONS.find((m) => m.id === id);
 }
 
-/** Resolves client model id (may be stale after config changes) to a valid option. */
-export function resolveChatModelOption(requestedId?: string | null): ChatModelOption {
+/** Resolves to a model whose provider has an API key on the server. */
+export function resolveChatModelOption(requestedId?: string | null): ChatModelOption | null {
   if (requestedId) {
     const found = getChatModelById(requestedId);
-    if (found) return found;
+    if (found && envHas(found.provider)) return found;
   }
-  const byDefault = getChatModelById(pickDefaultModelId());
-  if (byDefault) return byDefault;
-  return CHAT_MODEL_OPTIONS[0];
+  const defaultId = pickDefaultModelId();
+  if (defaultId) {
+    const byDefault = getChatModelById(defaultId);
+    if (byDefault) return byDefault;
+  }
+  return null;
 }
 
-export function pickDefaultModelId(): string {
+export function pickDefaultModelId(): string | null {
   const envModel =
     process.env.SMILE_DEFAULT_CHAT_MODEL?.trim() ||
     process.env.FIGHURAI_DEFAULT_CHAT_MODEL?.trim();
@@ -135,5 +138,19 @@ export function pickDefaultModelId(): string {
   for (const m of CHAT_MODEL_OPTIONS) {
     if (envHas(m.provider)) return m.id;
   }
-  return CHAT_MODEL_OPTIONS[0].id;
+  return null;
+}
+
+export function listConfiguredProviders(): ChatProvider[] {
+  const providers: ChatProvider[] = ["anthropic", "openai", "groq", "openrouter", "nvidia"];
+  return providers.filter((p) => envHas(p));
+}
+
+export function noChatProvidersMessage(): string {
+  return (
+    "No model API keys are configured on the server. In Vercel → your project → Settings → " +
+    "Environment Variables, add at least one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, " +
+    "OPENROUTER_API_KEY, or NVIDIA_API_KEY — then redeploy. Optionally set SMILE_DEFAULT_CHAT_MODEL " +
+    "to a model id from /api/chat/models."
+  );
 }

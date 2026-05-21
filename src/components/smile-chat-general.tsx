@@ -236,8 +236,15 @@ export function SmileChatGeneral() {
       .then((data: { models?: ChatModelInfo[]; defaultModel?: string }) => {
         const next = Array.isArray(data.models) ? data.models : [];
         setModels(next);
-        const fallback = next.find((m) => m.available)?.id ?? next[0]?.id ?? "";
-        setSelectedModel(data.defaultModel || fallback);
+        const fallback = next.find((m) => m.available)?.id ?? "";
+        const def = data.defaultModel;
+        const defOk = def && next.some((m) => m.id === def && m.available);
+        setSelectedModel(defOk ? def : fallback);
+        if (!defOk && !fallback) {
+          setError(
+            "Chat is not configured yet: add an API key in Vercel (ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, etc.) and redeploy.",
+          );
+        }
       })
       .catch(() => {
         setError("Could not load model list.");
@@ -432,6 +439,17 @@ export function SmileChatGeneral() {
   const send = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || pending || translatingSpeech || sendInFlightRef.current) return;
+
+    const modelMeta = models.find((m) => m.id === selectedModel);
+    if (!modelMeta?.available) {
+      setError(
+        modelMeta
+          ? `${modelMeta.label} is unavailable — add its API key in Vercel Environment Variables and redeploy, or choose another model.`
+          : "No model is available. Add at least one API key in Vercel (e.g. ANTHROPIC_API_KEY) and redeploy.",
+      );
+      return;
+    }
+
     sendInFlightRef.current = true;
 
     let convId = activeId;

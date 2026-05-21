@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 import {
+  noChatProvidersMessage,
   resolveChatModelOption,
   type ChatModelOption,
   type ChatProvider,
@@ -142,19 +143,21 @@ function apiKeyFor(provider: ChatProvider): string | null {
 }
 
 function missingKeyMessage(provider: ChatProvider): string {
+  const envHint =
+    " Add it in Vercel → Project → Settings → Environment Variables (Production), then redeploy.";
   switch (provider) {
     case "anthropic":
-      return "Add ANTHROPIC_API_KEY to use Claude.";
+      return `Add ANTHROPIC_API_KEY to use Claude.${envHint}`;
     case "openai":
-      return "Add OPENAI_API_KEY for OpenAI models.";
+      return `Add OPENAI_API_KEY for OpenAI models.${envHint}`;
     case "groq":
-      return "Add GROQ_API_KEY for Groq models.";
+      return `Add GROQ_API_KEY for Groq models.${envHint}`;
     case "openrouter":
-      return "Add OPENROUTER_API_KEY for OpenRouter models.";
+      return `Add OPENROUTER_API_KEY for OpenRouter models.${envHint}`;
     case "nvidia":
-      return "Add NVIDIA_API_KEY for NVIDIA models.";
+      return `Add NVIDIA_API_KEY for NVIDIA models.${envHint}`;
     default:
-      return "Missing API key for this provider.";
+      return `Missing API key for this provider.${envHint}`;
   }
 }
 
@@ -314,6 +317,9 @@ export async function POST(request: Request) {
 
   const requestedId = typeof b.model === "string" ? b.model : undefined;
   const option = resolveChatModelOption(requestedId);
+  if (!option) {
+    return NextResponse.json({ error: noChatProvidersMessage() }, { status: 503 });
+  }
 
   if (attachments.length > 0) {
     const lastUserMessageIndex = [...messages]
