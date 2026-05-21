@@ -15,6 +15,7 @@ import {
   type SmileSession,
 } from "@/lib/auth-storage";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
+import { SITE_ICON, SITE_TITLE } from "@/lib/site-brand";
 import {
   deriveTitle,
   loadConversations,
@@ -121,7 +122,7 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
 }) {
   if (isStreaming) {
     return (
-      <p className="stream-plain whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
+      <p className="stream-plain w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
         {content || "\u00a0"}
         <span className="stream-cursor" aria-hidden />
       </p>
@@ -129,7 +130,7 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   }
   if (!content) return null;
   return (
-    <div className="studio-md">
+    <div className="studio-md w-full min-w-0 max-w-full">
       <Markdown>{content}</Markdown>
     </div>
   );
@@ -335,6 +336,12 @@ export function SmileChatGeneral() {
     saveLastActiveId(null, "assistant");
     setMobileSidebarOpen(false);
   }, [stopAll]);
+
+  useEffect(() => {
+    const onHome = () => newChat();
+    window.addEventListener("smile-go-home", onHome);
+    return () => window.removeEventListener("smile-go-home", onHome);
+  }, [newChat]);
 
   const selectConversation = useCallback(
     (c: SavedConversation) => {
@@ -675,71 +682,151 @@ export function SmileChatGeneral() {
   const canPreviewHtml =
     latestBuildArtifact?.language === "html" && latestBuildArtifact.code.trim().length > 0;
 
+  const sidebarContent = (
+    <>
+      <div className="shrink-0 border-b border-white/[0.06] p-3">
+        <button
+          type="button"
+          onClick={newChat}
+          className="w-full rounded-xl bg-[var(--accent)]/15 px-3 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/25 transition hover:bg-[var(--accent)]/25"
+        >
+          + New chat
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        <p className="px-2 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
+          Previous chats
+        </p>
+        {conversations.length === 0 ? (
+          <p className="px-2 text-xs leading-relaxed text-[var(--text-faint)]">
+            Saved on this device. Start a message to create your first chat.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {conversations.map((c) => (
+              <li key={c.id}>
+                <div
+                  className={`group flex items-start gap-1 rounded-xl transition ${
+                    activeId === c.id
+                      ? "bg-white/[0.08] ring-1 ring-white/[0.1]"
+                      : "hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => selectConversation(c)}
+                    className="min-w-0 flex-1 px-2.5 py-2 text-left"
+                  >
+                    <span className="line-clamp-2 text-xs font-medium text-[var(--text-primary)]">
+                      {c.title || deriveTitle(c.messages)}
+                    </span>
+                    <span className="mt-0.5 block text-[0.65rem] text-[var(--text-faint)]">
+                      {formatTime(c.updatedAt)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => deleteConversation(e, c.id)}
+                    className="shrink-0 rounded-lg p-2 text-[var(--text-faint)] opacity-70 transition hover:bg-white/[0.08] hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="Delete chat"
+                    title="Delete"
+                  >
+                    ×
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="shrink-0 border-t border-white/[0.06] p-3">
+        <p className="px-0.5 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
+          Account
+        </p>
+        {session ? (
+          <div className="space-y-2">
+            <p className="truncate text-xs text-[var(--text-primary)]" title={session.email}>
+              {session.name ? `${session.name} · ` : null}
+              {session.email}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void clearSessionAndServer().then(() => setSession(null));
+              }}
+              className="w-full rounded-lg border border-white/[0.1] py-2 text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/sign-in"
+              className="rounded-lg bg-[var(--accent)]/15 py-2 text-center text-xs font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/25 transition hover:bg-[var(--accent)]/25"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/sign-up"
+              className="rounded-lg border border-white/[0.1] py-2 text-center text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+            >
+              Create account
+            </Link>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+    <div
+      className={`flex flex-1 flex-col md:flex-row ${showEmpty ? "min-h-[calc(100dvh-3.25rem)]" : "min-h-0"}`}
+    >
       <aside className="hidden min-h-0 w-56 shrink-0 flex-col border-r border-white/[0.06] bg-[var(--bg-elevated)]/90 md:flex">
-        <div className="shrink-0 border-b border-white/[0.06] p-3">
-          <button onClick={newChat} className="w-full rounded-xl bg-[var(--accent)]/15 px-3 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/25">+ New chat</button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          <p className="px-2 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">Previous chats</p>
-          {conversations.length === 0 ? (
-            <p className="px-2 text-xs text-[var(--text-faint)]">Saved on this device. Start a message to create your first chat.</p>
-          ) : (
-            <ul className="space-y-1">
-              {conversations.map((c) => (
-                <li key={c.id}>
-                  <div className={`group flex items-start gap-1 rounded-xl ${activeId === c.id ? "bg-white/[0.08] ring-1 ring-white/[0.1]" : "hover:bg-white/[0.04]"}`}>
-                    <button onClick={() => selectConversation(c)} className="min-w-0 flex-1 px-2.5 py-2 text-left">
-                      <span className="line-clamp-2 text-xs font-medium text-[var(--text-primary)]">{c.title || deriveTitle(c.messages)}</span>
-                      <span className="mt-0.5 block text-[0.65rem] text-[var(--text-faint)]">{formatTime(c.updatedAt)}</span>
-                    </button>
-                    <button onClick={(e) => deleteConversation(e, c.id)} className="shrink-0 rounded-lg p-2 text-[var(--text-faint)] opacity-0 hover:bg-white/[0.08] hover:text-red-300 group-hover:opacity-100">×</button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="shrink-0 border-t border-white/[0.06] p-3">
-          <p className="px-0.5 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">Account</p>
-          {session ? (
-            <div className="space-y-2">
-              <p className="truncate text-xs text-[var(--text-primary)]" title={session.email}>
-                {session.name ? `${session.name} · ` : null}
-                {session.email}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  void clearSessionAndServer().then(() => setSession(null));
-                }}
-                className="w-full rounded-lg border border-white/[0.1] py-2 text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <Link
-                href="/sign-in"
-                className="rounded-lg bg-[var(--accent)]/15 py-2 text-center text-xs font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/25 transition hover:bg-[var(--accent)]/25"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/sign-up"
-                className="rounded-lg border border-white/[0.1] py-2 text-center text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
-              >
-                Create account
-              </Link>
-            </div>
-          )}
-        </div>
+        {sidebarContent}
       </aside>
 
+      {mobileSidebarOpen ? (
+        <div
+          className="fixed inset-0 z-[90] md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chat list"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            aria-label="Close chat list"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside className="absolute bottom-0 left-0 top-[3.25rem] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
+            {sidebarContent}
+          </aside>
+        </div>
+      ) : null}
+
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="mx-auto flex w-full min-w-0 max-w-2xl flex-1 flex-col px-2 pb-2 pt-3 sm:px-4 sm:pt-4 md:pt-6">
+        <div className="flex min-w-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]"
+          >
+            Chats
+          </button>
+          <button
+            type="button"
+            onClick={newChat}
+            className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)]"
+          >
+            New
+          </button>
+        </div>
+
+        <div
+          className={`flex w-full min-w-0 flex-1 flex-col px-3 pb-2 sm:px-4 md:px-5 ${showEmpty ? "min-h-0 pt-0" : "pt-3 sm:pt-4 md:pt-6"}`}
+        >
           {chatReady === false ? (
             <div
               className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
@@ -773,57 +860,78 @@ export function SmileChatGeneral() {
               </ol>
             </div>
           ) : null}
-          <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-            <button onClick={() => lastAssistant?.content && navigator.clipboard.writeText(lastAssistant.content)} disabled={!lastAssistant?.content} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[var(--text-muted)] disabled:opacity-40">
-              Copy last reply
-            </button>
-          </div>
 
-          <div ref={listRef} className="chat-scroll mb-2 min-h-0 flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32">
-            {showEmpty ? (
-              <div className="flex flex-col items-center justify-center px-2 pb-6 pt-6 text-center">
-                <Image
-                  src="/images/smile-logo-transparent.png"
-                  alt="Smile AI"
-                  width={52}
-                  height={52}
-                  className="h-12 w-12 object-contain"
-                  priority
-                />
-                <div className="mt-4 flex max-w-lg flex-wrap justify-center gap-1.5">
-                  {SUGGESTIONS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setInput(s)}
-                      className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[0.65rem] leading-snug text-[var(--text-muted)] hover:border-[var(--accent)]/25 hover:text-[var(--text-primary)]"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
+          {showEmpty ? (
+            <div className="home-empty-hero">
+              <Image
+                src={SITE_ICON}
+                alt={SITE_TITLE}
+                width={80}
+                height={80}
+                className="h-20 w-20 object-contain sm:h-24 sm:w-24"
+                priority
+              />
+              <div className="mt-8 flex w-full max-w-2xl flex-wrap items-center justify-center gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setInput(s)}
+                    className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs leading-snug text-[var(--text-muted)] hover:border-[var(--accent)]/25 hover:text-[var(--text-primary)] sm:text-[0.7rem]"
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
-            ) : (
-              messages.map((m) => (
-                <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[94%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${m.role === "user" ? "bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20" : "bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06]"}`}>
-                    {m.role === "assistant" ? (
-                      <AssistantMessageBody
-                        content={m.content}
-                        isStreaming={pending && streamingMessageId === m.id}
-                      />
-                    ) : (
-                      <p className="whitespace-pre-wrap">{m.content}</p>
-                    )}
+            </div>
+          ) : (
+            <>
+              <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    lastAssistant?.content && navigator.clipboard.writeText(lastAssistant.content)
+                  }
+                  disabled={!lastAssistant?.content}
+                  className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[var(--text-muted)] disabled:opacity-40"
+                >
+                  Copy last reply
+                </button>
+              </div>
+
+              <div
+                ref={listRef}
+                className="chat-scroll mb-2 min-h-0 flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32"
+              >
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`w-full min-w-0 max-w-full rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed sm:max-w-[92%] ${m.role === "user" ? "bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20" : "bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06]"}`}
+                    >
+                      {m.role === "assistant" ? (
+                        <AssistantMessageBody
+                          content={m.content}
+                          isStreaming={pending && streamingMessageId === m.id}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))}
+              </div>
+            </>
+          )}
 
         </div>
 
-        <div className="composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56">
-          <div className="pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-2 sm:px-4">
+        <div
+          className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
+        >
+          <div className="composer-dock-inner pointer-events-auto w-full min-w-0 max-w-full px-3 sm:px-4 md:px-5">
             <div
               className="pointer-events-none mb-1 h-6 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
               aria-hidden
@@ -854,9 +962,9 @@ export function SmileChatGeneral() {
                 </>
               )}
             </div>
-            <div className="composer-float min-w-0 overflow-hidden rounded-2xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl">
+            <div className="composer-float box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl">
               <form
-                className="flex w-full min-w-0 max-w-full flex-col"
+                className="box-border flex w-full min-w-0 max-w-full flex-col"
                 onSubmit={(e) => {
                   e.preventDefault();
                   void send();
@@ -875,7 +983,7 @@ export function SmileChatGeneral() {
                   }}
                   placeholder="Ask anything, or describe an app or site to build…"
                   rows={2}
-                  className="w-full resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
+                  className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
                   disabled={busy}
                 />
                 <input
@@ -1036,7 +1144,7 @@ export function SmileChatGeneral() {
               ) : (
                 <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
                   {latestBuildArtifact
-                    ? "Preview is available for HTML artifacts. Ask Smile AI to return a full ```html block for live website preview."
+                    ? "Preview is available for HTML artifacts. Ask for a full ```html block for live website preview."
                     : "Build output will appear here after you click Build."}
                 </div>
               )
@@ -1046,7 +1154,7 @@ export function SmileChatGeneral() {
               </pre>
             ) : (
               <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-                No code artifact yet. Ask Smile AI to generate code for what you are building.
+                No code artifact yet. Describe what you are building to generate code here.
               </div>
             )}
           </div>
@@ -1108,7 +1216,7 @@ export function SmileChatGeneral() {
               </pre>
             ) : (
               <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-                No code artifact yet. Ask Smile AI to generate code for what you are building.
+                No code artifact yet. Describe what you are building to generate code here.
               </div>
             )}
           </div>

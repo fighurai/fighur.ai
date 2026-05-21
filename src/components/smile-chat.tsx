@@ -531,10 +531,10 @@ export function SmileChat() {
             {showEmpty ? (
               <div className="flex flex-col items-center justify-center px-2 pb-8 pt-4 text-center sm:min-h-[38vh] sm:pt-12">
                 <p className="font-display text-2xl font-medium tracking-tight text-[var(--text-primary)] sm:text-3xl">
-                  Smile AI
+                  fighur it out with ai
                 </p>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--text-muted)]">
-                  Services, booking, and how to work with us — local assistant for Smile AI.
+                  Services, booking, and how to work with us — local assistant for fighur.ai.
                 </p>
                 <a
                   href={bookingHref}
@@ -615,9 +615,9 @@ export function SmileChat() {
                 <div
                   className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 text-xs text-[var(--text-muted)]"
                   role="status"
-                  aria-label="Smile AI chat"
+                  aria-label="fighur it out with ai chat"
                 >
-                  <span className="font-semibold text-[var(--text-primary)]">Smile AI</span>
+                  <span className="font-semibold text-[var(--text-primary)]">fighur it out with ai</span>
                   <span className="font-normal text-[var(--text-faint)]">Ask</span>
                   <span className="font-normal text-[0.65rem] text-[var(--text-faint)]">
                     · AI assistant
@@ -633,7 +633,7 @@ export function SmileChat() {
               >
                 {translatingSpeech ? (
                   <p className="px-3 py-2 text-xs text-[var(--accent)]">
-                    Smile AI is turning your speech into a clear message in this box…
+                    Turning your speech into a clear message in this box…
                   </p>
                 ) : null}
                 <textarea
@@ -646,7 +646,7 @@ export function SmileChat() {
                       void send();
                     }
                   }}
-                  placeholder="Ask Smile AI anything…"
+                  placeholder="Ask anything…"
                   rows={2}
                   className="relative z-10 w-full resize-none bg-transparent px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none sm:text-[0.9375rem]"
                   disabled={pending || translatingSpeech}

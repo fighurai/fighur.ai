@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Fraunces, Geist_Mono } from "next/font/google";
 
 import { SmileShell } from "@/components/smile-shell";
+import { SITE_DESCRIPTION, SITE_ICON, SITE_TITLE } from "@/lib/site-brand";
 import { getSiteUrl } from "@/lib/site-url";
 
 import "./globals.css";
@@ -26,9 +27,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Smile AI",
-  description: "Smile AI general assistant",
+  title: {
+    default: SITE_TITLE,
+    template: `%s · ${SITE_TITLE}`,
+  },
+  description: SITE_DESCRIPTION,
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: [{ url: SITE_ICON, type: "image/png" }],
+    apple: [{ url: SITE_ICON, type: "image/png" }],
+  },
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [{ url: SITE_ICON }],
+  },
 };
 
 export default function RootLayout({

@@ -112,7 +112,7 @@ export function buildSmileSystemPrompt(
   integrations?: Partial<ChatIntegrationFlags> | null,
   account?: { email: string; name?: string } | null,
 ): string {
-  return `You are **Smile AI**, a general-purpose assistant similar to ChatGPT, Claude, or Perplexity.
+  return `You are **fighur it out with ai**, a general-purpose assistant similar to ChatGPT, Claude, or Perplexity.
 
 Help with writing, coding, analysis, brainstorming, and everyday questions.
 

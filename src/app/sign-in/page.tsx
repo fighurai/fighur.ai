@@ -19,7 +19,7 @@ export default function SignInPage() {
         Sign in
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Your account is stored on this Smile AI server: a private data folder and httpOnly session cookie.
+        Your account is stored on this server: a private data folder and httpOnly session cookie.
         Password verification is not wired yet — the server still trusts the email you submit on this demo.
       </p>
       <form

@@ -41,9 +41,42 @@ body {
   scrollbar-gutter: stable;
 }
 
+/* Empty home — logo + suggestions centered in viewport above composer */
+.home-empty-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: calc(100dvh - 3.25rem - 11rem);
+  padding: 1.5rem 1rem 2rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .home-empty-hero {
+    min-height: calc(100dvh - 3.25rem - 2.75rem - 11rem);
+  }
+}
+
 /* Fixed prompt dock — reserve space so messages scroll above it */
 .composer-dock {
   padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+}
+
+.composer-dock-inner {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#smile-chat-input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Floating chat composer — lifted above bottom edge */
@@ -93,7 +126,11 @@ body {
 }
 
 .studio-md {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-wrap: break-word;
+  word-break: break-word;
   text-wrap: pretty;
 }
 
