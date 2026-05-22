@@ -14,18 +14,18 @@ https://fighur.ai/api/connect/google/callback
 
 Enable **Gmail API** and **Google Calendar API** on the project if you use those tools in chat.
 
-## Microsoft · Outlook & 365 (fighur ai app)
+## Microsoft · Outlook & 365 (fighur_ai2 app)
 
-Azure app **fighur ai**:
+Azure app **fighur_ai2** — **All Microsoft account users** (work + personal):
 
 | Field | Value |
 |--------|--------|
-| Application (client) ID | `4c5436c0-3e68-4c79-af81-8d3a745f6d2c` |
+| Application (client) ID | `2867abef-1d8c-4a74-8ccd-f3f2c9a2b23c` |
 | Directory (tenant) ID | `875fd39e-02f3-4ab6-9495-eaebe5039527` |
 
 ### Azure setup
 
-1. [Azure Portal](https://portal.azure.com/) → **App registrations** → **fighur ai** → **Authentication**.
+1. [Azure Portal](https://portal.azure.com/) → **App registrations** → **fighur_ai2** → **Authentication**.
 2. Add **Web** redirect URIs:
 
    ```
@@ -37,7 +37,7 @@ Azure app **fighur ai**:
 4. **API permissions** → Microsoft Graph **delegated**: `openid`, `email`, `profile`, `offline_access`, `User.Read`, `Mail.Read`, `Calendars.Read` → **Grant admin consent** if required.
 5. On Vercel (or GitHub Actions secrets):
 
-   - `MICROSOFT_CLIENT_ID` = `4c5436c0-3e68-4c79-af81-8d3a745f6d2c`
+   - `MICROSOFT_CLIENT_ID` = `2867abef-1d8c-4a74-8ccd-f3f2c9a2b23c`
    - `MICROSOFT_CLIENT_SECRET` = (secret from step 3)
 
 ### Allow personal Microsoft accounts (@outlook.com, @hotmail.com, etc.)
