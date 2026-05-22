@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import type { ChangeEvent, MouseEvent } from "react";
@@ -16,7 +17,7 @@ import {
 } from "@/lib/auth-storage";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
 import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
-import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
   downloadBuildCode,
   downloadImageUrl,
@@ -176,6 +177,22 @@ const assistantMarkdownComponents: Components = {
   ),
 };
 
+function StreamingSmiley() {
+  return (
+    <div className="stream-smiley mt-3 flex items-center gap-2" aria-hidden>
+      <Image
+        src={SITE_ICON}
+        alt=""
+        width={28}
+        height={28}
+        className="stream-smiley-icon h-7 w-7 object-contain"
+        priority
+      />
+      <span className="text-xs text-[var(--text-faint)]">FIGHURAI is typing…</span>
+    </div>
+  );
+}
+
 const AssistantMessageBody = memo(function AssistantMessageBody({
   content,
   isStreaming,
@@ -196,10 +213,7 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   if (isStreaming) {
     return (
       <div className="stream-live" aria-live="polite" aria-atomic="false">
-        <p className="stream-plain m-0 w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
-          {content || "\u00a0"}
-          <span className="stream-cursor" aria-hidden />
-        </p>
+        <StreamingSmiley />
       </div>
     );
   }
@@ -373,20 +387,6 @@ export function SmileChatGeneral() {
     const claude = availableModels.find((m) => m.id === DEFAULT_CHAT_MODEL_ID);
     setSelectedModel(claude?.id ?? availableModels[0].id);
   }, [availableModels, selectedModel]);
-
-  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
-  }, []);
-
-  useEffect(() => {
-    if (pending && streamingMessageId) {
-      scrollChatToBottom("auto");
-      return;
-    }
-    scrollChatToBottom("smooth");
-  }, [messages, pending, streamingMessageId, streamBuffer, scrollChatToBottom]);
 
   useEffect(() => {
     if (!hydrated || !activeId || messages.length === 0) return;
@@ -663,7 +663,6 @@ export function SmileChatGeneral() {
             }
           }
         }
-        requestAnimationFrame(() => scrollChatToBottom("auto"));
       };
 
       const scheduleStreamFlush = () => {
@@ -720,7 +719,6 @@ export function SmileChatGeneral() {
     attachments,
     session,
     availableModels,
-    scrollChatToBottom,
   ]);
 
   const toggleListen = useCallback(() => {
@@ -1236,7 +1234,7 @@ export function SmileChatGeneral() {
                 scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
               }}
             >
-              <div className="chat-thread mt-auto flex w-full min-h-0 flex-col space-y-3">
+              <div className="chat-thread flex w-full min-h-0 flex-col space-y-3">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";

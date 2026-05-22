@@ -141,7 +141,7 @@ body {
   border-radius: 999px;
 }
 
-/* Live assistant stream — token-by-token like ChatGPT/Claude */
+/* Live assistant stream — no autoscroll; smiley pulses while typing */
 .stream-live {
   width: 100%;
   min-width: 0;
@@ -153,25 +153,19 @@ body {
   text-wrap: pretty;
 }
 
-.stream-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1.05em;
-  margin-left: 2px;
-  vertical-align: -0.12em;
-  background: var(--accent);
-  border-radius: 1px;
-  animation: stream-cursor-blink 1.05s ease-in-out infinite;
+.stream-smiley-icon {
+  animation: smiley-pulse 1.15s ease-in-out infinite;
 }
 
-@keyframes stream-cursor-blink {
+@keyframes smiley-pulse {
   0%,
-  45% {
-    opacity: 1;
-  }
-  50%,
   100% {
-    opacity: 0.2;
+    opacity: 0.4;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
   }
 }
 
