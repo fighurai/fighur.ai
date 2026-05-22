@@ -289,6 +289,8 @@ export function SmileChatGeneral() {
   const messagesRef = useRef<ChatMessage[]>([]);
   const sendInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerDockRef = useRef<HTMLDivElement>(null);
+  const [composerInset, setComposerInset] = useState(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -760,6 +762,28 @@ export function SmileChatGeneral() {
 
   const showEmpty = messages.length === 0;
   const busy = pending || translatingSpeech;
+
+  useEffect(() => {
+    if (showEmpty) {
+      setComposerInset(0);
+      return;
+    }
+    const el = composerDockRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      setComposerInset(Math.ceil(el.getBoundingClientRect().height) + 6);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [showEmpty, error, session, attachments.length, pending, listening, translatingSpeech]);
   const lastAssistantMessageId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant") return messages[i].id;
@@ -1201,6 +1225,7 @@ export function SmileChatGeneral() {
             <div
               ref={listRef}
               className="chat-scroll chat-thread mx-auto min-h-0 w-full max-w-2xl flex-1 space-y-3 overflow-y-auto"
+              style={{ paddingBottom: composerInset > 0 ? composerInset : undefined }}
             >
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
@@ -1252,13 +1277,15 @@ export function SmileChatGeneral() {
               })}
             </div>
           )}
+        </div>
 
-          {!showEmpty ? (
-            <div
-              className={`composer-dock shrink-0 border-t border-white/[0.06] bg-[var(--bg-deep)] pt-1 md:left-0 ${buildSidebarOpen ? "md:mr-[min(40rem,42vw)]" : ""}`}
-            >
-              <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
-                <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-elevated)]/50 py-1 md:hidden">
+        {!showEmpty ? (
+          <div
+            ref={composerDockRef}
+            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
+          >
+            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
+              <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1 md:hidden">
                 {session ? (
                   <>
                     <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
@@ -1285,13 +1312,12 @@ export function SmileChatGeneral() {
                 )}
               </div>
               {composerPanel}
-                <p className="mt-0.5 pb-0 text-center text-[0.6rem] text-[var(--text-faint)]">
-                  © {new Date().getFullYear()} FIGHURAI
-                </p>
-              </div>
+              <p className="mt-0.5 pb-0 text-center text-[0.6rem] text-[var(--text-faint)]">
+                © {new Date().getFullYear()} FIGHURAI
+              </p>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
       {buildSidebarOpen ? (
         <aside className="hidden w-[min(40rem,42vw)] shrink-0 border-l border-white/[0.08] bg-[var(--bg-elevated)]/80 backdrop-blur-md md:flex md:flex-col">
