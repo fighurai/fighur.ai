@@ -427,7 +427,11 @@ export function SmileChatGeneral() {
         persistConversations(merged, "assistant", storageUser);
         applyConversationList(merged, storageUser);
         if (merged.length > 0) {
-          void saveServerConversations(merged);
+          void saveServerConversations(merged).then((r) => {
+            if (!r.ok && r.status === 401) {
+              setError("Sign in again to sync chats to your account.");
+            }
+          });
         }
         void syncConnectedServicesFromServer(userId);
         return;
@@ -530,7 +534,11 @@ export function SmileChatGeneral() {
       if (session?.userId) {
         if (serverSyncRef.current) clearTimeout(serverSyncRef.current);
         serverSyncRef.current = setTimeout(() => {
-          void saveServerConversations(merged);
+          void saveServerConversations(merged).then((r) => {
+            if (!r.ok && r.status === 401) {
+              setError("Sign in again to sync chats to your account.");
+            }
+          });
         }, 800);
       }
       return merged;

@@ -5,7 +5,8 @@ import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { readVerifiedSession } from "@/lib/session-cookie";
-import { ensureUser, readUserProfile } from "@/lib/user-data-store";
+import { ensureUser, readUserProfile, repairUserProfileForSession } from "@/lib/user-data-store";
+import { usesBlobUserStorage } from "@/lib/user-file-storage";
 import { normalizeRoles } from "@/lib/rbac";
 
 function demoEmailAuthEnabled(): boolean {
@@ -26,6 +27,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, signedIn: false }, { status: 401 });
   }
 
+  if (usesBlobUserStorage()) {
+    await repairUserProfileForSession(session);
+  }
   const profile = await readUserProfile(session.userId);
   const res = NextResponse.json({
     ok: true,

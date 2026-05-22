@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "crypto";
+import { createHash } from "crypto";
 import { chmod, mkdir } from "fs/promises";
 import path from "path";
 
@@ -157,7 +157,7 @@ async function ensureUserOnDisk(
     }
   }
   if (!userId) {
-    userId = randomUUID();
+    userId = userIdFromEmail(email);
     await writeGlobalUserFile(indexRel, JSON.stringify({ userId }, null, 0));
   }
 
@@ -213,6 +213,49 @@ async function ensureUserOnDisk(
 
   await writeUserFile(userId, "profile.json", JSON.stringify(profile, null, 0));
   return { userId };
+}
+
+/** Recreate profile + email index in Blob when missing (e.g. after enabling Blob storage). */
+export async function repairUserProfileForSession(session: {
+  userId: string;
+  email: string;
+  name?: string;
+}): Promise<UserProfile | null> {
+  if (!isSafeUserId(session.userId)) return null;
+  const email = session.email.trim().toLowerCase();
+  if (!email.includes("@")) return null;
+
+  const existing = await readUserProfile(session.userId);
+  if (existing && existing.email.trim().toLowerCase() === email) {
+    return existing;
+  }
+
+  const key = emailKey(email);
+  const indexRel = `_by-email/${key}.json`;
+  await writeGlobalUserFile(indexRel, JSON.stringify({ userId: session.userId }, null, 0));
+
+  const now = new Date().toISOString();
+  const profile: UserProfile = existing ?? {
+    userId: session.userId,
+    email,
+    name: session.name?.trim() || undefined,
+    createdAt: now,
+    updatedAt: now,
+    environmentId: session.userId,
+    roles: normalizeRoles(["user"]),
+    authProvider: "email",
+    plan: planFromEmail(email),
+  };
+
+  const repaired: UserProfile = {
+    ...profile,
+    userId: session.userId,
+    email,
+    name: session.name?.trim() || profile.name,
+    updatedAt: now,
+  };
+  await writeUserFile(session.userId, "profile.json", JSON.stringify(repaired, null, 0));
+  return repaired;
 }
 
 export async function readUserByEmail(emailRaw: string): Promise<UserProfile | null> {

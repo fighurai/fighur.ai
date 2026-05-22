@@ -13,7 +13,13 @@ export async function fetchServerConversations(): Promise<SavedConversation[] | 
   }
 }
 
-export async function saveServerConversations(list: SavedConversation[]): Promise<boolean> {
+export type SaveConversationsResult =
+  | { ok: true }
+  | { ok: false; status: number; error?: string };
+
+export async function saveServerConversations(
+  list: SavedConversation[],
+): Promise<SaveConversationsResult> {
   try {
     const res = await fetch("/api/conversations", {
       method: "PUT",
@@ -21,8 +27,10 @@ export async function saveServerConversations(list: SavedConversation[]): Promis
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conversations: list }),
     });
-    return res.ok;
+    if (res.ok) return { ok: true };
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false, status: res.status, error: data.error };
   } catch {
-    return false;
+    return { ok: false, status: 0, error: "Network error" };
   }
 }

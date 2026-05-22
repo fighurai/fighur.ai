@@ -1,5 +1,6 @@
 import type { SmileServerSession } from "@/lib/session-cookie";
 import { usesEphemeralUserStorage } from "@/lib/serverless-storage";
+import { usesBlobUserStorage } from "@/lib/user-file-storage";
 import { hasPermission, normalizeRoles, type Permission, type Role } from "@/lib/rbac";
 import { ANONYMOUS_SPEND_LIMIT_USD } from "@/lib/usage-constants";
 import {
@@ -53,7 +54,7 @@ export async function requirePermission(
     return { ok: false, message: "Sign in required." };
   }
   const profile = await readUserProfile(session.userId);
-  if (!profile && !usesEphemeralUserStorage()) {
+  if (!profile && !usesEphemeralUserStorage() && !usesBlobUserStorage()) {
     return { ok: false, message: "Account not found." };
   }
   const roles = profile

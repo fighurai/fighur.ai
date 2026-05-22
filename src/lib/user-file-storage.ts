@@ -1,7 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 
-import { del, head, put } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -75,11 +75,9 @@ async function readBlob(blobPath: string): Promise<string | null> {
   const token = blobToken();
   if (!token) return null;
   try {
-    const meta = await head(blobPath, { token });
-    if (!meta?.url) return null;
-    const res = await fetch(meta.url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.text();
+    const result = await get(blobPath, { access: "private", token, useCache: false });
+    if (!result?.stream) return null;
+    return await new Response(result.stream).text();
   } catch {
     return null;
   }

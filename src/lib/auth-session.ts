@@ -7,7 +7,8 @@ import {
   type SmileServerSession,
 } from "@/lib/session-cookie";
 import { attachOAuthCookiesFromUserStore } from "@/lib/oauth-session-sync";
-import { readUserProfile, type UserPlan } from "@/lib/user-data-store";
+import { repairUserProfileForSession, readUserProfile, type UserPlan } from "@/lib/user-data-store";
+import { usesBlobUserStorage } from "@/lib/user-file-storage";
 
 const SESSION_MAX_AGE = 60 * 60 * 24 * 60;
 
@@ -26,6 +27,13 @@ export async function attachSessionCookie(
   res: NextResponse,
   payload: SessionAttachPayload,
 ): Promise<NextResponse | null> {
+  if (usesBlobUserStorage()) {
+    await repairUserProfileForSession({
+      userId: payload.userId,
+      email: payload.email,
+      name: payload.name,
+    });
+  }
   const profile = await readUserProfile(payload.userId);
   const sessionPayload: SmileServerSession = {
     v: 1,

@@ -1,6 +1,7 @@
 import { getAppSealingSecret, sealJson, unsealJson } from "@/lib/oauth-crypto";
 import { normalizeRoles } from "@/lib/rbac";
 import { usesEphemeralUserStorage } from "@/lib/serverless-storage";
+import { usesBlobUserStorage } from "@/lib/user-file-storage";
 import { isSafeUserId, readUserProfile, type UserPlan } from "@/lib/user-data-store";
 
 export const COOKIE_SESSION = "smile_session";
@@ -53,7 +54,7 @@ export async function readVerifiedSession(request: Request): Promise<SmileServer
       plan: profile.plan,
     };
   }
-  if (usesEphemeralUserStorage()) {
+  if (usesEphemeralUserStorage() || usesBlobUserStorage()) {
     return {
       ...p,
       roles: normalizeRoles(p.roles),
