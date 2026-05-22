@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces, Geist_Mono } from "next/font/google";
 
 import { SmileShell } from "@/components/smile-shell";
-import { SITE_DESCRIPTION, SITE_ICON, SITE_TITLE } from "@/lib/site-brand";
+import { SITE_DESCRIPTION, SITE_ICON, SITE_OG_IMAGE, SITE_TITLE } from "@/lib/site-brand";
 import { getSiteUrl } from "@/lib/site-url";
 
 import "./globals.css";
@@ -45,9 +45,24 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   openGraph: {
+    type: "website",
+    siteName: SITE_TITLE,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [{ url: SITE_ICON }],
+    images: [
+      {
+        url: SITE_OG_IMAGE,
+        width: 1200,
+        height: 1200,
+        alt: `${SITE_TITLE} logo`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [SITE_OG_IMAGE],
   },
 };
 
