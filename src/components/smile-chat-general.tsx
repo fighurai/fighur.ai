@@ -1354,18 +1354,6 @@ export function SmileChatGeneral() {
             </p>
           ) : null}
 
-          {!session?.userId && usage && !usage.signupRequired && usage.limitUsd != null ? (
-            <div className="mb-3 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-3 py-2.5 text-xs leading-relaxed text-[var(--text-muted)]">
-              Trial usage:{" "}
-              <span className="font-medium text-[var(--text-primary)]">
-                ${usage.spentUsd.toFixed(2)} / ${usage.limitUsd.toFixed(2)}
-              </span>
-              {usage.remainingUsd != null ? (
-                <> · ${usage.remainingUsd.toFixed(2)} remaining before sign-up is required</>
-              ) : null}
-            </div>
-          ) : null}
-
           {!session?.userId && usage?.signupRequired ? (
             <div
               className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
