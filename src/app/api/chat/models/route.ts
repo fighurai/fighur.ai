@@ -18,8 +18,10 @@ export async function GET(request: Request) {
   const availability = getChatModelAvailability();
   const configuredProviders = listConfiguredProviders();
   const session = await readVerifiedSession(request);
-  const roles: Role[] = session ? await resolveUserRoles(session.userId) : normalizeRoles(["viewer"]);
-  const plan = session ? await resolveUserPlan(session.userId) : ("free" as const);
+  const roles: Role[] = session
+    ? await resolveUserRoles(session.userId, session)
+    : normalizeRoles(["viewer"]);
+  const plan = session ? await resolveUserPlan(session.userId, session) : ("free" as const);
   const allowed = new Set(allowedModelIdsForPlan(plan, roles));
 
   const models = CHAT_MODEL_OPTIONS.map((m) => ({

@@ -330,8 +330,12 @@ export async function POST(request: Request) {
   if (!prep.ok) return prep.response;
 
   const { ctx } = prep;
-  const roles = ctx.session ? await resolveUserRoles(ctx.session.userId) : normalizeRoles(["viewer"]);
-  const plan = ctx.session ? await resolveUserPlan(ctx.session.userId) : ("free" as const);
+  const roles = ctx.session
+    ? await resolveUserRoles(ctx.session.userId, ctx.session)
+    : normalizeRoles(["viewer"]);
+  const plan = ctx.session
+    ? await resolveUserPlan(ctx.session.userId, ctx.session)
+    : ("free" as const);
   const option = resolveChatModelForAccess(requestedId, plan, roles);
   if (!option) {
     return NextResponse.json({ error: noChatProvidersMessage() }, { status: 503 });

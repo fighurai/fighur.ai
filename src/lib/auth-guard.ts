@@ -1,4 +1,5 @@
 import type { SmileServerSession } from "@/lib/session-cookie";
+import { usesEphemeralUserStorage } from "@/lib/serverless-storage";
 import { hasPermission, normalizeRoles, type Permission, type Role } from "@/lib/rbac";
 import { ANONYMOUS_SPEND_LIMIT_USD } from "@/lib/usage-constants";
 import {
@@ -24,14 +25,24 @@ export type ChatAccessResult =
       limitUsd?: number;
     };
 
-export async function resolveUserRoles(userId: string): Promise<Role[]> {
+export async function resolveUserRoles(
+  userId: string,
+  session?: SmileServerSession | null,
+): Promise<Role[]> {
   const profile = await readUserProfile(userId);
-  return normalizeRoles(profile?.roles);
+  if (profile) return normalizeRoles(profile.roles);
+  if (session?.userId === userId) return normalizeRoles(session.roles);
+  return ["user"];
 }
 
-export async function resolveUserPlan(userId: string): Promise<UserPlan> {
+export async function resolveUserPlan(
+  userId: string,
+  session?: SmileServerSession | null,
+): Promise<UserPlan> {
   const profile = await readUserProfile(userId);
-  return normalizePlan(profile?.plan);
+  if (profile) return normalizePlan(profile.plan);
+  if (session?.userId === userId) return session.plan === "pro" ? "pro" : "free";
+  return "free";
 }
 
 export async function requirePermission(
@@ -42,9 +53,13 @@ export async function requirePermission(
     return { ok: false, message: "Sign in required." };
   }
   const profile = await readUserProfile(session.userId);
-  if (!profile) return { ok: false, message: "Account not found." };
-  const roles = normalizeRoles(profile.roles);
-  const extra = profile.permissions;
+  if (!profile && !usesEphemeralUserStorage()) {
+    return { ok: false, message: "Account not found." };
+  }
+  const roles = profile
+    ? normalizeRoles(profile.roles)
+    : normalizeRoles(session.roles ?? ["user"]);
+  const extra = profile?.permissions;
   if (!hasPermission(roles, permission, extra)) {
     return { ok: false, message: "You do not have permission for this action." };
   }
