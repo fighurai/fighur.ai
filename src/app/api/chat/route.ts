@@ -6,10 +6,12 @@ export const maxDuration = 60;
 
 import {
   noChatProvidersMessage,
-  resolveChatModelOption,
   type ChatModelOption,
   type ChatProvider,
 } from "@/lib/chat-models";
+import { resolveChatModelForAccess } from "@/lib/plan-access";
+import { resolveUserRoles } from "@/lib/auth-guard";
+import { normalizeRoles } from "@/lib/rbac";
 import { openAIStreamToTextStream } from "@/lib/openai-stream";
 import { inferSmileBuilderTargetFromPrompt, lastUserMessageText } from "@/lib/infer-builder-target";
 import {
@@ -311,7 +313,13 @@ export async function POST(request: Request) {
     : [];
 
   const requestedId = typeof b.model === "string" ? b.model : undefined;
-  const option = resolveChatModelOption(requestedId);
+
+  const prep = await prepareChatRequest(request);
+  if (!prep.ok) return prep.response;
+
+  const { ctx } = prep;
+  const roles = ctx.session ? await resolveUserRoles(ctx.session.userId) : normalizeRoles(["viewer"]);
+  const option = resolveChatModelForAccess(requestedId, roles);
   if (!option) {
     return NextResponse.json({ error: noChatProvidersMessage() }, { status: 503 });
   }
@@ -428,10 +436,6 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     parseIntegrationPayload(b.connectedServices),
     cookieFlags,
   );
-  const prep = await prepareChatRequest(request);
-  if (!prep.ok) return prep.response;
-
-  const { ctx } = prep;
   const verified = ctx.session;
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
   const system = buildSmileSystemPrompt(builderTarget, integrationFlags, userSession);

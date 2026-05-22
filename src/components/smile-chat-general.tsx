@@ -393,7 +393,7 @@ export function SmileChatGeneral() {
   }, []);
 
   useEffect(() => {
-    void fetch("/api/chat/models")
+    void fetch("/api/chat/models", { credentials: "include" })
       .then((r) => r.json())
       .then((data: {
         models?: ChatModelInfo[];
@@ -1041,23 +1041,32 @@ export function SmileChatGeneral() {
               ) : null}
             </div>
             <div className="grid min-w-0 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                disabled={busy || availableModels.length === 0}
-                className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
-                aria-label="Select model"
-              >
-                {availableModels.length === 0 ? (
-                  <option value="">No models</option>
-                ) : (
-                  availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))
-                )}
-              </select>
+              {availableModels.length === 1 ? (
+                <span
+                  className="min-w-0 truncate rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] sm:px-4 sm:py-2"
+                  title={session?.userId ? "Free plan includes Claude only" : undefined}
+                >
+                  {availableModels[0].label}
+                </span>
+              ) : (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  disabled={busy || availableModels.length === 0}
+                  className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
+                  aria-label="Select model"
+                >
+                  {availableModels.length === 0 ? (
+                    <option value="">No models</option>
+                  ) : (
+                    availableModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              )}
               <div className="flex shrink-0 items-center gap-1.5">
                 {busy ? (
                   <button
@@ -1377,15 +1386,15 @@ export function SmileChatGeneral() {
                 <Link href="/sign-up" className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">
                   Create a free account
                 </Link>{" "}
-                to continue chatting in your private environment.
+                for unlimited free chat with Claude in your private environment.
               </p>
             </div>
           ) : null}
 
           {session?.userId ? (
             <p className="mb-2 text-[0.65rem] text-[var(--text-faint)]">
-              Private environment · {session.environmentId?.slice(0, 8) ?? session.userId.slice(0, 8)}…
-              {session.roles?.length ? ` · ${session.roles.join(", ")}` : ""}
+              Free account · Claude only · private environment{" "}
+              {session.environmentId?.slice(0, 8) ?? session.userId.slice(0, 8)}…
             </p>
           ) : null}
 

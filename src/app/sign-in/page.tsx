@@ -19,7 +19,8 @@ export default function SignInPage() {
         Sign in
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Secure account with password hashing, RBAC, audit logs, and a private data environment per user.
+        Free unlimited chat with Claude after sign-in. Secure password hashing, audit logs, and a private
+        data environment per user.
       </p>
 
       <div className="mt-6 flex flex-col gap-2">

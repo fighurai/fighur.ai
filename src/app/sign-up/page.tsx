@@ -20,8 +20,8 @@ export default function SignUpPage() {
         Create account
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Get a private data environment, RBAC permissions, and unlimited chat after your $5 trial. Passwords
-        are hashed with scrypt on the server.
+        Sign up for free unlimited chat with Claude. You get a private data environment and RBAC permissions.
+        Try up to $5 of AI usage before signing up — then it&apos;s free with Claude only.
       </p>
 
       <div className="mt-6 flex flex-col gap-2">
