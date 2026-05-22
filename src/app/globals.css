@@ -180,6 +180,32 @@ body {
   overflow-wrap: break-word;
   word-break: break-word;
   text-wrap: pretty;
+  contain: layout style;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Blinking caret while tokens stream in */
+.stream-cursor::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  opacity: 0.85;
+  animation: stream-caret 1s step-end infinite;
+}
+
+@keyframes stream-caret {
+  0%,
+  45% {
+    opacity: 0.85;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .stream-smiley-icon {
@@ -208,7 +234,7 @@ body {
 }
 
 .message-body-complete {
-  animation: message-body-in 0.22s ease-out;
+  animation: message-body-in 0.12s ease-out;
 }
 
 .studio-md {

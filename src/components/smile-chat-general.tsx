@@ -6,6 +6,8 @@ import Markdown from "react-markdown";
 import type { ChangeEvent, MouseEvent } from "react";
 import type { Components } from "react-markdown";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { flushSync } from "react-dom";
 
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
@@ -25,6 +27,7 @@ import {
   isImageArtifact,
   resolveImagePreviewUrl,
 } from "@/lib/workspace-download";
+import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
 import {
   deriveTitle,
   loadConversations,
@@ -225,29 +228,25 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   content,
   isStreaming,
   imageFallback,
+  streamTextRef,
 }: {
   content: string;
   isStreaming: boolean;
   imageFallback?: string | null;
+  streamTextRef?: RefObject<StreamingTextHandle | null>;
 }) {
   const displayContent = useMemo(() => {
-    if (isStreaming) return content;
     const narration = stripCodeFences(content);
     if (narration) return narration;
     if (imageFallback) return `![Generated image](${imageFallback})`;
     return content;
-  }, [content, isStreaming, imageFallback]);
+  }, [content, imageFallback]);
 
   if (isStreaming) {
-    const live = displayContent.trim();
     return (
       <div className="stream-live" aria-live="polite" aria-atomic="false">
         <StreamingSmiley />
-        {live ? (
-          <div className="stream-plain whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
-            {live}
-          </div>
-        ) : null}
+        <StreamingText ref={streamTextRef} />
       </div>
     );
   }
@@ -313,7 +312,7 @@ export function SmileChatGeneral() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [streamBuffer, setStreamBuffer] = useState("");
+  const streamTextRef = useRef<StreamingTextHandle>(null);
   const [translatingSpeech, setTranslatingSpeech] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -446,7 +445,7 @@ export function SmileChatGeneral() {
     promptifyAbortRef.current = null;
     setPending(false);
     setTranslatingSpeech(false);
-    setStreamBuffer("");
+    streamTextRef.current?.reset();
     setStreamingMessageId(null);
   }, []);
 
@@ -689,51 +688,48 @@ export function SmileChatGeneral() {
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response stream");
       const decoder = new TextDecoder();
-      let rafId: number | null = null;
       let lastArtifactCheck = 0;
       let streamFinished = false;
 
-      setStreamingMessageId(assistantId);
-      setStreamBuffer("");
+      flushSync(() => {
+        setStreamingMessageId(assistantId);
+      });
+      streamTextRef.current?.reset();
 
-      const flushStreamToUi = () => {
-        rafId = null;
-        const snapshot = fullText;
-        setStreamBuffer(snapshot);
-        if (snapshot.includes("```") || snapshot.includes("data:image") || snapshot.includes("![")) {
-          const now = performance.now();
-          if (now - lastArtifactCheck > 400) {
-            lastArtifactCheck = now;
-            const artifact = extractBuildArtifact(snapshot);
-            if (artifact) {
-              setLatestBuildArtifact(artifact);
-              setBuildSidebarOpen(true);
-              setBuildPanelTab("preview");
-            }
-          }
+      const checkArtifacts = (snapshot: string) => {
+        if (!snapshot.includes("```") && !snapshot.includes("data:image") && !snapshot.includes("![")) {
+          return;
         }
-      };
-
-      const scheduleStreamFlush = () => {
-        if (rafId !== null) return;
-        rafId = requestAnimationFrame(flushStreamToUi);
+        const now = performance.now();
+        if (now - lastArtifactCheck < 400) return;
+        lastArtifactCheck = now;
+        const artifact = extractBuildArtifact(snapshot);
+        if (artifact) {
+          setLatestBuildArtifact(artifact);
+          setBuildSidebarOpen(true);
+          setBuildPanelTab("preview");
+        }
       };
 
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          fullText += decoder.decode(value, { stream: true });
-          scheduleStreamFlush();
+          const chunk = decoder.decode(value, { stream: true });
+          if (!chunk) continue;
+          fullText += chunk;
+          streamTextRef.current?.push(chunk);
+          checkArtifacts(fullText);
         }
-        fullText += decoder.decode();
+        const tail = decoder.decode();
+        if (tail) {
+          fullText += tail;
+          streamTextRef.current?.push(tail);
+          checkArtifacts(fullText);
+        }
         streamFinished = true;
       } finally {
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-        flushStreamToUi();
+        /* DOM stream surface only — React state updates once when complete */
       }
 
       if (streamFinished) {
@@ -741,7 +737,6 @@ export function SmileChatGeneral() {
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
         );
-        setStreamBuffer("");
         setStreamingMessageId(null);
       }
     } catch (e) {
@@ -757,7 +752,7 @@ export function SmileChatGeneral() {
           }),
         );
       }
-      setStreamBuffer("");
+      streamTextRef.current?.reset();
     } finally {
       clearTimeout(reqTid);
       setPending(false);
@@ -874,7 +869,6 @@ export function SmileChatGeneral() {
     listening,
     translatingSpeech,
     messages.length,
-    streamBuffer,
   ]);
 
   useEffect(() => {
@@ -893,7 +887,7 @@ export function SmileChatGeneral() {
       el.removeEventListener("scroll", updateScrollToBottom);
       ro.disconnect();
     };
-  }, [showEmpty, messages, streamBuffer, composerInset, updateScrollToBottom]);
+  }, [showEmpty, messages, pending, composerInset, updateScrollToBottom]);
   const lastAssistantMessageId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant") return messages[i].id;
@@ -1357,8 +1351,6 @@ export function SmileChatGeneral() {
                   isAssistant && copyableAssistantText(m.content).length > 0 && !isStreaming;
                 const imageFallback =
                   isAssistant && m.id === lastAssistantMessageId ? previewImageUrl : null;
-                const liveContent =
-                  isStreaming && streamingMessageId === m.id ? streamBuffer : m.content;
                 return (
                   <div
                     key={m.id}
@@ -1386,9 +1378,10 @@ export function SmileChatGeneral() {
                       {isAssistant ? (
                         <div className={canCopy ? "pt-5" : undefined}>
                           <AssistantMessageBody
-                            content={liveContent}
+                            content={m.content}
                             isStreaming={isStreaming}
                             imageFallback={imageFallback}
+                            streamTextRef={isStreaming ? streamTextRef : undefined}
                           />
                         </div>
                       ) : (
