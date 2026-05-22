@@ -26,14 +26,10 @@ export function isMicrosoftConnectConfigured(): boolean {
   return isMicrosoftSsoConfigured();
 }
 
-export function isSlackConnectConfigured(): boolean {
-  return Boolean(process.env.SLACK_CLIENT_ID?.trim() && process.env.SLACK_CLIENT_SECRET?.trim());
-}
-
 export function connectRedirectUris(origin: string) {
   return {
     google: googleConnectRedirectUri(origin),
     microsoft: `${origin}/api/connect/microsoft/callback`,
-    slack: `${origin}/api/connect/slack/callback`,
+    microsoftSso: `${origin}/api/auth/sso/microsoft/callback`,
   };
 }

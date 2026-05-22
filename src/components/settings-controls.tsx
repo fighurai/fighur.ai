@@ -21,7 +21,6 @@ const OAUTH_ERROR_HINTS: Record<string, string> = {
   bad_state: "OAuth state mismatch. Click Connect again.",
   missing_google_env: "Google OAuth is not configured on the server.",
   missing_microsoft_env: "Microsoft OAuth is not configured on the server.",
-  missing_slack_env: "Slack OAuth is not configured on the server.",
   access_denied: "You cancelled or Google denied access.",
 };
 
@@ -93,7 +92,7 @@ export function SettingsControls() {
     persistLocal({ ...local, coworkDevice: !local.coworkDevice });
   };
 
-  const disconnectProvider = async (provider: "google" | "microsoft" | "slack") => {
+  const disconnectProvider = async (provider: "google" | "microsoft") => {
     setOauthBusy(provider);
     try {
       await fetch("/api/connect/disconnect", {
@@ -107,7 +106,7 @@ export function SettingsControls() {
     }
   };
 
-  const startOAuthConnect = (path: "/api/connect/google" | "/api/connect/microsoft" | "/api/connect/slack") => {
+  const startOAuthConnect = (path: "/api/connect/google" | "/api/connect/microsoft") => {
     setConnectError(null);
     setOauthError(null);
     if (oauth?.needsSignInForConnect) {
@@ -119,7 +118,6 @@ export function SettingsControls() {
 
   const connectGoogle = () => startOAuthConnect("/api/connect/google");
   const connectMicrosoft = () => startOAuthConnect("/api/connect/microsoft");
-  const connectSlack = () => startOAuthConnect("/api/connect/slack");
 
   const connectDeviceFolder = async () => {
     setDeviceError(null);
@@ -177,14 +175,14 @@ export function SettingsControls() {
               <Link href="/sign-in" className="font-medium underline-offset-2 hover:underline">
                 Sign in
               </Link>{" "}
-              so Google, Microsoft, and Slack connect to your account folder.
+              so Google and Microsoft connect to your account.
             </p>
           ) : null}
           {!configured ? (
             <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[0.65rem] text-amber-100/90">
               Set <code className="text-[0.6rem]">SMILE_APP_SECRET</code> or{" "}
               <code className="text-[0.6rem]">SMILE_OAUTH_COOKIE_SECRET</code> (16+ chars) plus Google /
-              Microsoft / Slack client IDs to enable sign-in flows.
+              Google / Microsoft client IDs to enable sign-in and connections.
             </p>
           ) : null}
           {connectError || oauthError ? (
@@ -301,48 +299,6 @@ export function SettingsControls() {
             <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-[var(--text-primary)]">Slack</p>
-                  {oauth?.slack.connected ? (
-                    <p className="mt-0.5 truncate text-[0.65rem] text-emerald-200/90">
-                      {[oauth.slack.email, oauth.slack.team].filter(Boolean).join(" · ") || "Connected"}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">Not connected</p>
-                  )}
-                </div>
-                {oauth?.slack.connected ? (
-                  <button
-                    type="button"
-                    disabled={oauthBusy === "slack"}
-                    onClick={() => void disconnectProvider("slack")}
-                    className="shrink-0 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.12] disabled:opacity-40"
-                  >
-                    Disconnect
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={connectSlack}
-                    disabled={oauth?.slack.available === false}
-                    title={
-                      oauth?.slack.available === false
-                        ? "Set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET on the server"
-                        : undefined
-                    }
-                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Connect
-                  </button>
-                )}
-              </div>
-              {oauth?.slack.available === false ? (
-                <p className="mt-1 text-[0.6rem] text-amber-200/80">Server: add Slack app env vars</p>
-              ) : null}
-            </li>
-
-            <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
                   <p className="text-xs font-medium text-[var(--text-primary)]">This device · folder</p>
                   {local.services.deviceFiles.connected ? (
                     <p className="mt-0.5 truncate text-[0.65rem] text-emerald-200/90">
@@ -388,7 +344,7 @@ export function SettingsControls() {
             </code>
             <code className="mt-1 block break-all text-[0.6rem] text-[var(--text-muted)]">
               {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
-              /api/connect/slack/callback
+              /api/auth/sso/microsoft/callback
             </code>
           </p>
         </div>

@@ -1,25 +1,16 @@
 import { NextResponse } from "next/server";
 
-import {
-  isGoogleConnectConfigured,
-  isMicrosoftConnectConfigured,
-  isSlackConnectConfigured,
-} from "@/lib/auth-providers";
+import { isGoogleConnectConfigured, isMicrosoftConnectConfigured } from "@/lib/auth-providers";
 import { getAppSealingSecret, unsealJson } from "@/lib/oauth-crypto";
 import type { ChatIntegrationFlags } from "@/lib/smile-system-prompt";
 import {
   COOKIE_GOOGLE,
   COOKIE_MICROSOFT,
-  COOKIE_SLACK,
   getCookieOAuthIntegrationFlags,
 } from "@/lib/oauth-connection-cookies";
-import type { GoogleCookiePayload, MicrosoftCookiePayload, SlackCookiePayload } from "@/lib/oauth-payload-types";
+import type { GoogleCookiePayload, MicrosoftCookiePayload } from "@/lib/oauth-payload-types";
 import { readVerifiedSession } from "@/lib/session-cookie";
-import {
-  readGoogleFromStore,
-  readMicrosoftFromStore,
-  readSlackFromStore,
-} from "@/lib/user-oauth-store";
+import { readGoogleFromStore, readMicrosoftFromStore } from "@/lib/user-oauth-store";
 
 function readCookie(request: Request, name: string): string | null {
   const header = request.headers.get("cookie");
@@ -39,7 +30,6 @@ export async function GET(request: Request) {
       signedIn: false,
       google: { connected: false },
       microsoft: { connected: false },
-      slack: { connected: false },
       hint: "Set SMILE_APP_SECRET or SMILE_OAUTH_COOKIE_SECRET (16+ chars) and provider client IDs to enable OAuth.",
     });
   }
@@ -51,9 +41,6 @@ export async function GET(request: Request) {
   let googleConnected = false;
   let microsoftEmail: string | undefined;
   let microsoftConnected = false;
-  let slackEmail: string | undefined;
-  let slackTeam: string | undefined;
-  let slackConnected = false;
 
   if (session) {
     const g = await readGoogleFromStore(session.userId, secret, request);
@@ -65,12 +52,6 @@ export async function GET(request: Request) {
     if (m) {
       microsoftConnected = true;
       microsoftEmail = m.email;
-    }
-    const s = await readSlackFromStore(session.userId, secret, request);
-    if (s) {
-      slackConnected = true;
-      slackEmail = s.email;
-      slackTeam = s.team_name;
     }
   } else {
     const g = readCookie(request, COOKIE_GOOGLE);
@@ -89,23 +70,12 @@ export async function GET(request: Request) {
         microsoftEmail = p.email;
       }
     }
-    const s = readCookie(request, COOKIE_SLACK);
-    if (s) {
-      const p = unsealJson<SlackCookiePayload>(s, secret);
-      if (p?.v === 1 && typeof p.access_token === "string" && p.access_token.length > 0) {
-        slackConnected = true;
-        slackEmail = p.email;
-        slackTeam = p.team_name;
-      }
-    }
   }
 
   const cookieLegacy: Partial<ChatIntegrationFlags> = signedIn
     ? {}
     : getCookieOAuthIntegrationFlags(request, secret);
-  const hasLegacy = Boolean(
-    cookieLegacy.gmail || cookieLegacy.outlook || cookieLegacy.slack || cookieLegacy.microsoft365,
-  );
+  const hasLegacy = Boolean(cookieLegacy.gmail || cookieLegacy.outlook || cookieLegacy.microsoft365);
 
   return NextResponse.json({
     configured: true,
@@ -120,12 +90,6 @@ export async function GET(request: Request) {
       connected: microsoftConnected,
       email: microsoftEmail,
       available: isMicrosoftConnectConfigured(),
-    },
-    slack: {
-      connected: slackConnected,
-      email: slackEmail,
-      team: slackTeam,
-      available: isSlackConnectConfigured(),
     },
     ...(hasLegacy && !signedIn
       ? {

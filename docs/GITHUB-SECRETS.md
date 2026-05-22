@@ -16,12 +16,10 @@ Code pushes to `main` deploy via Vercel. **API keys are not stored in git.** The
 | `OPENROUTER_API_KEY` | Optional |
 | `GROQ_API_KEY` | Optional |
 | `SMILE_APP_SECRET` | Yes for sign-in / OAuth (16+ random characters) |
-| `GOOGLE_CLIENT_ID` | Yes for Google SSO |
-| `GOOGLE_CLIENT_SECRET` | Yes for Google SSO + Gmail/Calendar connect |
-| `MICROSOFT_CLIENT_ID` | Optional — Outlook & 365 connect |
-| `MICROSOFT_CLIENT_SECRET` | Optional — Outlook & 365 connect |
-| `SLACK_CLIENT_ID` | Optional — Slack connect |
-| `SLACK_CLIENT_SECRET` | Optional — Slack connect |
+| `GOOGLE_CLIENT_ID` | Yes for Google SSO + Gmail connect |
+| `GOOGLE_CLIENT_SECRET` | Yes for Google SSO + Gmail connect |
+| `MICROSOFT_CLIENT_ID` | Microsoft connect + sign-in (`4c5436c0-3e68-4c79-af81-8d3a745f6d2c`) |
+| `MICROSOFT_CLIENT_SECRET` | From Azure → Certificates & secrets |
 
 3. Push to `main` or run **Actions → Sync API keys to Vercel → Run workflow**.
 
