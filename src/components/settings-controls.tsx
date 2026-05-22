@@ -331,22 +331,6 @@ export function SettingsControls() {
               ) : null}
             </li>
           </ul>
-
-          <p className="mt-3 text-[0.65rem] leading-relaxed text-[var(--text-faint)]">
-            Register these redirect URIs (same Google app as sign-in):{" "}
-            <code className="block break-all text-[0.6rem] text-[var(--text-muted)]">
-              {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
-              /api/connect/google/callback
-            </code>
-            <code className="mt-1 block break-all text-[0.6rem] text-[var(--text-muted)]">
-              {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
-              /api/connect/microsoft/callback
-            </code>
-            <code className="mt-1 block break-all text-[0.6rem] text-[var(--text-muted)]">
-              {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
-              /api/auth/sso/microsoft/callback
-            </code>
-          </p>
         </div>
       ) : null}
     </div>
