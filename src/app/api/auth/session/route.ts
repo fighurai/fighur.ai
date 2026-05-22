@@ -4,7 +4,7 @@ import { appendAudit } from "@/lib/audit-log";
 import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { clientIp, userAgent } from "@/lib/request-context";
-import { readSessionPayload } from "@/lib/session-cookie";
+import { readVerifiedSession } from "@/lib/session-cookie";
 import { ensureUser, readUserProfile } from "@/lib/user-data-store";
 import { normalizeRoles } from "@/lib/rbac";
 
@@ -21,25 +21,20 @@ export async function GET(request: Request) {
     );
   }
 
-  const raw = readSessionPayload(request);
-  if (!raw) {
-    return NextResponse.json({ ok: false, signedIn: false }, { status: 401 });
-  }
-
-  const profile = await readUserProfile(raw.userId);
-  if (!profile || profile.email.trim().toLowerCase() !== raw.email.trim().toLowerCase()) {
+  const session = await readVerifiedSession(request);
+  if (!session) {
     return NextResponse.json({ ok: false, signedIn: false }, { status: 401 });
   }
 
   return NextResponse.json({
     ok: true,
     signedIn: true,
-    userId: profile.userId,
-    email: profile.email,
-    name: profile.name,
-    roles: normalizeRoles(profile.roles),
-    environmentId: profile.environmentId ?? profile.userId,
-    plan: profile.plan,
+    userId: session.userId,
+    email: session.email,
+    name: session.name,
+    roles: normalizeRoles(session.roles),
+    environmentId: session.environmentId ?? session.userId,
+    plan: session.plan ?? "free",
   });
 }
 

@@ -5,7 +5,10 @@ import { attachSessionCookie } from "@/lib/auth-session";
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
 import { getAppSealingSecret, timingSafeEqualString, unsealJson } from "@/lib/oauth-crypto";
 import { clientIp, userAgent } from "@/lib/request-context";
-import { ensureUser } from "@/lib/user-data-store";
+import { normalizeRoles } from "@/lib/rbac";
+import { ensureUser, getPlanForEmail } from "@/lib/user-data-store";
+
+export const maxDuration = 60;
 
 const PENDING_COOKIE = "smile_sso_microsoft_pending";
 
@@ -32,6 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/sign-in?error=missing_secret", base));
   }
 
+  try {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -106,12 +110,15 @@ export async function GET(request: Request) {
     userId,
     email,
     name: me.displayName,
+    roles: normalizeRoles(["user"]),
+    environmentId: userId,
+    plan: getPlanForEmail(email),
   });
   if (!withCookie) {
     return NextResponse.redirect(new URL("/sign-in?error=session", base));
   }
 
-  await appendAudit({
+  void appendAudit({
     action: "auth.sign_in_sso",
     outcome: "success",
     userId,
@@ -121,4 +128,8 @@ export async function GET(request: Request) {
   });
 
   return withCookie;
+  } catch (e) {
+    console.error("[microsoft sso callback]", e);
+    return NextResponse.redirect(new URL("/sign-in?error=sso_failed", base));
+  }
 }

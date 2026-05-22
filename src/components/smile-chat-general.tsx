@@ -360,8 +360,19 @@ export function SmileChatGeneral() {
   }, []);
 
   useEffect(() => {
-    void hydrateServerSession().then(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromSso = params.has("signed_in");
+    void hydrateServerSession().then((ok) => {
       setSession(readSession());
+      if (fromSso) {
+        params.delete("signed_in");
+        const qs = params.toString();
+        const path = window.location.pathname + (qs ? `?${qs}` : "");
+        window.history.replaceState(null, "", path);
+        if (!ok && !readSession()) {
+          window.location.href = "/sign-in?error=session_sync";
+        }
+      }
     });
   }, []);
 

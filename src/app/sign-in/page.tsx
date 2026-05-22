@@ -1,17 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 
 import { signInWithPassword } from "@/lib/auth-storage";
 
+const SSO_ERRORS: Record<string, string> = {
+  invalid_callback:
+    "Sign-in could not finish (missing state cookie). Try again in the same browser without private mode.",
+  bad_state: "Sign-in expired. Click Continue with Google again.",
+  token_exchange: "Google token exchange failed. Check redirect URIs in Google Cloud Console.",
+  session: "Could not create a session. Contact support if this persists.",
+  session_sync: "Signed in with Google but the app could not load your session. Try again.",
+  sso_failed: "Sign-in failed on the server. Try again in a moment.",
+  access_denied: "Google sign-in was cancelled or your account is not on the OAuth test-user list.",
+};
+
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-10 text-sm text-[var(--text-muted)]">Loading…</div>}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const ssoError = useMemo(() => {
+    const code = searchParams.get("error");
+    if (!code) return null;
+    return SSO_ERRORS[code] ?? `Sign-in error: ${code}`;
+  }, [searchParams]);
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col px-4 py-10 sm:py-14">
@@ -22,6 +47,12 @@ export default function SignInPage() {
         Free unlimited chat with Claude after sign-in. Secure password hashing, audit logs, and a private
         data environment per user.
       </p>
+
+      {ssoError ? (
+        <p className="mt-4 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/95">
+          {ssoError}
+        </p>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-2">
         <a
@@ -112,3 +143,4 @@ export default function SignInPage() {
     </div>
   );
 }
+

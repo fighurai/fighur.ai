@@ -153,9 +153,9 @@ export async function fetchUsageSummary(): Promise<UsageSummary | null> {
   }
 }
 
-/** Sync cookie → localStorage, or POST local email to mint session (existing browser-only users). */
-export async function hydrateServerSession(): Promise<void> {
-  const res = await fetch("/api/auth/session", { credentials: "include" });
+/** Sync httpOnly session cookie → localStorage (after SSO redirect or page load). */
+export async function hydrateServerSession(): Promise<boolean> {
+  const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
   if (res.ok) {
     const data = (await res.json()) as {
       signedIn?: boolean;
@@ -178,9 +178,10 @@ export async function hydrateServerSession(): Promise<void> {
             : data.userId,
         plan: data.plan === "pro" ? "pro" : "free",
       });
+      return true;
     }
-    return;
   }
+  return false;
 }
 
 export async function clearSessionAndServer(): Promise<void> {

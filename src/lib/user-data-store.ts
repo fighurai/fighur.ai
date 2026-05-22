@@ -4,6 +4,7 @@ import path from "path";
 
 import type { Permission } from "@/lib/rbac";
 import { normalizeRoles, type Role } from "@/lib/rbac";
+import { usesEphemeralUserStorage } from "@/lib/serverless-storage";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -13,7 +14,21 @@ export function isSafeUserId(id: string): boolean {
 
 function dataRoot(): string {
   const fromEnv = process.env.SMILE_USER_DATA_DIR?.trim();
-  return fromEnv && fromEnv.length > 0 ? fromEnv : path.join(process.cwd(), ".data");
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  // Vercel lambdas only allow writes under /tmp (project dir is read-only).
+  if (process.env.VERCEL) return "/tmp/smile-ai-data";
+  return path.join(process.cwd(), ".data");
+}
+
+/** Stable user id when disk index is unavailable (same email → same id). */
+export function userIdFromEmail(emailRaw: string): string {
+  const email = emailRaw.trim().toLowerCase();
+  const hash = createHash("sha256").update(`smile-user-v1:${email}`, "utf8").digest();
+  const bytes = Buffer.from(hash.subarray(0, 16));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 export function getUsersRoot(): string {
@@ -45,6 +60,10 @@ export function normalizePlan(raw: unknown): UserPlan {
 function planFromEmail(email: string): UserPlan {
   const list = process.env.SMILE_PRO_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
   return list.includes(email.trim().toLowerCase()) ? "pro" : "free";
+}
+
+export function getPlanForEmail(email: string): UserPlan {
+  return planFromEmail(email);
 }
 
 export type UserProfile = {
@@ -97,6 +116,21 @@ export async function ensureUser(
     throw new Error("Invalid email");
   }
 
+  try {
+    return await ensureUserOnDisk(email, name, opts);
+  } catch (err) {
+    if (usesEphemeralUserStorage()) {
+      return { userId: userIdFromEmail(email) };
+    }
+    throw err;
+  }
+}
+
+async function ensureUserOnDisk(
+  email: string,
+  name: string | undefined,
+  opts: EnsureUserOptions,
+): Promise<{ userId: string }> {
   await ensureDirSecure(getUsersRoot());
   await ensureDirSecure(byEmailDir());
 

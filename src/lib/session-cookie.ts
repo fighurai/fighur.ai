@@ -1,5 +1,7 @@
 import { getAppSealingSecret, sealJson, unsealJson } from "@/lib/oauth-crypto";
-import { isSafeUserId, readUserProfile } from "@/lib/user-data-store";
+import { normalizeRoles } from "@/lib/rbac";
+import { usesEphemeralUserStorage } from "@/lib/serverless-storage";
+import { isSafeUserId, readUserProfile, type UserPlan } from "@/lib/user-data-store";
 
 export const COOKIE_SESSION = "smile_session";
 
@@ -9,6 +11,9 @@ export type SmileServerSession = {
   email: string;
   name?: string;
   iat: number;
+  roles?: string[];
+  environmentId?: string;
+  plan?: UserPlan;
 };
 
 function readCookie(request: Request, name: string): string | null {
@@ -34,15 +39,29 @@ export function readSessionPayload(request: Request): SmileServerSession | null 
   return { ...p, email };
 }
 
-/** Validates cookie against on-disk profile so tampered cookies do not grant access. */
+/** Validates cookie; uses on-disk profile when available, else sealed cookie on serverless. */
 export async function readVerifiedSession(request: Request): Promise<SmileServerSession | null> {
   const p = readSessionPayload(request);
   if (!p) return null;
   const profile = await readUserProfile(p.userId);
-  if (!profile || profile.email.trim().toLowerCase() !== p.email.trim().toLowerCase()) {
-    return null;
+  if (profile && profile.email.trim().toLowerCase() === p.email.trim().toLowerCase()) {
+    return {
+      ...p,
+      name: profile.name ?? p.name,
+      roles: normalizeRoles(profile.roles),
+      environmentId: profile.environmentId ?? p.userId,
+      plan: profile.plan,
+    };
   }
-  return p;
+  if (usesEphemeralUserStorage()) {
+    return {
+      ...p,
+      roles: normalizeRoles(p.roles),
+      environmentId: p.environmentId ?? p.userId,
+      plan: p.plan === "pro" ? "pro" : "free",
+    };
+  }
+  return null;
 }
 
 export function sealSessionPayload(payload: SmileServerSession): string | null {

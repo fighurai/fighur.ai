@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { normalizeRoles } from "@/lib/rbac";
 import {
   COOKIE_SESSION,
   sealSessionPayload,
   type SmileServerSession,
 } from "@/lib/session-cookie";
-import { readUserProfile } from "@/lib/user-data-store";
+import { readUserProfile, type UserPlan } from "@/lib/user-data-store";
 
 const SESSION_MAX_AGE = 60 * 60 * 24 * 60;
 
@@ -14,9 +15,15 @@ export function sessionCookieOptions() {
   return { httpOnly: true, secure, sameSite: "lax" as const, path: "/", maxAge: SESSION_MAX_AGE };
 }
 
+export type SessionAttachPayload = Omit<SmileServerSession, "v" | "iat"> & {
+  roles?: string[];
+  environmentId?: string;
+  plan?: UserPlan;
+};
+
 export async function attachSessionCookie(
   res: NextResponse,
-  payload: Omit<SmileServerSession, "v" | "iat">,
+  payload: SessionAttachPayload,
 ): Promise<NextResponse | null> {
   const profile = await readUserProfile(payload.userId);
   const sessionPayload: SmileServerSession = {
@@ -25,6 +32,9 @@ export async function attachSessionCookie(
     email: profile?.email ?? payload.email,
     name: profile?.name ?? payload.name,
     iat: Date.now(),
+    roles: normalizeRoles(profile?.roles ?? payload.roles),
+    environmentId: profile?.environmentId ?? payload.environmentId ?? payload.userId,
+    plan: profile?.plan ?? payload.plan ?? "free",
   };
   const sealed = sealSessionPayload(sessionPayload);
   if (!sealed) return null;
