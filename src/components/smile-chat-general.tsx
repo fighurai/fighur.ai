@@ -772,7 +772,7 @@ export function SmileChatGeneral() {
     if (!el) return;
 
     const measure = () => {
-      setComposerInset(Math.ceil(el.getBoundingClientRect().height) + 6);
+      setComposerInset(el.offsetHeight);
     };
 
     measure();
@@ -1230,9 +1230,13 @@ export function SmileChatGeneral() {
           ) : (
             <div
               ref={listRef}
-              className="chat-scroll chat-thread mx-auto min-h-0 w-full max-w-2xl flex-1 space-y-3 overflow-y-auto"
-              style={{ paddingBottom: composerInset > 0 ? composerInset : undefined }}
+              className="chat-scroll mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-y-auto"
+              style={{
+                paddingBottom: composerInset > 0 ? composerInset : undefined,
+                scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
+              }}
             >
+              <div className="chat-thread mt-auto flex w-full min-h-0 flex-col space-y-3">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
@@ -1281,6 +1285,7 @@ export function SmileChatGeneral() {
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
         </div>

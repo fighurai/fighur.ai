@@ -80,9 +80,14 @@ body {
 }
 
 /* Chat messages — centered column with side breathing room */
+.chat-scroll {
+  min-height: 0;
+}
+
 .chat-thread {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
+  box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
