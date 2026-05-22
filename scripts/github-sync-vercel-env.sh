@@ -48,6 +48,8 @@ upsert_env GOOGLE_CLIENT_ID "${GOOGLE_CLIENT_ID:-}"
 upsert_env GOOGLE_CLIENT_SECRET "${GOOGLE_CLIENT_SECRET:-}"
 upsert_env MICROSOFT_CLIENT_ID "${MICROSOFT_CLIENT_ID:-}"
 upsert_env MICROSOFT_CLIENT_SECRET "${MICROSOFT_CLIENT_SECRET:-}"
+upsert_env SLACK_CLIENT_ID "${SLACK_CLIENT_ID:-}"
+upsert_env SLACK_CLIENT_SECRET "${SLACK_CLIENT_SECRET:-}"
 
 echo "Requesting production redeploy so new env vars apply..."
 npx vercel@latest deploy --prod "${SCOPE_ARGS[@]}" --token "$VERCEL_TOKEN" --yes

@@ -11,7 +11,6 @@ const SCOPES = [
   "profile",
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/calendar.readonly",
-  "offline_access",
 ].join(" ");
 
 type Pending = { state: string; codeVerifier: string; t: number; userId: string };

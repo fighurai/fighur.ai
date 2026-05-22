@@ -17,3 +17,23 @@ export function googleSsoRedirectUri(origin: string): string {
 export function googleConnectRedirectUri(origin: string): string {
   return `${origin}/api/connect/google/callback`;
 }
+
+export function isGoogleConnectConfigured(): boolean {
+  return isGoogleSsoConfigured();
+}
+
+export function isMicrosoftConnectConfigured(): boolean {
+  return isMicrosoftSsoConfigured();
+}
+
+export function isSlackConnectConfigured(): boolean {
+  return Boolean(process.env.SLACK_CLIENT_ID?.trim() && process.env.SLACK_CLIENT_SECRET?.trim());
+}
+
+export function connectRedirectUris(origin: string) {
+  return {
+    google: googleConnectRedirectUri(origin),
+    microsoft: `${origin}/api/connect/microsoft/callback`,
+    slack: `${origin}/api/connect/slack/callback`,
+  };
+}

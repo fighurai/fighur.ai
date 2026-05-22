@@ -70,7 +70,7 @@ export async function getLiveOAuthIntegrationFlags(
 
   const session = await readVerifiedSession(request);
   if (session) {
-    return loadIntegrationFlagsFromUserStore(session.userId, secret);
+    return loadIntegrationFlagsFromUserStore(session.userId, secret, request);
   }
 
   return getCookieOAuthIntegrationFlags(request, secret);

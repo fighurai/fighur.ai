@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
-import { COOKIE_MICROSOFT } from "@/lib/oauth-connection-cookies";
 import { getAppSealingSecret, timingSafeEqualString, unsealJson } from "@/lib/oauth-crypto";
 import { isSafeUserId } from "@/lib/user-data-store";
+import { attachMicrosoftConnectionCookie } from "@/lib/connection-cookies";
 import { writeMicrosoftConnection } from "@/lib/user-oauth-store";
+
+export const maxDuration = 60;
 
 type Pending = { state: string; codeVerifier: string; t: number; userId: string };
 
@@ -100,18 +102,12 @@ export async function GET(request: Request) {
   try {
     await writeMicrosoftConnection(pending.userId, payload);
   } catch {
-    return NextResponse.redirect(new URL("/?oauth_error=storage_failed", getOAuthBaseUrl()));
+    /* disk optional on serverless */
   }
 
   const res = NextResponse.redirect(new URL("/?connected=microsoft", getOAuthBaseUrl()));
+  attachMicrosoftConnectionCookie(res, pending.userId, payload);
   const secure = process.env.NODE_ENV === "production";
-  res.cookies.set(COOKIE_MICROSOFT, "", {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
   res.cookies.set("smile_oauth_microsoft_pending", "", {
     httpOnly: true,
     secure,

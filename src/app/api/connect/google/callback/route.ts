@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
-import { COOKIE_GOOGLE } from "@/lib/oauth-connection-cookies";
 import { getAppSealingSecret, timingSafeEqualString, unsealJson } from "@/lib/oauth-crypto";
 import { isSafeUserId } from "@/lib/user-data-store";
+import { attachGoogleConnectionCookie } from "@/lib/connection-cookies";
 import { writeGoogleConnection } from "@/lib/user-oauth-store";
+
+export const maxDuration = 60;
 
 type Pending = { state: string; codeVerifier: string; t: number; userId: string };
 
@@ -99,18 +101,12 @@ export async function GET(request: Request) {
   try {
     await writeGoogleConnection(pending.userId, payload);
   } catch {
-    return NextResponse.redirect(new URL("/?oauth_error=storage_failed", getOAuthBaseUrl()));
+    /* disk optional on serverless — encrypted cookie below */
   }
 
   const res = NextResponse.redirect(new URL("/?connected=google", getOAuthBaseUrl()));
+  attachGoogleConnectionCookie(res, pending.userId, payload);
   const secure = process.env.NODE_ENV === "production";
-  res.cookies.set(COOKIE_GOOGLE, "", {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
   res.cookies.set("smile_oauth_google_pending", "", {
     httpOnly: true,
     secure,

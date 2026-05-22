@@ -70,23 +70,24 @@ export async function deleteProviderConnection(
 export async function loadIntegrationFlagsFromUserStore(
   userId: string,
   secret: string,
+  request?: Request,
 ): Promise<Partial<ChatIntegrationFlags>> {
   const out: Partial<ChatIntegrationFlags> = {};
 
-  const g = await readSealedFile<GoogleCookiePayload>(userId, GOOGLE_FILE, secret);
-  if (g?.v === 1 && typeof g.refresh_token === "string" && g.refresh_token.length > 0) {
+  const g = await readGoogleFromStore(userId, secret, request);
+  if (g) {
     out.gmail = true;
     out.googleCalendar = true;
   }
 
-  const m = await readSealedFile<MicrosoftCookiePayload>(userId, MICROSOFT_FILE, secret);
-  if (m?.v === 1 && typeof m.refresh_token === "string" && m.refresh_token.length > 0) {
+  const m = await readMicrosoftFromStore(userId, secret, request);
+  if (m) {
     out.outlook = true;
     out.microsoft365 = true;
   }
 
-  const s = await readSealedFile<SlackCookiePayload>(userId, SLACK_FILE, secret);
-  if (s?.v === 1 && typeof s.access_token === "string" && s.access_token.length > 0) {
+  const s = await readSlackFromStore(userId, secret, request);
+  if (s) {
     out.slack = true;
   }
 
@@ -96,26 +97,41 @@ export async function loadIntegrationFlagsFromUserStore(
 export async function readGoogleFromStore(
   userId: string,
   secret: string,
+  request?: Request,
 ): Promise<GoogleCookiePayload | null> {
   const p = await readSealedFile<GoogleCookiePayload>(userId, GOOGLE_FILE, secret);
   if (p?.v === 1 && typeof p.refresh_token === "string" && p.refresh_token.length > 0) return p;
+  if (request) {
+    const { readGoogleConnectionCookie } = await import("@/lib/connection-cookies");
+    return readGoogleConnectionCookie(request, userId);
+  }
   return null;
 }
 
 export async function readMicrosoftFromStore(
   userId: string,
   secret: string,
+  request?: Request,
 ): Promise<MicrosoftCookiePayload | null> {
   const p = await readSealedFile<MicrosoftCookiePayload>(userId, MICROSOFT_FILE, secret);
   if (p?.v === 1 && typeof p.refresh_token === "string" && p.refresh_token.length > 0) return p;
+  if (request) {
+    const { readMicrosoftConnectionCookie } = await import("@/lib/connection-cookies");
+    return readMicrosoftConnectionCookie(request, userId);
+  }
   return null;
 }
 
 export async function readSlackFromStore(
   userId: string,
   secret: string,
+  request?: Request,
 ): Promise<SlackCookiePayload | null> {
   const p = await readSealedFile<SlackCookiePayload>(userId, SLACK_FILE, secret);
   if (p?.v === 1 && typeof p.access_token === "string" && p.access_token.length > 0) return p;
+  if (request) {
+    const { readSlackConnectionCookie } = await import("@/lib/connection-cookies");
+    return readSlackConnectionCookie(request, userId);
+  }
   return null;
 }

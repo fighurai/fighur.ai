@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
-import { COOKIE_SLACK } from "@/lib/oauth-connection-cookies";
 import { getAppSealingSecret, timingSafeEqualString, unsealJson } from "@/lib/oauth-crypto";
 import { isSafeUserId } from "@/lib/user-data-store";
+import { attachSlackConnectionCookie } from "@/lib/connection-cookies";
 import { writeSlackConnection } from "@/lib/user-oauth-store";
+
+export const maxDuration = 60;
 
 type Pending = { state: string; t: number; userId: string };
 
@@ -100,18 +102,12 @@ export async function GET(request: Request) {
   try {
     await writeSlackConnection(pending.userId, payload);
   } catch {
-    return NextResponse.redirect(new URL("/?oauth_error=storage_failed", getOAuthBaseUrl()));
+    /* disk optional on serverless */
   }
 
   const res = NextResponse.redirect(new URL("/?connected=slack", getOAuthBaseUrl()));
+  attachSlackConnectionCookie(res, pending.userId, payload);
   const secure = process.env.NODE_ENV === "production";
-  res.cookies.set(COOKIE_SLACK, "", {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
   res.cookies.set("smile_oauth_slack_pending", "", {
     httpOnly: true,
     secure,

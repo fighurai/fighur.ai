@@ -55,3 +55,5 @@ curl -s https://fighur.ai/api/auth/providers | jq
 Expect `"google": { "sso": true, ... }`.
 
 Sign-in: **Continue with Google** on `/sign-in` should redirect to Google, not show a JSON error.
+
+For **Gmail & Calendar** in Settings, use the same client and also register `/api/connect/google/callback` — see `docs/CONNECTORS_SETUP.md`.

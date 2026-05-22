@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 
+import {
+  isGoogleConnectConfigured,
+  isMicrosoftConnectConfigured,
+  isSlackConnectConfigured,
+} from "@/lib/auth-providers";
 import { getAppSealingSecret, unsealJson } from "@/lib/oauth-crypto";
 import type { ChatIntegrationFlags } from "@/lib/smile-system-prompt";
 import {
@@ -51,17 +56,17 @@ export async function GET(request: Request) {
   let slackConnected = false;
 
   if (session) {
-    const g = await readGoogleFromStore(session.userId, secret);
+    const g = await readGoogleFromStore(session.userId, secret, request);
     if (g) {
       googleConnected = true;
       googleEmail = g.email;
     }
-    const m = await readMicrosoftFromStore(session.userId, secret);
+    const m = await readMicrosoftFromStore(session.userId, secret, request);
     if (m) {
       microsoftConnected = true;
       microsoftEmail = m.email;
     }
-    const s = await readSlackFromStore(session.userId, secret);
+    const s = await readSlackFromStore(session.userId, secret, request);
     if (s) {
       slackConnected = true;
       slackEmail = s.email;
@@ -106,9 +111,22 @@ export async function GET(request: Request) {
     configured: true,
     signedIn,
     needsSignInForConnect: !signedIn,
-    google: { connected: googleConnected, email: googleEmail },
-    microsoft: { connected: microsoftConnected, email: microsoftEmail },
-    slack: { connected: slackConnected, email: slackEmail, team: slackTeam },
+    google: {
+      connected: googleConnected,
+      email: googleEmail,
+      available: isGoogleConnectConfigured(),
+    },
+    microsoft: {
+      connected: microsoftConnected,
+      email: microsoftEmail,
+      available: isMicrosoftConnectConfigured(),
+    },
+    slack: {
+      connected: slackConnected,
+      email: slackEmail,
+      team: slackTeam,
+      available: isSlackConnectConfigured(),
+    },
     ...(hasLegacy && !signedIn
       ? {
           hint: "Sign in to link integrations to your account. Legacy browser-only tokens are in use until you reconnect.",

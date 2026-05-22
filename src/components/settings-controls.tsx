@@ -15,6 +15,16 @@ async function fetchConnectStatus(): Promise<ConnectStatusResponse> {
   return (await res.json()) as ConnectStatusResponse;
 }
 
+const OAUTH_ERROR_HINTS: Record<string, string> = {
+  storage_failed: "Could not save the connection. Try again after signing in.",
+  invalid_callback: "OAuth state expired. Open Settings and click Connect again.",
+  bad_state: "OAuth state mismatch. Click Connect again.",
+  missing_google_env: "Google OAuth is not configured on the server.",
+  missing_microsoft_env: "Microsoft OAuth is not configured on the server.",
+  missing_slack_env: "Slack OAuth is not configured on the server.",
+  access_denied: "You cancelled or Google denied access.",
+};
+
 export function SettingsControls() {
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -24,6 +34,7 @@ export function SettingsControls() {
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const [oauthBusy, setOauthBusy] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
   const refreshOauth = useCallback(async () => {
     try {
@@ -46,9 +57,12 @@ export function SettingsControls() {
     if (typeof window === "undefined") return;
     const u = new URL(window.location.href);
     const connected = u.searchParams.get("connected");
-    const oauthError = u.searchParams.get("oauth_error");
-    if (connected || oauthError) {
+    const oauthErr = u.searchParams.get("oauth_error");
+    if (connected || oauthErr) {
       void refreshOauth();
+      if (oauthErr) {
+        setOauthError(OAUTH_ERROR_HINTS[oauthErr] ?? `Connection error: ${oauthErr}`);
+      }
       u.searchParams.delete("connected");
       u.searchParams.delete("oauth_error");
       window.history.replaceState({}, "", `${u.pathname}${u.search}`);
@@ -93,33 +107,19 @@ export function SettingsControls() {
     }
   };
 
-  const startOAuthConnect = async (path: "/api/connect/google" | "/api/connect/microsoft" | "/api/connect/slack") => {
+  const startOAuthConnect = (path: "/api/connect/google" | "/api/connect/microsoft" | "/api/connect/slack") => {
     setConnectError(null);
-    const res = await fetch(path, { redirect: "manual", credentials: "include" });
-    if (res.status === 401) {
-      setConnectError("Sign in first — connections are saved to your private folder on this server.");
+    setOauthError(null);
+    if (oauth?.needsSignInForConnect) {
+      setConnectError("Sign in first — connections are saved to your account on this server.");
       return;
     }
-    const loc = res.headers.get("Location");
-    if (loc) {
-      window.location.assign(loc);
-      return;
-    }
-    if (res.status === 302 || res.status === 303 || res.status === 307) {
-      setConnectError("Could not read redirect URL. Try again or use a same-origin URL.");
-      return;
-    }
-    try {
-      const j = (await res.json()) as { error?: string };
-      setConnectError(j.error ?? `Could not start OAuth (${res.status}).`);
-    } catch {
-      setConnectError(`Could not start OAuth (${res.status}).`);
-    }
+    window.location.assign(path);
   };
 
-  const connectGoogle = () => void startOAuthConnect("/api/connect/google");
-  const connectMicrosoft = () => void startOAuthConnect("/api/connect/microsoft");
-  const connectSlack = () => void startOAuthConnect("/api/connect/slack");
+  const connectGoogle = () => startOAuthConnect("/api/connect/google");
+  const connectMicrosoft = () => startOAuthConnect("/api/connect/microsoft");
+  const connectSlack = () => startOAuthConnect("/api/connect/slack");
 
   const connectDeviceFolder = async () => {
     setDeviceError(null);
@@ -169,9 +169,8 @@ export function SettingsControls() {
         >
           <p className="text-xs font-semibold text-[var(--text-primary)]">Connections</p>
           <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-            After you sign in, OAuth tokens are encrypted and stored under your user id on this server (not
-            only in the browser). Use <code className="text-[0.65rem]">SMILE_OAUTH_BASE_URL</code> matching
-            the URL you registered (e.g. <code className="text-[0.65rem]">http://localhost:3099</code>).
+            Sign in first, then connect accounts. Tokens are encrypted on this server and in httpOnly cookies
+            tied to your user id (works on Vercel without a data volume).
           </p>
           {oauth?.needsSignInForConnect && configured ? (
             <p className="mt-2 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
@@ -188,9 +187,9 @@ export function SettingsControls() {
               Microsoft / Slack client IDs to enable sign-in flows.
             </p>
           ) : null}
-          {connectError ? (
+          {connectError || oauthError ? (
             <p className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[0.65rem] text-red-100/95">
-              {connectError}
+              {connectError ?? oauthError}
             </p>
           ) : null}
 
@@ -240,12 +239,21 @@ export function SettingsControls() {
                   <button
                     type="button"
                     onClick={connectGoogle}
-                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
+                    disabled={oauth?.google.available === false}
+                    title={
+                      oauth?.google.available === false
+                        ? "Set GOOGLE_CLIENT_ID on the server (same app as Google sign-in)"
+                        : undefined
+                    }
+                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Connect
                   </button>
                 )}
               </div>
+              {oauth?.google.available === false ? (
+                <p className="mt-1 text-[0.6rem] text-amber-200/80">Server: add Google OAuth env vars</p>
+              ) : null}
             </li>
 
             <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
@@ -273,12 +281,21 @@ export function SettingsControls() {
                   <button
                     type="button"
                     onClick={connectMicrosoft}
-                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
+                    disabled={oauth?.microsoft.available === false}
+                    title={
+                      oauth?.microsoft.available === false
+                        ? "Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET on the server"
+                        : undefined
+                    }
+                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Connect
                   </button>
                 )}
               </div>
+              {oauth?.microsoft.available === false ? (
+                <p className="mt-1 text-[0.6rem] text-amber-200/80">Server: add Azure app env vars</p>
+              ) : null}
             </li>
 
             <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
@@ -306,12 +323,21 @@ export function SettingsControls() {
                   <button
                     type="button"
                     onClick={connectSlack}
-                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
+                    disabled={oauth?.slack.available === false}
+                    title={
+                      oauth?.slack.available === false
+                        ? "Set SLACK_CLIENT_ID and SLACK_CLIENT_SECRET on the server"
+                        : undefined
+                    }
+                    className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Connect
                   </button>
                 )}
               </div>
+              {oauth?.slack.available === false ? (
+                <p className="mt-1 text-[0.6rem] text-amber-200/80">Server: add Slack app env vars</p>
+              ) : null}
             </li>
 
             <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
@@ -351,12 +377,19 @@ export function SettingsControls() {
           </ul>
 
           <p className="mt-3 text-[0.65rem] leading-relaxed text-[var(--text-faint)]">
-            Redirect URIs to register:{" "}
-            <code className="break-all text-[0.6rem] text-[var(--text-muted)]">
-              {typeof window !== "undefined" ? window.location.origin : ""}/api/connect/google/callback
+            Register these redirect URIs (same Google app as sign-in):{" "}
+            <code className="block break-all text-[0.6rem] text-[var(--text-muted)]">
+              {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
+              /api/connect/google/callback
             </code>
-            , same host for <code className="text-[0.6rem]">microsoft/callback</code> and{" "}
-            <code className="text-[0.6rem]">slack/callback</code>.
+            <code className="mt-1 block break-all text-[0.6rem] text-[var(--text-muted)]">
+              {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
+              /api/connect/microsoft/callback
+            </code>
+            <code className="mt-1 block break-all text-[0.6rem] text-[var(--text-muted)]">
+              {typeof window !== "undefined" ? window.location.origin : "https://fighur.ai"}
+              /api/connect/slack/callback
+            </code>
           </p>
         </div>
       ) : null}
