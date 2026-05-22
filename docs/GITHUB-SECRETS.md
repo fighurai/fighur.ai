@@ -16,6 +16,8 @@ Code pushes to `main` deploy via Vercel. **API keys are not stored in git.** The
 | `OPENROUTER_API_KEY` | Optional |
 | `GROQ_API_KEY` | Optional |
 | `SMILE_APP_SECRET` | Yes for sign-in / OAuth (16+ random characters) |
+| `GOOGLE_CLIENT_ID` | Yes for Google SSO |
+| `GOOGLE_CLIENT_SECRET` | Yes for Google SSO |
 
 3. Push to `main` or run **Actions → Sync API keys to Vercel → Run workflow**.
 
