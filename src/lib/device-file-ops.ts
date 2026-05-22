@@ -8,15 +8,8 @@ import {
   supportsNativeDirectoryPicker,
 } from "@/lib/device-files-client";
 
-export type DeviceFileOp =
-  | { op: "move"; from: string; to: string }
-  | { op: "rename"; path: string; newName: string }
-  | { op: "mkdir"; path: string };
-
-export type DeviceOpsPayload = {
-  ops: DeviceFileOp[];
-  summary?: string;
-};
+export type { DeviceFileOp, DeviceOpsPayload } from "@/lib/device-ops-parse";
+import type { DeviceFileOp, DeviceOpsPayload } from "@/lib/device-ops-parse";
 
 const MAX_OPS = 40;
 
@@ -102,55 +95,11 @@ async function moveFileEntry(
   }
 }
 
-/** Serialize ops for the Apply popup (stream or assistant message). */
-export function formatDeviceOpsFence(payload: DeviceOpsPayload): string {
-  return `\n\n\`\`\`device-ops\n${JSON.stringify(payload, null, 2)}\n\`\`\`\n`;
-}
-
-function validateOpsList(raw: unknown): DeviceFileOp[] | null {
-  if (!Array.isArray(raw)) return null;
-  const ops = raw.slice(0, MAX_OPS).filter((o) => {
-    if (!o || typeof o !== "object") return false;
-    const op = (o as DeviceFileOp).op;
-    if (op === "move") {
-      return (
-        typeof (o as { from?: string }).from === "string" &&
-        typeof (o as { to?: string }).to === "string"
-      );
-    }
-    if (op === "rename") {
-      return (
-        typeof (o as { path?: string }).path === "string" &&
-        typeof (o as { newName?: string }).newName === "string"
-      );
-    }
-    if (op === "mkdir") return typeof (o as { path?: string }).path === "string";
-    return false;
-  }) as DeviceFileOp[];
-  return ops.length ? ops : null;
-}
-
-/** Build payload from the propose_device_file_ops tool input. */
-export function deviceOpsFromToolInput(input: Record<string, unknown>): DeviceOpsPayload | null {
-  const ops = validateOpsList(input.ops);
-  if (!ops) return null;
-  const summary = typeof input.summary === "string" ? input.summary.trim() : undefined;
-  return { ops, summary: summary || undefined };
-}
-
-/** Parse ```device-ops` JSON block from assistant text. */
-export function parseDeviceOpsFromText(text: string): DeviceOpsPayload | null {
-  const fence = /```device-ops\s*\r?\n([\s\S]*?)```/i.exec(text);
-  if (!fence) return null;
-  try {
-    const json = JSON.parse(fence[1].trim()) as DeviceOpsPayload;
-    if (!Array.isArray(json.ops)) return null;
-    const ops = validateOpsList(json.ops);
-    return ops ? { ops, summary: typeof json.summary === "string" ? json.summary : undefined } : null;
-  } catch {
-    return null;
-  }
-}
+export {
+  deviceOpsFromToolInput,
+  formatDeviceOpsFence,
+  parseDeviceOpsFromText,
+} from "@/lib/device-ops-parse";
 
 export type DeviceWriteAccess =
   | { ok: true; handle: FileSystemDirectoryHandle; rootName: string }

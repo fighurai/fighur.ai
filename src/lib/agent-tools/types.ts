@@ -1,4 +1,4 @@
-import type { DeviceOpsPayload } from "@/lib/device-file-ops";
+import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
 import type { DeviceManifest } from "@/lib/device-manifest";
 import type { ChatIntegrationFlags } from "@/lib/smile-system-prompt";
 

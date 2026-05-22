@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { availableAgentTools } from "@/lib/agent-tools/registry";
 import { executeAgentTool } from "@/lib/agent-tools/execute";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
-import { formatDeviceOpsFence, type DeviceOpsPayload } from "@/lib/device-file-ops";
+import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
+import { formatDeviceOpsFence } from "@/lib/device-ops-parse";
 
 const MAX_TOOL_ROUNDS = 8;
 
@@ -93,6 +94,13 @@ export async function streamAnthropicWithTools(
               const result = await executeAgentTool(tu.name, input, ctx);
               if (result.deviceOps) {
                 pendingDeviceOps = result.deviceOps;
+                controller.enqueue(
+                  encoder.encode(
+                    "\n\n### Organize files on this device\nAn **Apply** popup will open (or is already open). Click **Apply** to run the plan. **Do not use Terminal.**\n",
+                  ),
+                );
+                controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
+                return;
               }
               toolResults.push({
                 type: "tool_result",

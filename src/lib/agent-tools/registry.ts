@@ -78,23 +78,18 @@ export async function availableAgentTools(
       input_schema: {
         type: "object",
         properties: {
-          summary: { type: "string", description: "Short description of the organization plan" },
+          summary: { type: "string", description: "Short description of the plan" },
           ops: {
             type: "array",
-            description: "File operations (max 40)",
-            items: {
-              type: "object",
-              properties: {
-                op: { type: "string", enum: ["move", "rename", "mkdir"] },
-                from: { type: "string" },
-                to: { type: "string" },
-                path: { type: "string" },
-                newName: { type: "string" },
-              },
-            },
+            description:
+              'Moves/renames/mkdirs. Each item: {"op":"move","from":"rel/path","to":"folder/file"} or mkdir/rename. Max 40.',
+          },
+          ops_json: {
+            type: "string",
+            description:
+              'Alternative: JSON string of ops array, e.g. [{"op":"move","from":"a.png","to":"images/a.png"}]',
           },
         },
-        required: ["ops"],
       },
     });
     tools.push({

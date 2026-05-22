@@ -7,7 +7,7 @@ import {
   listOutlookRecent,
 } from "@/lib/integrations/microsoft-api";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
-import { deviceOpsFromToolInput } from "@/lib/device-file-ops";
+import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
 import { manifestSummary } from "@/lib/device-manifest";
 import { getGoogleAccessToken, getMicrosoftAccessToken } from "@/lib/oauth-token";
 
@@ -114,8 +114,15 @@ export async function executeAgentTool(
         const payload = deviceOpsFromToolInput(input);
         if (!payload) {
           return {
-            content:
-              'Invalid ops. Example: {"summary":"Sort downloads","ops":[{"op":"move","from":"a.pdf","to":"pdf/a.pdf"}]}',
+            content: JSON.stringify({
+              ok: false,
+              retry: true,
+              hint: 'Use ops: [{"op":"move","from":"path/in/root","to":"folder/file"}, {"op":"mkdir","path":"folder"}] with paths from list_device_files. Or ops_json as a JSON string. Do NOT use Terminal.',
+              example: {
+                summary: "Sort creative files",
+                ops: [{ op: "move", from: "draft.png", to: "images/draft.png" }],
+              },
+            }),
             isError: true,
           };
         }
