@@ -59,9 +59,13 @@ body {
   }
 }
 
-/* Fixed prompt dock — reserve space so messages scroll above it */
+/* Fixed prompt dock — tight gap above composer */
 .composer-dock {
-  padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(0.2rem, env(safe-area-inset-bottom, 0px));
+}
+
+.composer-dock-inner {
+  padding-top: 0.25rem;
 }
 
 .composer-dock-inner,
@@ -107,8 +111,16 @@ body {
   margin-top: 0;
 }
 
-.chat-output-bubble .studio-md > :last-child {
+.chat-output-bubble .studio-md > :last-child,
+.chat-scroll .studio-md > :last-child {
   margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.chat-scroll .stream-live,
+.chat-scroll .stream-plain {
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 /* Floating chat composer — lifted above bottom edge */

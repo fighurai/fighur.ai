@@ -1206,7 +1206,7 @@ export function SmileChatGeneral() {
           ) : (
             <div
               ref={listRef}
-              className="chat-scroll chat-thread mx-auto mb-2 min-h-0 w-full max-w-2xl flex-1 space-y-4 overflow-y-auto pb-36 md:pb-32"
+              className="chat-scroll chat-thread mx-auto mb-0 min-h-0 w-full max-w-2xl flex-1 space-y-3 overflow-y-auto pb-24 md:pb-28"
             >
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
@@ -1223,7 +1223,7 @@ export function SmileChatGeneral() {
                     className={`group flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`relative min-w-0 rounded-2xl px-4 py-3 text-sm leading-relaxed sm:px-5 ${
+                      className={`relative min-w-0 rounded-2xl px-4 pt-2.5 pb-1.5 text-sm leading-relaxed sm:px-5 ${
                         m.role === "user"
                           ? "ml-auto w-fit max-w-[88%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
                           : isStreaming
@@ -1265,12 +1265,8 @@ export function SmileChatGeneral() {
           <div
             className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
           >
-            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
-              <div
-                className="pointer-events-none mb-1 h-6 bg-gradient-to-t from-[var(--bg-deep)] to-transparent"
-                aria-hidden
-              />
-              <div className="mb-1.5 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1.5 md:hidden">
+            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 pt-1 sm:px-4">
+              <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1 md:hidden">
                 {session ? (
                   <>
                     <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
@@ -1297,7 +1293,7 @@ export function SmileChatGeneral() {
                 )}
               </div>
               {composerPanel}
-              <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
+              <p className="mt-0.5 pb-0 text-center text-[0.6rem] text-[var(--text-faint)]">
                 © {new Date().getFullYear()} FIGHURAI
               </p>
             </div>
