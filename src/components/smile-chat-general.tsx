@@ -68,6 +68,34 @@ function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function friendlyChatError(e: unknown): string {
+  if (!(e instanceof Error)) return "Something went wrong. Please try again.";
+  if (e.name === "AbortError") {
+    return "Request timed out. Try a shorter prompt or a faster model.";
+  }
+  const lower = e.message.toLowerCase();
+  if (
+    lower.includes("failed to fetch") ||
+    lower.includes("load failed") ||
+    lower.includes("networkerror") ||
+    lower.includes("network error")
+  ) {
+    return "Connection lost before the reply finished. Check your network and send again.";
+  }
+  return e.message;
+}
+
+function isRetryableChatError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  if (e.name === "AbortError") return false;
+  const lower = e.message.toLowerCase();
+  return (
+    lower.includes("failed to fetch") ||
+    lower.includes("load failed") ||
+    lower.includes("network")
+  );
+}
+
 function formatTime(ts: number) {
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -179,7 +207,7 @@ const assistantMarkdownComponents: Components = {
 
 function StreamingSmiley() {
   return (
-    <div className="stream-smiley mt-3 flex items-center gap-2" aria-hidden>
+    <div className="stream-smiley mb-3 flex items-center gap-2" aria-hidden>
       <Image
         src={SITE_ICON}
         alt=""
@@ -211,9 +239,15 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   }, [content, isStreaming, imageFallback]);
 
   if (isStreaming) {
+    const live = displayContent.trim();
     return (
       <div className="stream-live" aria-live="polite" aria-atomic="false">
         <StreamingSmiley />
+        {live ? (
+          <div className="stream-plain whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)]">
+            {live}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -613,26 +647,40 @@ export function SmileChatGeneral() {
       .filter((m) => m.id !== assistantId)
       .map(({ role, content }) => ({ role, content }));
 
-    try {
-      const res = await fetch("/api/chat", {
+    const chatPayload = JSON.stringify({
+      messages: history,
+      model: selectedModel,
+      attachments: attachmentsForRequest,
+      connectedServices: toConnectedServicesPayload(readConnectedServices()),
+      userSession: session
+        ? {
+            email: session.email,
+            name: session.name,
+            ...(session.userId ? { userId: session.userId } : {}),
+          }
+        : undefined,
+    });
+
+    const postChat = () =>
+      fetch("/api/chat", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: history,
-          model: selectedModel,
-          attachments: attachmentsForRequest,
-          connectedServices: toConnectedServicesPayload(readConnectedServices()),
-          userSession: session
-            ? {
-                email: session.email,
-                name: session.name,
-                ...(session.userId ? { userId: session.userId } : {}),
-              }
-            : undefined,
-        }),
+        body: chatPayload,
         signal: controller.signal,
       });
+
+    let fullText = "";
+
+    try {
+      let res: Response;
+      try {
+        res = await postChat();
+      } catch (first) {
+        if (controller.signal.aborted || !isRetryableChatError(first)) throw first;
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        res = await postChat();
+      }
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error((errJson as { error?: string }).error || `Request failed (${res.status})`);
@@ -641,9 +689,9 @@ export function SmileChatGeneral() {
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response stream");
       const decoder = new TextDecoder();
-      let fullText = "";
       let rafId: number | null = null;
       let lastArtifactCheck = 0;
+      let streamFinished = false;
 
       setStreamingMessageId(assistantId);
       setStreamBuffer("");
@@ -679,13 +727,16 @@ export function SmileChatGeneral() {
           scheduleStreamFlush();
         }
         fullText += decoder.decode();
+        streamFinished = true;
       } finally {
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
         flushStreamToUi();
+      }
 
+      if (streamFinished) {
         const finalContent = finalizeAssistantContent(fullText);
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
@@ -695,12 +746,15 @@ export function SmileChatGeneral() {
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
-        const message = e instanceof Error ? e.message : "Something went wrong.";
+        const message = friendlyChatError(e);
         setError(message);
+        const partial = fullText.trim() ? finalizeAssistantContent(fullText) : "";
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, content: `_Error: ${message}_` } : m,
-          ),
+          prev.map((m) => {
+            if (m.id !== assistantId) return m;
+            if (partial.trim()) return { ...m, content: partial };
+            return { ...m, content: `_Error: ${message}_` };
+          }),
         );
       }
       setStreamBuffer("");

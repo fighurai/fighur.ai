@@ -1,6 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
+/** Allow long streaming replies on Vercel (avoids abrupt "Load failed" client errors). */
+export const maxDuration = 60;
+
 import {
   noChatProvidersMessage,
   resolveChatModelOption,
