@@ -245,17 +245,31 @@ type DirHandle = FileSystemDirectoryHandle & {
   entries: () => AsyncIterableIterator<[string, FileSystemHandle]>;
 };
 
-async function ensureReadPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
-  const h = handle as PermHandle;
+async function ensurePermission(
+  handle: FileSystemDirectoryHandle,
+  mode: "read" | "readwrite",
+): Promise<boolean> {
+  const h = handle as PermHandle & {
+    queryPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+    requestPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
+  };
   try {
-    if (!h.queryPermission || !h.requestPermission) return true;
-    const perm = await h.queryPermission({ mode: "read" });
+    if (!h.queryPermission || !h.requestPermission) return mode === "read";
+    const perm = await h.queryPermission({ mode });
     if (perm === "granted") return true;
-    const req = await h.requestPermission({ mode: "read" });
+    const req = await h.requestPermission({ mode });
     return req === "granted";
   } catch {
     return false;
   }
+}
+
+async function ensureReadPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
+  return ensurePermission(handle, "read");
+}
+
+export async function ensureWritePermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
+  return ensurePermission(handle, "readwrite");
 }
 
 async function readTextFileHandle(
@@ -318,9 +332,18 @@ export async function connectDeviceFolder(userId: string): Promise<ConnectDevice
   if (supportsNativeDirectoryPicker()) {
     try {
       const w = window as Window & {
-        showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+        showDirectoryPicker?: (opts?: {
+          mode?: "read" | "readwrite";
+        }) => Promise<FileSystemDirectoryHandle>;
       };
-      const handle = await w.showDirectoryPicker!();
+      let handle: FileSystemDirectoryHandle;
+      try {
+        handle = await w.showDirectoryPicker!({ mode: "readwrite" });
+      } catch {
+        handle = await w.showDirectoryPicker!();
+      }
+      await ensureReadPermission(handle);
+      await ensureWritePermission(handle);
       await saveDeviceDirectoryHandle(handle, userId);
       return { ok: true, rootName: handle.name, mode: "native" };
     } catch (e) {

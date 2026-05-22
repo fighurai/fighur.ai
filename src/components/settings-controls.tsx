@@ -10,11 +10,17 @@ import {
   writeConnectedServices,
   type ConnectedServicesState,
 } from "@/lib/connected-services";
+import { PrivacyWaiverModal } from "@/components/privacy-waiver-modal";
 import {
   connectDeviceFolder,
   idbClearDeviceHandle,
   supportsDeviceFolderPicker,
 } from "@/lib/device-files-client";
+import {
+  hasAcceptedPrivacyWaiver,
+  recordPrivacyWaiverAcceptance,
+  type PrivacyWaiverKind,
+} from "@/lib/privacy-waiver";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
 async function fetchConnectStatus(): Promise<ConnectStatusResponse> {
@@ -43,6 +49,9 @@ export function SettingsControls() {
   const [oauthBusy, setOauthBusy] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [waiverOpen, setWaiverOpen] = useState(false);
+  const [waiverTitle, setWaiverTitle] = useState("Connect integration");
+  const pendingConnectRef = useRef<(() => void) | null>(null);
 
   const refreshOauth = useCallback(async () => {
     try {
@@ -122,21 +131,35 @@ export function SettingsControls() {
     }
   };
 
-  const startOAuthConnect = (path: "/api/connect/google" | "/api/connect/microsoft") => {
+  const requirePrivacyWaiver = (kind: PrivacyWaiverKind, title: string, action: () => void) => {
     setConnectError(null);
     setOauthError(null);
-    if (oauth?.needsSignInForConnect) {
+    setDeviceError(null);
+    const userId = readSession()?.userId;
+    if (!userId) {
       setConnectError("Sign in first — connections are saved to your account on this server.");
       return;
     }
-    window.location.assign(path);
+    if (hasAcceptedPrivacyWaiver(userId)) {
+      action();
+      return;
+    }
+    pendingConnectRef.current = action;
+    setWaiverTitle(title);
+    setWaiverOpen(true);
   };
 
-  const connectGoogle = () => startOAuthConnect("/api/connect/google");
-  const connectMicrosoft = () => startOAuthConnect("/api/connect/microsoft");
+  const connectGoogle = () =>
+    requirePrivacyWaiver("google", "Connect Google (Gmail & Calendar)", () => {
+      window.location.assign("/api/connect/google");
+    });
+
+  const connectMicrosoft = () =>
+    requirePrivacyWaiver("microsoft", "Connect Microsoft (Outlook & Calendar)", () => {
+      window.location.assign("/api/connect/microsoft");
+    });
 
   const connectDeviceFolderHandler = async () => {
-    setDeviceError(null);
     const userId = readSession()?.userId;
     if (!userId) {
       setDeviceError("Sign in to link a folder to your account.");
@@ -146,21 +169,26 @@ export function SettingsControls() {
       setDeviceError("This browser cannot pick folders. Use Safari or Chrome on desktop.");
       return;
     }
-    const result = await connectDeviceFolder(userId);
-    if (result.ok) {
-      const next = readConnectedServices(userId);
-      next.services.deviceFiles = {
-        connected: true,
-        label:
-          result.mode === "webkit"
-            ? `${result.rootName} (Safari snapshot — reconnect to refresh files)`
-            : result.rootName,
-      };
-      persistLocal(next);
-      return;
-    }
-    if ("cancelled" in result && result.cancelled) return;
-    if ("error" in result) setDeviceError(result.error);
+    requirePrivacyWaiver("device", "Connect this device folder", () => {
+      void (async () => {
+        setDeviceError(null);
+        const result = await connectDeviceFolder(userId);
+        if (result.ok) {
+          const next = readConnectedServices(userId);
+          next.services.deviceFiles = {
+            connected: true,
+            label:
+              result.mode === "webkit"
+                ? `${result.rootName} (Safari snapshot — plan only; use Chrome to apply moves)`
+                : `${result.rootName} (read & organize)`,
+          };
+          persistLocal(next);
+          return;
+        }
+        if ("cancelled" in result && result.cancelled) return;
+        if ("error" in result) setDeviceError(result.error);
+      })();
+    });
   };
 
   const disconnectDevice = () => {
@@ -366,7 +394,9 @@ export function SettingsControls() {
                       {local.services.deviceFiles.label ?? "Folder granted"}
                     </p>
                   ) : (
-                    <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">Pick a folder (Chrome)</p>
+                    <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">
+                      Pick a folder (Chrome/Edge to organize; Safari for read-only plans)
+                    </p>
                   )}
                 </div>
                 {local.services.deviceFiles.connected ? (
@@ -394,6 +424,23 @@ export function SettingsControls() {
           </ul>
         </div>
       ) : null}
+
+      <PrivacyWaiverModal
+        open={waiverOpen}
+        title={waiverTitle}
+        onCancel={() => {
+          setWaiverOpen(false);
+          pendingConnectRef.current = null;
+        }}
+        onAccept={() => {
+          const userId = readSession()?.userId;
+          if (userId) recordPrivacyWaiverAcceptance(userId);
+          setWaiverOpen(false);
+          const action = pendingConnectRef.current;
+          pendingConnectRef.current = null;
+          action?.();
+        }}
+      />
     </div>
   );
 }

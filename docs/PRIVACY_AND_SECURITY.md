@@ -4,6 +4,7 @@ FIGHURAI is designed so each signed-in user only accesses their own data.
 
 ## Authentication required for connections
 
+- Before **Google**, **Microsoft**, or **device folder** connect, users must accept the in-app **privacy waiver** (stored per account in the browser).
 - **Google / Microsoft connect** (`/api/connect/google`, `/api/connect/microsoft`) return **401** if you are not signed in.
 - OAuth tokens are stored under your **user id** on the server (`users/<uuid>/connections/`) and in **httpOnly** cookies bound to that user id.
 - **Disconnect** requires a valid session and only removes **your** stored tokens.
@@ -25,6 +26,7 @@ FIGHURAI is designed so each signed-in user only accesses their own data.
 - Read-only tools run only when **verified session** + **your** stored refresh token match.
 - The client cannot fake “Gmail connected” in the request body; the server sets mail/calendar flags from **your** account only.
 - Device file manifests are accepted only when signed in and **device files** is enabled in Settings.
+- **CoWork file organization:** the model proposes moves in a `device-ops` block; the user confirms in a popup before files are renamed/moved locally (Chrome/Edge with write permission). Safari folder snapshots are read-only plans.
 
 ## Operator responsibilities
 

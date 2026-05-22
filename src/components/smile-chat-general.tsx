@@ -26,6 +26,13 @@ import {
   saveServerConversations,
 } from "@/lib/conversation-sync";
 import { buildDeviceManifestForChat } from "@/lib/device-files-client";
+import {
+  applyDeviceFileOps,
+  canApplyDeviceFileOps,
+  parseDeviceOpsFromText,
+  type DeviceOpsPayload,
+} from "@/lib/device-file-ops";
+import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { activeBuildFile, extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
@@ -146,8 +153,12 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+function stripDeviceOpsBlock(text: string): string {
+  return text.replace(/```device-ops[\s\S]*?```/gi, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function finalizeAssistantContent(raw: string): string {
-  const trimmed = raw.trim();
+  const trimmed = stripDeviceOpsBlock(raw).trim();
   if (!trimmed) return "I'm here — try that again and I'll answer.";
   const narration = stripCodeFences(trimmed);
   if (narration) return narration;
@@ -339,6 +350,11 @@ export function SmileChatGeneral() {
   const [session, setSession] = useState<SmileSession | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [pendingDeviceOps, setPendingDeviceOps] = useState<DeviceOpsPayload | null>(null);
+  const [deviceOpsOpen, setDeviceOpsOpen] = useState(false);
+  const [deviceOpsApplying, setDeviceOpsApplying] = useState(false);
+  const [deviceOpsResult, setDeviceOpsResult] = useState<string | null>(null);
+  const [deviceCanWrite, setDeviceCanWrite] = useState(false);
 
   const serverSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -832,6 +848,20 @@ export function SmileChatGeneral() {
         );
         setStreamingMessageId(null);
         void fetchUsageSummary().then(setUsage);
+
+        if (
+          connected.workMode === "cowork" &&
+          connected.services.deviceFiles.connected &&
+          session?.userId
+        ) {
+          const opsPayload = parseDeviceOpsFromText(fullText);
+          if (opsPayload && opsPayload.ops.length > 0) {
+            setPendingDeviceOps(opsPayload);
+            setDeviceOpsResult(null);
+            void canApplyDeviceFileOps(session.userId).then(setDeviceCanWrite);
+            setDeviceOpsOpen(true);
+          }
+        }
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
@@ -1653,6 +1683,40 @@ export function SmileChatGeneral() {
           </div>
         </div>
       ) : null}
+
+      <DeviceOpsModal
+        open={deviceOpsOpen}
+        payload={pendingDeviceOps}
+        applying={deviceOpsApplying}
+        resultMessage={deviceOpsResult}
+        canWrite={deviceCanWrite}
+        onCancel={() => {
+          setDeviceOpsOpen(false);
+          setPendingDeviceOps(null);
+          setDeviceOpsResult(null);
+        }}
+        onApply={() => {
+          const userId = session?.userId;
+          const payload = pendingDeviceOps;
+          if (!userId || !payload) return;
+          setDeviceOpsApplying(true);
+          setDeviceOpsResult(null);
+          void applyDeviceFileOps(userId, payload).then((result) => {
+            const msg =
+              result.errors.length > 0
+                ? `Applied ${result.applied} of ${payload.ops.length}. Issues: ${result.errors.slice(0, 3).join("; ")}`
+                : `Applied ${result.applied} change${result.applied === 1 ? "" : "s"} successfully.`;
+            setDeviceOpsResult(msg);
+            setDeviceOpsApplying(false);
+            if (result.applied > 0 && result.errors.length === 0) {
+              window.setTimeout(() => {
+                setDeviceOpsOpen(false);
+                setPendingDeviceOps(null);
+              }, 1500);
+            }
+          });
+        }}
+      />
     </div>
   );
 }

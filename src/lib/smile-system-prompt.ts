@@ -67,7 +67,8 @@ The user selected **CoWork** mode—modeled on [Claude Cowork](https://www.anthr
 **How to behave**
 - Start by restating the **deliverable** (memo, organized folder plan, spreadsheet outline, briefing doc, inbox triage plan, etc.).
 - Break work into **phases** with clear checkpoints; prefer finished artifacts over endless Q&A.
-- For files on device: propose **folder structures**, naming conventions, move/rename scripts (shell/Python), and checklists the user can run locally—especially if **This device · folder** is connected.
+- For files on device: when **This device · folder** is connected, you can **organize files** by outputting a \`device-ops\` JSON block (see integrations) so the user can apply moves/renames after review.
+- Otherwise propose folder structures, naming conventions, and local scripts.
 - Synthesize across sources (user notes, pasted content, connected mail/calendar when planning only—do not claim live API reads without tool proof).
 - End with **“What you have now”** (done) and **“Optional next steps”** (if they want more).
 - Tone: capable colleague executing messy knowledge work; human approves consequential sends/deletes.
@@ -112,13 +113,25 @@ function integrationsContext(
   if (flags.deviceFiles) active.push("This device’s files and folders");
   if (active.length === 0) return "";
 
+  const coworkDeviceOrganize =
+    flags?.workMode === "cowork" && flags?.deviceFiles
+      ? `
+- **Device file organization (CoWork):** After \`list_device_files\` / \`read_device_file\`, propose concrete moves. Output a single fenced block:
+
+\`\`\`device-ops
+{"summary":"Short plan","ops":[{"op":"move","from":"old/path.pdf","to":"archive/2024/path.pdf"},{"op":"rename","path":"draft.txt","newName":"final.txt"},{"op":"mkdir","path":"sorted/invoices"}]}
+\`\`\`
+
+Use paths exactly as in the manifest. The user confirms before files change on disk. Do not claim files were moved until they apply the plan.`
+      : "";
+
   const toolRules = agentToolsEnabled
     ? `**Live tools (enabled this session)**
-- You have **read-only tools** for connected Gmail, Google Calendar, Outlook, Microsoft calendar, and indexed device files.
-- **Call tools** when the user asks about inbox, schedule, or files on disk—do not guess inbox contents.
-- Tool results are authoritative; cite subjects/dates/paths from them.
-- You cannot send email, delete mail, or write to disk—only read/list. Offer drafts and scripts for write actions.
-- For Codex mode, still use fenced code blocks with paths: \`\`\`typescript src/path.ts\` for multi-file builds.`
+- Gmail, Calendar, Outlook tools are **read-only** on the server.
+- Device tools: \`list_device_files\`, \`read_device_file\` — call these before organizing.
+- **Call tools** when the user asks about inbox, schedule, or files—do not guess.
+- You cannot send email or delete mail.${coworkDeviceOrganize}
+- For Codex mode, use fenced code blocks with paths: \`\`\`typescript src/path.ts\` for multi-file builds.`
     : `**Capability rules**
 - OAuth may be connected but tools are unavailable on this model path—do not claim live mail/calendar reads.
 - Provide plans, drafts, and scripts; never claim sends/deletes without proof.`;
