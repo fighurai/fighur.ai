@@ -26,16 +26,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, signedIn: false }, { status: 401 });
   }
 
-  return NextResponse.json({
+  const profile = await readUserProfile(session.userId);
+  const res = NextResponse.json({
     ok: true,
     signedIn: true,
     userId: session.userId,
-    email: session.email,
-    name: session.name,
-    roles: normalizeRoles(session.roles),
-    environmentId: session.environmentId ?? session.userId,
-    plan: session.plan ?? "free",
+    email: profile?.email ?? session.email,
+    name: profile?.name ?? session.name,
+    roles: normalizeRoles(profile?.roles ?? session.roles),
+    environmentId: profile?.environmentId ?? session.environmentId ?? session.userId,
+    plan: profile?.plan ?? session.plan ?? "free",
   });
+  const withCookies = await attachSessionCookie(res, {
+    userId: session.userId,
+    email: profile?.email ?? session.email,
+    name: profile?.name ?? session.name,
+  });
+  return withCookies ?? res;
 }
 
 export async function POST(request: Request) {

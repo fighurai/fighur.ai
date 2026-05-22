@@ -25,10 +25,12 @@ import {
   toConnectedServicesPayload,
   writeConnectedServices,
 } from "@/lib/connected-services";
+import { mergeConversations } from "@/lib/conversation-merge";
 import {
   fetchServerConversations,
   saveServerConversations,
 } from "@/lib/conversation-sync";
+import { syncConnectedServicesFromServer } from "@/lib/connected-services-sync";
 import {
   buildDeviceManifestForChat,
   connectDeviceFolder,
@@ -419,12 +421,16 @@ export function SmileChatGeneral() {
       const storageUser = conversationStorageUserId(userId);
       if (userId) {
         migrateAnonymousConversationsToUser(userId, "assistant");
-        const server = await fetchServerConversations();
-        if (server && server.length > 0) {
-          persistConversations(server, "assistant", storageUser);
-          applyConversationList(server, storageUser);
-          return;
+        const local = loadConversations("assistant", storageUser);
+        const server = (await fetchServerConversations()) ?? [];
+        const merged = mergeConversations(local, server);
+        persistConversations(merged, "assistant", storageUser);
+        applyConversationList(merged, storageUser);
+        if (merged.length > 0) {
+          void saveServerConversations(merged);
         }
+        void syncConnectedServicesFromServer(userId);
+        return;
       }
       applyConversationList(loadConversations("assistant", storageUser), storageUser);
     },

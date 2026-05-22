@@ -1,22 +1,15 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-
 import type { SavedConversation } from "@/lib/conversation-storage";
-import { isSafeUserId, userDir } from "@/lib/user-data-store";
+import { isSafeUserId } from "@/lib/user-data-store";
+import { readUserFile, writeUserFile } from "@/lib/user-file-storage";
 
-const FILE = "conversations.json";
+const FILE = "conversations/conversations.json";
 const MAX_BYTES = 2_000_000;
-
-async function conversationsPath(userId: string): Promise<string> {
-  const dir = path.join(userDir(userId), "conversations");
-  await mkdir(dir, { recursive: true, mode: 0o700 });
-  return path.join(dir, FILE);
-}
 
 export async function readUserConversations(userId: string): Promise<SavedConversation[]> {
   if (!isSafeUserId(userId)) return [];
   try {
-    const raw = await readFile(await conversationsPath(userId), "utf8");
+    const raw = await readUserFile(userId, FILE);
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
@@ -40,5 +33,5 @@ export async function writeUserConversations(
   if (payload.length > MAX_BYTES) {
     throw new Error("Conversation data exceeds storage limit.");
   }
-  await writeFile(await conversationsPath(userId), payload, { mode: 0o600 });
+  await writeUserFile(userId, FILE, payload);
 }

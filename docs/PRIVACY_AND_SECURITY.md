@@ -32,7 +32,8 @@ FIGHURAI is designed so each signed-in user only accesses their own data.
 
 - Set a strong `SMILE_APP_SECRET` (or `SMILE_OAUTH_COOKIE_SECRET`, 16+ characters) in production.
 - Use HTTPS (Vercel default).
-- On Vercel, user files under `/tmp` may be **ephemeral** per deployment region—use `SMILE_USER_DATA_DIR` on persistent storage for production if you require durable cross-restart storage.
+- **Cross-browser account data:** chats and OAuth tokens are stored per user on the server. On Vercel, enable **Vercel Blob** on the project (creates `BLOB_READ_WRITE_TOKEN`) so data survives deploys and works when you sign in from another browser. Without Blob or `SMILE_USER_DATA_DIR`, `/tmp` storage is ephemeral and history may not follow you across devices.
+- Alternatively, set `SMILE_USER_DATA_DIR` to a persistent disk mount path if you self-host.
 - Comply with Google/Microsoft API policies and your privacy policy (data minimization, user deletion on request).
 
 ## User rights (recommended policy)

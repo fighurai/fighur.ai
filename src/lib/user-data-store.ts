@@ -1,10 +1,17 @@
 import { createHash, randomUUID } from "crypto";
-import { chmod, mkdir, readFile, writeFile } from "fs/promises";
+import { chmod, mkdir } from "fs/promises";
 import path from "path";
 
 import type { Permission } from "@/lib/rbac";
 import { normalizeRoles, type Role } from "@/lib/rbac";
 import { usesEphemeralUserStorage } from "@/lib/serverless-storage";
+import {
+  readGlobalUserFile,
+  readUserFile,
+  usesBlobUserStorage,
+  writeGlobalUserFile,
+  writeUserFile,
+} from "@/lib/user-file-storage";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -119,7 +126,7 @@ export async function ensureUser(
   try {
     return await ensureUserOnDisk(email, name, opts);
   } catch (err) {
-    if (usesEphemeralUserStorage()) {
+    if (usesEphemeralUserStorage() && !usesBlobUserStorage()) {
       return { userId: userIdFromEmail(email) };
     }
     throw err;
@@ -135,31 +142,38 @@ async function ensureUserOnDisk(
   await ensureDirSecure(byEmailDir());
 
   const key = emailKey(email);
-  const indexPath = path.join(byEmailDir(), `${key}.json`);
+  const indexRel = `_by-email/${key}.json`;
 
   let userId: string | null = null;
-  try {
-    const raw = await readFile(indexPath, "utf8");
-    const parsed = JSON.parse(raw) as { userId?: unknown };
-    if (typeof parsed.userId === "string" && isSafeUserId(parsed.userId)) {
-      userId = parsed.userId;
+  const indexRaw = await readGlobalUserFile(indexRel);
+  if (indexRaw) {
+    try {
+      const parsed = JSON.parse(indexRaw) as { userId?: unknown };
+      if (typeof parsed.userId === "string" && isSafeUserId(parsed.userId)) {
+        userId = parsed.userId;
+      }
+    } catch {
+      /* bad index */
     }
-  } catch {
-    /* no index yet */
   }
   if (!userId) {
     userId = randomUUID();
-    await writeFile(indexPath, JSON.stringify({ userId }, null, 0), { mode: 0o600 });
+    await writeGlobalUserFile(indexRel, JSON.stringify({ userId }, null, 0));
   }
 
-  const dir = userDir(userId);
-  await ensureDirSecure(dir);
+  if (!usesBlobUserStorage()) {
+    const dir = userDir(userId);
+    await ensureDirSecure(dir);
+    await mkdir(path.join(dir, "conversations"), { recursive: true, mode: 0o700 });
+    await mkdir(path.join(dir, "audit"), { recursive: true, mode: 0o700 });
+  }
 
-  const profilePath = path.join(dir, "profile.json");
   const now = new Date().toISOString();
   let profile: UserProfile;
+  const profileRaw = await readUserFile(userId, "profile.json");
   try {
-    const existing = JSON.parse(await readFile(profilePath, "utf8")) as UserProfile;
+    const existing = JSON.parse(profileRaw ?? "null") as UserProfile;
+    if (!existing || existing.userId !== userId) throw new Error("no profile");
     const ssoSubjects = { ...existing.ssoSubjects };
     if (opts.ssoSubject?.provider === "google") ssoSubjects.google = opts.ssoSubject.subject;
     if (opts.ssoSubject?.provider === "microsoft") ssoSubjects.microsoft = opts.ssoSubject.subject;
@@ -197,23 +211,23 @@ async function ensureUserOnDisk(
     };
   }
 
-  await writeFile(profilePath, JSON.stringify(profile, null, 0), { mode: 0o600 });
-  await mkdir(path.join(dir, "conversations"), { recursive: true, mode: 0o700 });
-  await mkdir(path.join(dir, "audit"), { recursive: true, mode: 0o700 });
+  await writeUserFile(userId, "profile.json", JSON.stringify(profile, null, 0));
   return { userId };
 }
 
 export async function readUserByEmail(emailRaw: string): Promise<UserProfile | null> {
   const email = emailRaw.trim().toLowerCase();
   const key = emailKey(email);
-  try {
-    const raw = await readFile(path.join(byEmailDir(), `${key}.json`), "utf8");
-    const parsed = JSON.parse(raw) as { userId?: unknown };
-    if (typeof parsed.userId === "string" && isSafeUserId(parsed.userId)) {
-      return readUserProfile(parsed.userId);
+  const raw = await readGlobalUserFile(`_by-email/${key}.json`);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { userId?: unknown };
+      if (typeof parsed.userId === "string" && isSafeUserId(parsed.userId)) {
+        return readUserProfile(parsed.userId);
+      }
+    } catch {
+      /* not found */
     }
-  } catch {
-    /* not found */
   }
   return null;
 }
@@ -221,7 +235,8 @@ export async function readUserByEmail(emailRaw: string): Promise<UserProfile | n
 export async function readUserProfile(userId: string): Promise<UserProfile | null> {
   if (!isSafeUserId(userId)) return null;
   try {
-    const raw = await readFile(path.join(userDir(userId), "profile.json"), "utf8");
+    const raw = await readUserFile(userId, "profile.json");
+    if (!raw) return null;
     const p = JSON.parse(raw) as Partial<UserProfile>;
     if (p.userId !== userId || typeof p.email !== "string") return null;
     return {
@@ -252,8 +267,6 @@ export async function setUserPlan(userId: string, plan: UserPlan): Promise<boole
     plan: normalizePlan(plan),
     updatedAt: new Date().toISOString(),
   };
-  await writeFile(path.join(userDir(userId), "profile.json"), JSON.stringify(updated, null, 0), {
-    mode: 0o600,
-  });
+  await writeUserFile(userId, "profile.json", JSON.stringify(updated, null, 0));
   return true;
 }

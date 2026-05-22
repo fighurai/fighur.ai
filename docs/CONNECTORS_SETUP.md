@@ -4,6 +4,8 @@ Sign in at https://fighur.ai first, then **Settings → Connect** for each provi
 
 **Security:** Connections and tokens are tied to your account (`userId`) on the server. Other users cannot access your mail or calendar. See [PRIVACY_AND_SECURITY.md](./PRIVACY_AND_SECURITY.md).
 
+**Cross-browser:** After you connect Gmail or Microsoft on one browser, sign in on another — connections and chat history should appear automatically. On Vercel production, create a **Blob store** in the project (**Storage → Blob**) so `BLOB_READ_WRITE_TOKEN` is set; otherwise server data may not persist across deploys.
+
 ## Google · Gmail & Calendar
 
 Uses the **same** OAuth client as Google sign-in (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`).

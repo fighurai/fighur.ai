@@ -21,6 +21,7 @@ import {
   recordPrivacyWaiverAcceptance,
   type PrivacyWaiverKind,
 } from "@/lib/privacy-waiver";
+import { saveWorkModeToServer, syncConnectedServicesFromServer } from "@/lib/connected-services-sync";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
 async function fetchConnectStatus(): Promise<ConnectStatusResponse> {
@@ -70,8 +71,18 @@ export function SettingsControls() {
     refreshLocal();
     const on = () => refreshLocal();
     window.addEventListener("smile-connected-services-changed", on);
-    return () => window.removeEventListener("smile-connected-services-changed", on);
+    window.addEventListener("smile-auth-changed", on);
+    return () => {
+      window.removeEventListener("smile-connected-services-changed", on);
+      window.removeEventListener("smile-auth-changed", on);
+    };
   }, [refreshLocal]);
+
+  useEffect(() => {
+    const userId = readSession()?.userId;
+    if (!userId) return;
+    void syncConnectedServicesFromServer(userId).then(() => refreshLocal());
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -80,6 +91,8 @@ export function SettingsControls() {
     const oauthErr = u.searchParams.get("oauth_error");
     if (connected || oauthErr) {
       void refreshOauth();
+      const userId = readSession()?.userId;
+      if (userId) void syncConnectedServicesFromServer(userId).then(() => refreshLocal());
       if (oauthErr) {
         setOauthError(OAUTH_ERROR_HINTS[oauthErr] ?? `Connection error: ${oauthErr}`);
       }
@@ -93,8 +106,10 @@ export function SettingsControls() {
     if (open) {
       setConnectError(null);
       void refreshOauth();
+      const userId = readSession()?.userId;
+      if (userId) void syncConnectedServicesFromServer(userId).then(() => refreshLocal());
     }
-  }, [open, refreshOauth]);
+  }, [open, refreshOauth, refreshLocal]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -115,6 +130,8 @@ export function SettingsControls() {
       workMode,
       coworkDevice: workMode === "cowork",
     });
+    const userId = readSession()?.userId;
+    if (userId) void saveWorkModeToServer(workMode);
   };
 
   const disconnectProvider = async (provider: "google" | "microsoft") => {
