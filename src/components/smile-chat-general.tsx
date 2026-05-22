@@ -951,7 +951,13 @@ export function SmileChatGeneral() {
           </div>
         </form>
       </div>
-      {error ? <p className="mt-1.5 px-1 text-center text-xs text-red-300/90">{error}</p> : null}
+      {error ? (
+        <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
+      ) : !showEmpty ? (
+        <p className="mt-1 hidden px-1 text-center text-[0.65rem] leading-relaxed text-[var(--text-faint)] sm:block">
+          Chats saved in this browser · Model picker enabled · Speech can refine your input
+        </p>
+      ) : null}
     </>
   );
 
@@ -1312,7 +1318,7 @@ export function SmileChatGeneral() {
                 )}
               </div>
               {composerPanel}
-              <p className="mt-0.5 pb-0 text-center text-[0.6rem] text-[var(--text-faint)]">
+              <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
                 © {new Date().getFullYear()} FIGHURAI
               </p>
             </div>
