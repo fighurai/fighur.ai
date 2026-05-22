@@ -59,8 +59,8 @@ export function getCookieOAuthIntegrationFlags(
 }
 
 /**
- * Signed-in users: flags from encrypted files under their user directory.
- * Anonymous: legacy cookie-based tokens only.
+ * OAuth integration flags for the **signed-in user only** (per-user disk + matching cookie).
+ * Anonymous sessions never receive mail/calendar token access.
  */
 export async function getLiveOAuthIntegrationFlags(
   request: Request,
@@ -69,11 +69,9 @@ export async function getLiveOAuthIntegrationFlags(
   if (!secret) return {};
 
   const session = await readVerifiedSession(request);
-  if (session) {
-    return loadIntegrationFlagsFromUserStore(session.userId, secret, request);
-  }
+  if (!session) return {};
 
-  return getCookieOAuthIntegrationFlags(request, secret);
+  return loadIntegrationFlagsFromUserStore(session.userId, secret, request);
 }
 
 const INTEGRATION_BOOL_KEYS = [
@@ -86,14 +84,34 @@ const INTEGRATION_BOOL_KEYS = [
   "deviceFiles",
 ] as const;
 
+/** Client may set work mode / device; OAuth flags come only from the server. */
 export function mergeIntegrationFlags(
   fromBody: Partial<ChatIntegrationFlags> | null,
-  fromCookies: Partial<ChatIntegrationFlags>,
+  fromServer: Partial<ChatIntegrationFlags>,
+  signedIn: boolean,
 ): Partial<ChatIntegrationFlags> | null {
-  const merged: Partial<ChatIntegrationFlags> = { ...(fromBody ?? {}) };
-  for (const k of INTEGRATION_BOOL_KEYS) {
-    if (fromCookies[k] === true) merged[k] = true;
+  const merged: Partial<ChatIntegrationFlags> = {};
+
+  const wm = fromBody?.workMode;
+  if (wm === "chat" || wm === "cowork" || wm === "codex") {
+    merged.workMode = wm;
+    if (wm === "cowork") merged.coworkDevice = true;
+  } else if (fromBody?.coworkDevice === true) {
+    merged.coworkDevice = true;
+    merged.workMode = "cowork";
   }
+
+  if (signedIn && fromBody?.deviceFiles === true) {
+    merged.deviceFiles = true;
+  }
+
+  if (signedIn) {
+    for (const k of INTEGRATION_BOOL_KEYS) {
+      if (k === "deviceFiles" || k === "coworkDevice") continue;
+      if (fromServer[k] === true) merged[k] = true;
+    }
+  }
+
   if (merged.workMode === "cowork") merged.coworkDevice = true;
   return Object.keys(merged).length ? merged : null;
 }

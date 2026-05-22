@@ -1,3 +1,4 @@
+import { conversationStorageUserId } from "@/lib/conversation-storage";
 import { normalizeWorkMode, type WorkMode } from "@/lib/work-mode";
 
 export const SERVICE_IDS = [
@@ -19,7 +20,9 @@ export type ConnectedServicesState = {
   services: Record<ServiceId, { connected: boolean; label?: string }>;
 };
 
-const STORAGE_KEY = "smile-ai-connected-services-v1";
+function storageKeyForUser(userId?: string | null): string {
+  return `smile-ai-connected-services-v1:${conversationStorageUserId(userId)}`;
+}
 
 export const SERVICE_LABELS: Record<ServiceId, string> = {
   gmail: "Gmail",
@@ -45,10 +48,10 @@ function defaultState(): ConnectedServicesState {
   };
 }
 
-export function readConnectedServices(): ConnectedServicesState {
+export function readConnectedServices(userId?: string | null): ConnectedServicesState {
   if (typeof window === "undefined") return defaultState();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKeyForUser(userId));
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw) as Partial<ConnectedServicesState>;
     const base = defaultState();
@@ -73,10 +76,13 @@ export function readConnectedServices(): ConnectedServicesState {
   }
 }
 
-export function writeConnectedServices(next: ConnectedServicesState): void {
+export function writeConnectedServices(
+  next: ConnectedServicesState,
+  userId?: string | null,
+): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(storageKeyForUser(userId), JSON.stringify(next));
     window.dispatchEvent(new Event("smile-connected-services-changed"));
   } catch {
     /* quota */

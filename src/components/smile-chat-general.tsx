@@ -21,6 +21,10 @@ import {
 } from "@/lib/auth-storage";
 import { ANONYMOUS_SPEND_LIMIT_USD } from "@/lib/usage-constants";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
+import {
+  fetchServerConversations,
+  saveServerConversations,
+} from "@/lib/conversation-sync";
 import { buildDeviceManifestForChat } from "@/lib/device-files-client";
 import { activeBuildFile, extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
@@ -34,8 +38,10 @@ import {
 import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
 import {
   deriveTitle,
+  conversationStorageUserId,
   loadConversations,
   loadLastActiveId,
+  migrateAnonymousConversationsToUser,
   persistConversations,
   removeConversation,
   saveLastActiveId,
@@ -334,6 +340,7 @@ export function SmileChatGeneral() {
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
+  const serverSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const promptifyAbortRef = useRef<AbortController | null>(null);
   const speechRef = useRef<SpeechSession | null>(null);
@@ -350,38 +357,9 @@ export function SmileChatGeneral() {
     messagesRef.current = messages;
   }, [messages]);
 
-  useEffect(() => {
-    setSession(readSession());
-    const onAuth = () => {
-      setSession(readSession());
-      void fetchUsageSummary().then(setUsage);
-    };
-    window.addEventListener("smile-auth-changed", onAuth);
-    void fetchUsageSummary().then(setUsage);
-    return () => window.removeEventListener("smile-auth-changed", onAuth);
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const fromSso = params.has("signed_in");
-    void hydrateServerSession().then((ok) => {
-      setSession(readSession());
-      if (fromSso) {
-        params.delete("signed_in");
-        const qs = params.toString();
-        const path = window.location.pathname + (qs ? `?${qs}` : "");
-        window.history.replaceState(null, "", path);
-        if (!ok && !readSession()) {
-          window.location.href = "/sign-in?error=session_sync";
-        }
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    const list = loadConversations("assistant");
+  const applyConversationList = useCallback((list: SavedConversation[], storageUser: string) => {
     setConversations(list);
-    const last = loadLastActiveId("assistant");
+    const last = loadLastActiveId("assistant", storageUser);
     if (last && list.some((c) => c.id === last)) {
       const c = list.find((x) => x.id === last)!;
       const fallbackArtifact =
@@ -400,10 +378,67 @@ export function SmileChatGeneral() {
       setMessages(sanitizeAssistantMessages(c.messages));
       setLatestBuildArtifact(fallbackArtifact);
       setBuildSidebarOpen(Boolean(fallbackArtifact));
-      saveLastActiveId(c.id, "assistant");
+      saveLastActiveId(c.id, "assistant", storageUser);
+    } else {
+      setActiveId(null);
+      setMessages([]);
+      setLatestBuildArtifact(null);
+      setBuildSidebarOpen(false);
     }
-    setHydrated(true);
   }, []);
+
+  const loadAccountChats = useCallback(
+    async (userId?: string | null) => {
+      const storageUser = conversationStorageUserId(userId);
+      if (userId) {
+        migrateAnonymousConversationsToUser(userId, "assistant");
+        const server = await fetchServerConversations();
+        if (server && server.length > 0) {
+          persistConversations(server, "assistant", storageUser);
+          applyConversationList(server, storageUser);
+          return;
+        }
+      }
+      applyConversationList(loadConversations("assistant", storageUser), storageUser);
+    },
+    [applyConversationList],
+  );
+
+  useEffect(() => {
+    setSession(readSession());
+    const onAuth = () => {
+      const next = readSession();
+      setSession(next);
+      void fetchUsageSummary().then(setUsage);
+      void loadAccountChats(next?.userId);
+    };
+    window.addEventListener("smile-auth-changed", onAuth);
+    void fetchUsageSummary().then(setUsage);
+    return () => window.removeEventListener("smile-auth-changed", onAuth);
+  }, [loadAccountChats]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromSso = params.has("signed_in");
+    void hydrateServerSession().then(async (ok) => {
+      const next = readSession();
+      setSession(next);
+      if (next?.userId) await loadAccountChats(next.userId);
+      if (fromSso) {
+        params.delete("signed_in");
+        const qs = params.toString();
+        const path = window.location.pathname + (qs ? `?${qs}` : "");
+        window.history.replaceState(null, "", path);
+        if (!ok && !readSession()) {
+          window.location.href = "/sign-in?error=session_sync";
+        }
+      }
+    });
+  }, [loadAccountChats]);
+
+  useEffect(() => {
+    void loadAccountChats(session?.userId).finally(() => setHydrated(true));
+  }, [session?.userId, loadAccountChats]);
 
   useEffect(() => {
     void fetch("/api/chat/models", { credentials: "include" })
@@ -449,6 +484,7 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     if (!hydrated || !activeId || messages.length === 0) return;
+    const storageUser = conversationStorageUserId(session?.userId);
     setConversations((prev) => {
       const merged = upsertConversation(prev, {
         id: activeId,
@@ -457,11 +493,17 @@ export function SmileChatGeneral() {
         updatedAt: Date.now(),
         buildArtifact: latestBuildArtifact,
       });
-      persistConversations(merged, "assistant");
+      persistConversations(merged, "assistant", storageUser);
+      if (session?.userId) {
+        if (serverSyncRef.current) clearTimeout(serverSyncRef.current);
+        serverSyncRef.current = setTimeout(() => {
+          void saveServerConversations(merged);
+        }, 800);
+      }
       return merged;
     });
-    saveLastActiveId(activeId, "assistant");
-  }, [messages, activeId, hydrated, latestBuildArtifact]);
+    saveLastActiveId(activeId, "assistant", storageUser);
+  }, [messages, activeId, hydrated, latestBuildArtifact, session?.userId]);
 
   const stopAll = useCallback(() => {
     abortRef.current?.abort();
@@ -483,9 +525,9 @@ export function SmileChatGeneral() {
     setLatestBuildArtifact(null);
     setBuildSidebarOpen(false);
     setAttachments([]);
-    saveLastActiveId(null, "assistant");
+    saveLastActiveId(null, "assistant", conversationStorageUserId(session?.userId));
     setMobileSidebarOpen(false);
-  }, [stopAll]);
+  }, [stopAll, session?.userId]);
 
   useEffect(() => {
     const onHome = () => newChat();
@@ -505,10 +547,10 @@ export function SmileChatGeneral() {
       setError(null);
       setLatestBuildArtifact(fallbackArtifact);
       setBuildSidebarOpen(Boolean(fallbackArtifact));
-      saveLastActiveId(c.id, "assistant");
+      saveLastActiveId(c.id, "assistant", conversationStorageUserId(session?.userId));
       setMobileSidebarOpen(false);
     },
-    [stopAll],
+    [stopAll, session?.userId],
   );
 
   const deleteConversation = useCallback(
@@ -516,7 +558,9 @@ export function SmileChatGeneral() {
       ev.stopPropagation();
       const next = removeConversation(conversations, convId);
       setConversations(next);
-      persistConversations(next, "assistant");
+      const storageUser = conversationStorageUserId(session?.userId);
+      persistConversations(next, "assistant", storageUser);
+      if (session?.userId) void saveServerConversations(next);
       if (activeId === convId) {
         if (next.length > 0) selectConversation(next[0]);
         else {
@@ -678,9 +722,11 @@ export function SmileChatGeneral() {
       .filter((m) => m.id !== assistantId)
       .map(({ role, content }) => ({ role, content }));
 
-    const connected = readConnectedServices();
+    const connected = readConnectedServices(session?.userId);
     const deviceManifest =
-      connected.services.deviceFiles.connected ? await buildDeviceManifestForChat() : null;
+      session?.userId && connected.services.deviceFiles.connected
+        ? await buildDeviceManifestForChat(session.userId)
+        : null;
 
     const chatPayload = JSON.stringify({
       messages: history,

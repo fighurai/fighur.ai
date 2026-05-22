@@ -22,9 +22,11 @@ export async function POST(request: Request) {
   }
 
   const session = await readVerifiedSession(request);
-  if (session) {
-    await deleteProviderConnection(session.userId, provider);
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
+
+  await deleteProviderConnection(session.userId, provider);
 
   const res = NextResponse.json({ ok: true });
   const secure = process.env.NODE_ENV === "production";

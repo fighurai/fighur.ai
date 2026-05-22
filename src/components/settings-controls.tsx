@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { ConnectStatusResponse } from "@/lib/connect-status-types";
+import { readSession } from "@/lib/auth-storage";
 import {
   readConnectedServices,
   writeConnectedServices,
@@ -34,7 +35,9 @@ export function SettingsControls() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [oauth, setOauth] = useState<ConnectStatusResponse | null>(null);
-  const [local, setLocal] = useState<ConnectedServicesState>(() => readConnectedServices());
+  const [local, setLocal] = useState<ConnectedServicesState>(() =>
+    readConnectedServices(readSession()?.userId),
+  );
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const [oauthBusy, setOauthBusy] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
@@ -48,7 +51,10 @@ export function SettingsControls() {
     }
   }, []);
 
-  const refreshLocal = useCallback(() => setLocal(readConnectedServices()), []);
+  const refreshLocal = useCallback(
+    () => setLocal(readConnectedServices(readSession()?.userId)),
+    [],
+  );
 
   useEffect(() => {
     refreshLocal();
@@ -90,7 +96,7 @@ export function SettingsControls() {
 
   const persistLocal = useCallback((next: ConnectedServicesState) => {
     setLocal(next);
-    writeConnectedServices(next);
+    writeConnectedServices(next, readSession()?.userId);
   }, []);
 
   const setWorkMode = (workMode: WorkMode) => {
@@ -130,6 +136,11 @@ export function SettingsControls() {
 
   const connectDeviceFolder = async () => {
     setDeviceError(null);
+    const userId = readSession()?.userId;
+    if (!userId) {
+      setDeviceError("Sign in to link a folder to your account.");
+      return;
+    }
     const w = window as Window & {
       showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
     };
@@ -140,8 +151,8 @@ export function SettingsControls() {
     }
     try {
       const handle = await picker();
-      await saveDeviceDirectoryHandle(handle);
-      const next = readConnectedServices();
+      await saveDeviceDirectoryHandle(handle, userId);
+      const next = readConnectedServices(userId);
       next.services.deviceFiles = { connected: true, label: handle.name };
       persistLocal(next);
     } catch (e) {
@@ -152,8 +163,8 @@ export function SettingsControls() {
   };
 
   const disconnectDevice = () => {
-    void idbClearDeviceHandle();
-    const next = readConnectedServices();
+    void idbClearDeviceHandle(readSession()?.userId);
+    const next = readConnectedServices(readSession()?.userId);
     next.services.deviceFiles = { connected: false };
     persistLocal(next);
   };

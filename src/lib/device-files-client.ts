@@ -4,7 +4,11 @@ import type { DeviceManifest, DeviceManifestEntry } from "@/lib/device-manifest"
 
 const DB_NAME = "fighurai-device-v1";
 const STORE = "handles";
-const HANDLE_KEY = "folder";
+function handleKeyForUser(userId: string): string {
+  return `folder:${userId}`;
+}
+
+const LEGACY_HANDLE_KEY = "folder";
 
 const TEXT_EXTENSIONS = new Set([
   "txt",
@@ -68,12 +72,13 @@ async function idbGet(key: string): Promise<FileSystemDirectoryHandle | null> {
   });
 }
 
-export async function idbClearDeviceHandle(): Promise<void> {
+export async function idbClearDeviceHandle(userId?: string | null): Promise<void> {
   try {
     const db = await openDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).delete(HANDLE_KEY);
+      if (userId) tx.objectStore(STORE).delete(handleKeyForUser(userId));
+      tx.objectStore(STORE).delete(LEGACY_HANDLE_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -82,13 +87,22 @@ export async function idbClearDeviceHandle(): Promise<void> {
   }
 }
 
-export async function saveDeviceDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-  await idbSet(HANDLE_KEY, handle);
+export async function saveDeviceDirectoryHandle(
+  handle: FileSystemDirectoryHandle,
+  userId: string,
+): Promise<void> {
+  if (!userId) return;
+  await idbSet(handleKeyForUser(userId), handle);
 }
 
-export async function loadDeviceDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {
+export async function loadDeviceDirectoryHandle(
+  userId: string | null | undefined,
+): Promise<FileSystemDirectoryHandle | null> {
+  if (!userId) return null;
   try {
-    return await idbGet(HANDLE_KEY);
+    const keyed = await idbGet(handleKeyForUser(userId));
+    if (keyed) return keyed;
+    return await idbGet(LEGACY_HANDLE_KEY);
   } catch {
     return null;
   }
@@ -169,8 +183,11 @@ async function walkDirectory(
 }
 
 /** Build manifest from persisted folder handle (for chat payload). */
-export async function buildDeviceManifestForChat(): Promise<DeviceManifest | null> {
-  const handle = await loadDeviceDirectoryHandle();
+export async function buildDeviceManifestForChat(
+  userId: string | null | undefined,
+): Promise<DeviceManifest | null> {
+  if (!userId) return null;
+  const handle = await loadDeviceDirectoryHandle(userId);
   if (!handle) return null;
   const ok = await ensureReadPermission(handle);
   if (!ok) return null;

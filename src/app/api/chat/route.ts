@@ -444,11 +444,17 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     );
   }
 
-  const cookieFlags = await getLiveOAuthIntegrationFlags(request);
+  const verified = ctx.session;
+  const serverOAuthFlags = await getLiveOAuthIntegrationFlags(request);
   const integrationFlags = mergeIntegrationFlags(
     parseIntegrationPayload(b.connectedServices),
-    cookieFlags,
+    serverOAuthFlags,
+    Boolean(verified),
   );
+  const deviceManifest =
+    verified && integrationFlags?.deviceFiles
+      ? parseDeviceManifest(b.deviceManifest)
+      : null;
   let effectiveBuilderTarget = builderTarget;
   if (integrationFlags?.workMode === "codex" && effectiveBuilderTarget === "general") {
     effectiveBuilderTarget = "application";
@@ -456,9 +462,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
   if (integrationFlags?.workMode === "cowork" && effectiveBuilderTarget === "general") {
     effectiveBuilderTarget = "workflow";
   }
-  const verified = ctx.session;
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
-  const deviceManifest = parseDeviceManifest(b.deviceManifest);
   const agentCtx: AgentToolContext = {
     request,
     flags: integrationFlags ?? {},

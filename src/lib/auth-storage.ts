@@ -185,6 +185,8 @@ export async function hydrateServerSession(): Promise<boolean> {
 }
 
 export async function clearSessionAndServer(): Promise<void> {
+  const { onLogoutClientSide } = await import("@/lib/client-auth-cleanup");
+  await onLogoutClientSide();
   clearSession();
   try {
     await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });

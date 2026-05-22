@@ -6,6 +6,7 @@ import {
   sealSessionPayload,
   type SmileServerSession,
 } from "@/lib/session-cookie";
+import { attachOAuthCookiesFromUserStore } from "@/lib/oauth-session-sync";
 import { readUserProfile, type UserPlan } from "@/lib/user-data-store";
 
 const SESSION_MAX_AGE = 60 * 60 * 24 * 60;
@@ -39,6 +40,7 @@ export async function attachSessionCookie(
   const sealed = sealSessionPayload(sessionPayload);
   if (!sealed) return null;
   res.cookies.set(COOKIE_SESSION, sealed, sessionCookieOptions());
+  await attachOAuthCookiesFromUserStore(res, sessionPayload.userId);
   return res;
 }
 

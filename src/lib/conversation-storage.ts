@@ -10,19 +10,23 @@ export type SavedConversation = {
 
 export type ConversationScope = "ask" | "assistant";
 
-const STORAGE_BY_SCOPE: Record<
-  ConversationScope,
-  { list: string; active: string }
-> = {
-  ask: {
-    list: "fighurai-conversations-v1",
-    active: "fighurai-conversations-active-id",
-  },
-  assistant: {
-    list: "fighurai-assistant-conversations-v1",
-    active: "fighurai-assistant-active-id",
-  },
-};
+/** Local-only chats before sign-in; migrated to account key on first login. */
+export const ANONYMOUS_STORAGE_USER = "anonymous";
+
+export function conversationStorageUserId(userId?: string | null): string {
+  return userId && userId.length > 0 ? userId : ANONYMOUS_STORAGE_USER;
+}
+
+function storageKeys(scope: ConversationScope, storageUser: string) {
+  const base =
+    scope === "ask" ? "fighurai-conversations-v1" : "fighurai-assistant-conversations-v1";
+  const activeBase =
+    scope === "ask" ? "fighurai-conversations-active-id" : "fighurai-assistant-active-id";
+  return {
+    list: `${base}:${storageUser}`,
+    active: `${activeBase}:${storageUser}`,
+  };
+}
 
 const MAX_CONVERSATIONS = 80;
 
@@ -35,10 +39,11 @@ function deriveTitle(messages: ChatMessage[]): string {
 
 export function loadConversations(
   scope: ConversationScope = "ask",
+  storageUser: string = ANONYMOUS_STORAGE_USER,
 ): SavedConversation[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORAGE_BY_SCOPE[scope].list);
+    const raw = localStorage.getItem(storageKeys(scope, storageUser).list);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as SavedConversation[];
     if (!Array.isArray(parsed)) return [];
@@ -63,10 +68,11 @@ export function loadConversations(
 
 export function loadLastActiveId(
   scope: ConversationScope = "ask",
+  storageUser: string = ANONYMOUS_STORAGE_USER,
 ): string | null {
   if (typeof window === "undefined") return null;
   try {
-    const v = localStorage.getItem(STORAGE_BY_SCOPE[scope].active);
+    const v = localStorage.getItem(storageKeys(scope, storageUser).active);
     return v && v.length > 0 ? v : null;
   } catch {
     return null;
@@ -76,10 +82,11 @@ export function loadLastActiveId(
 export function saveLastActiveId(
   id: string | null,
   scope: ConversationScope = "ask",
+  storageUser: string = ANONYMOUS_STORAGE_USER,
 ) {
   if (typeof window === "undefined") return;
   try {
-    const key = STORAGE_BY_SCOPE[scope].active;
+    const key = storageKeys(scope, storageUser).active;
     if (id === null) localStorage.removeItem(key);
     else localStorage.setItem(key, id);
   } catch {
@@ -90,13 +97,14 @@ export function saveLastActiveId(
 export function persistConversations(
   list: SavedConversation[],
   scope: ConversationScope = "ask",
+  storageUser: string = ANONYMOUS_STORAGE_USER,
 ) {
   if (typeof window === "undefined") return;
   try {
     const trimmed = list
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, MAX_CONVERSATIONS);
-    localStorage.setItem(STORAGE_BY_SCOPE[scope].list, JSON.stringify(trimmed));
+    localStorage.setItem(storageKeys(scope, storageUser).list, JSON.stringify(trimmed));
   } catch {
     /* quota */
   }
@@ -120,6 +128,19 @@ export function removeConversation(
   id: string,
 ): SavedConversation[] {
   return list.filter((c) => c.id !== id);
+}
+
+/** Copy anonymous local chats into the signed-in user's bucket once. */
+export function migrateAnonymousConversationsToUser(
+  userId: string,
+  scope: ConversationScope = "assistant",
+): void {
+  if (typeof window === "undefined" || !userId) return;
+  const anon = loadConversations(scope, ANONYMOUS_STORAGE_USER);
+  if (anon.length === 0) return;
+  const existing = loadConversations(scope, userId);
+  if (existing.length > 0) return;
+  persistConversations(anon, scope, userId);
 }
 
 export { deriveTitle };
