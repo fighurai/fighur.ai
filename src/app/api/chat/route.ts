@@ -481,8 +481,8 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
   }
   if (deviceManifest?.entries.length) {
     system += `\n\n## Device folder indexed\n${deviceManifest.entries.length} paths under "${deviceManifest.rootName}". Use list_device_files / read_device_file when answering file questions. Paths are relative to that root (do not repeat "${deviceManifest.rootName}/" prefix).`;
-    if (integrationFlags?.workMode === "cowork" && integrationFlags?.deviceFiles) {
-      system += `\n\n## CoWork file organization (active)\nFor organize/sort/move: list_device_files → propose_device_file_ops (required). The UI shows Apply. Never say Apply is missing or send the user to Terminal.`;
+    if (integrationFlags?.deviceFiles) {
+      system += `\n\n## Device file organization (active)\nTools: list_device_files, read_device_file, **propose_device_file_ops** (use this to move/rename/mkdir). Flow: list → propose_device_file_ops. The UI shows an Apply button. Never say propose_device_file_ops or Apply is unavailable; never use Terminal.`;
     }
   }
   const budgetedMessages = trimMessagesToBudget(messages, system);

@@ -70,38 +70,33 @@ export async function availableAgentTools(
     });
   }
 
-  const coworkOrganize =
-    (flags.workMode === "cowork" || flags.coworkDevice === true) && ctx.deviceManifest;
-
   if (ctx.deviceManifest && ctx.deviceManifest.entries.length > 0) {
-    if (coworkOrganize) {
-      tools.push({
-        name: "propose_device_file_ops",
-        description:
-          "REQUIRED to organize/move/rename/mkdir files on the user's connected folder. Submits a plan the FIGHURAI app runs when the user clicks Apply. Never use Terminal or shell commands instead of this tool.",
-        input_schema: {
-          type: "object",
-          properties: {
-            summary: { type: "string", description: "Short description of the organization plan" },
-            ops: {
-              type: "array",
-              description: "File operations (max 40)",
-              items: {
-                type: "object",
-                properties: {
-                  op: { type: "string", enum: ["move", "rename", "mkdir"] },
-                  from: { type: "string" },
-                  to: { type: "string" },
-                  path: { type: "string" },
-                  newName: { type: "string" },
-                },
+    tools.push({
+      name: "propose_device_file_ops",
+      description:
+        "Organize/move/rename/mkdir files in the user's connected device folder. REQUIRED for any file organization request. The FIGHURAI app shows an Apply button—never use Terminal or claim this tool is missing.",
+      input_schema: {
+        type: "object",
+        properties: {
+          summary: { type: "string", description: "Short description of the organization plan" },
+          ops: {
+            type: "array",
+            description: "File operations (max 40)",
+            items: {
+              type: "object",
+              properties: {
+                op: { type: "string", enum: ["move", "rename", "mkdir"] },
+                from: { type: "string" },
+                to: { type: "string" },
+                path: { type: "string" },
+                newName: { type: "string" },
               },
             },
           },
-          required: ["ops"],
         },
-      });
-    }
+        required: ["ops"],
+      },
+    });
     tools.push({
       name: "list_device_files",
       description:

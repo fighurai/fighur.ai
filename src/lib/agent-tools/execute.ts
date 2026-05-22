@@ -78,9 +78,7 @@ export async function executeAgentTool(
               summary: manifestSummary(manifest),
               entries: slice,
               coworkOrganizeHint:
-                ctx.flags.workMode === "cowork" || ctx.flags.coworkDevice
-                  ? "Next: call propose_device_file_ops with your move/rename/mkdir plan (paths relative to root). The app shows an Apply button—never tell the user to use Terminal or that Apply does not exist."
-                  : undefined,
+                "Next: call propose_device_file_ops with your move/rename/mkdir plan (paths relative to root). The app shows an Apply button—never tell the user to use Terminal or that this tool is missing.",
             },
             null,
             2,
@@ -110,11 +108,8 @@ export async function executeAgentTool(
         };
       }
       case "propose_device_file_ops": {
-        if (ctx.flags.workMode !== "cowork" && !ctx.flags.coworkDevice) {
-          return {
-            content: "propose_device_file_ops is only for CoWork mode.",
-            isError: true,
-          };
+        if (!ctx.deviceManifest?.entries.length) {
+          return { content: "No device folder connected.", isError: true };
         }
         const payload = deviceOpsFromToolInput(input);
         if (!payload) {

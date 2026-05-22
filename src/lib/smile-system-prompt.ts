@@ -115,7 +115,7 @@ function integrationsContext(
   if (active.length === 0) return "";
 
   const coworkDeviceOrganize =
-    flags?.workMode === "cowork" && flags?.deviceFiles
+    flags?.deviceFiles
       ? `
 - **Device file organization (CoWork) — REQUIRED for move/sort requests:**
   1. Call \`list_device_files\` (and \`read_device_file\` if needed).

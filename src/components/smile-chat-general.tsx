@@ -874,11 +874,7 @@ export function SmileChatGeneral() {
         setStreamingMessageId(null);
         void fetchUsageSummary().then(setUsage);
 
-        if (
-          connected.workMode === "cowork" &&
-          connected.services.deviceFiles.connected &&
-          session?.userId
-        ) {
+        if (connected.services.deviceFiles.connected && session?.userId) {
           const opsPayload = parseDeviceOpsFromText(fullText);
           if (opsPayload && opsPayload.ops.length > 0) {
             setPendingDeviceOps(opsPayload);
