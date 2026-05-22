@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 
+import { isGoogleSsoConfigured } from "@/lib/auth-providers";
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
 import { getAppSealingSecret, randomState, sealJson } from "@/lib/oauth-crypto";
 
@@ -15,10 +16,13 @@ export async function GET() {
     return NextResponse.json({ error: "Server security secret not configured." }, { status: 503 });
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  if (!clientId) {
-    return NextResponse.json({ error: "Google SSO is not configured." }, { status: 503 });
+  if (!isGoogleSsoConfigured()) {
+    const base = getOAuthBaseUrl();
+    return NextResponse.redirect(
+      new URL("/sign-in?error=google_not_configured", base),
+    );
   }
+  const clientId = process.env.GOOGLE_CLIENT_ID!.trim();
 
   const state = randomState();
   const codeVerifier = randomBytes(32).toString("base64url");

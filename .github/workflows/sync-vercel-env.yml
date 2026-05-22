@@ -28,6 +28,10 @@ jobs:
           SMILE_APP_SECRET: ${{ secrets.SMILE_APP_SECRET }}
           SMILE_OAUTH_COOKIE_SECRET: ${{ secrets.SMILE_OAUTH_COOKIE_SECRET }}
           SMILE_DEFAULT_CHAT_MODEL: ${{ secrets.SMILE_DEFAULT_CHAT_MODEL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
           NEXT_PUBLIC_SITE_URL: https://fighur.ai
           SMILE_OAUTH_BASE_URL: https://fighur.ai
         run: bash scripts/github-sync-vercel-env.sh

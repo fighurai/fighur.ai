@@ -24,6 +24,8 @@ See `env.example`. Required for production:
 - `SMILE_USER_DATA_DIR` (persistent volume on serverless)
 - Provider API keys and OAuth client credentials for SSO
 
+Google SSO: see `docs/GOOGLE_SSO_SETUP.md`. Check deployment with `GET /api/auth/providers`.
+
 ## Operations (SOC 2 alignment)
 
 - Restrict filesystem access to `SMILE_USER_DATA_DIR`
