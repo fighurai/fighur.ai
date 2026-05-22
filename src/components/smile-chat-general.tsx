@@ -849,7 +849,7 @@ export function SmileChatGeneral() {
             }}
             placeholder={PROMPT_PLACEHOLDER}
             rows={showEmpty ? 3 : 2}
-            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-sm leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
+            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
             disabled={busy}
           />
           <input

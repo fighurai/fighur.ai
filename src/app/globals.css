@@ -22,13 +22,15 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   background: var(--bg-deep);
   color: var(--text-primary);
   font-family: var(--font-dm-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 ::selection {
@@ -71,12 +73,32 @@ body {
   box-sizing: border-box;
 }
 
+/* 16px+ prevents iOS Safari from zooming the page when the prompt is focused */
 #smile-chat-input {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   overflow-wrap: break-word;
   word-break: break-word;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+.composer-dock select {
+  font-size: 16px;
+}
+
+/* Smaller type only on desktop pointers — phones keep 16px even in landscape */
+@media (hover: hover) and (pointer: fine) {
+  #smile-chat-input {
+    font-size: 0.875rem;
+  }
+
+  .composer-dock select {
+    font-size: 0.75rem;
+  }
 }
 
 /* Chat messages — centered column with side breathing room */
