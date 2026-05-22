@@ -59,13 +59,9 @@ body {
   }
 }
 
-/* Fixed prompt dock — tight gap above composer */
+/* Prompt dock — in-flow under messages (no fixed gap) */
 .composer-dock {
-  padding-bottom: max(0.2rem, env(safe-area-inset-bottom, 0px));
-}
-
-.composer-dock-inner {
-  padding-top: 0.25rem;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
 }
 
 .composer-dock-inner,

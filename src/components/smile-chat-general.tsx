@@ -927,13 +927,7 @@ export function SmileChatGeneral() {
           </div>
         </form>
       </div>
-      {error ? (
-        <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
-      ) : !showEmpty ? (
-        <p className="mt-1 hidden px-1 text-center text-[0.65rem] text-[var(--text-faint)] sm:block">
-          Chats saved in this browser · Model picker enabled · Speech can refine your input
-        </p>
-      ) : null}
+      {error ? <p className="mt-1.5 px-1 text-center text-xs text-red-300/90">{error}</p> : null}
     </>
   );
 
@@ -1163,7 +1157,7 @@ export function SmileChatGeneral() {
         </div>
 
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col px-4 pb-2 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "pt-3 sm:pt-4 md:pt-6"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "pt-3 sm:pt-4 md:pt-6"}`}
         >
           {chatReady === false ? (
             <div
@@ -1206,7 +1200,7 @@ export function SmileChatGeneral() {
           ) : (
             <div
               ref={listRef}
-              className="chat-scroll chat-thread mx-auto mb-0 min-h-0 w-full max-w-2xl flex-1 space-y-3 overflow-y-auto pb-24 md:pb-28"
+              className="chat-scroll chat-thread mx-auto min-h-0 w-full max-w-2xl flex-1 space-y-3 overflow-y-auto"
             >
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
@@ -1259,14 +1253,12 @@ export function SmileChatGeneral() {
             </div>
           )}
 
-        </div>
-
-        {!showEmpty ? (
-          <div
-            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(40rem,42vw)]" : ""}`}
-          >
-            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 pt-1 sm:px-4">
-              <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1 md:hidden">
+          {!showEmpty ? (
+            <div
+              className={`composer-dock shrink-0 border-t border-white/[0.06] bg-[var(--bg-deep)] pt-1 md:left-0 ${buildSidebarOpen ? "md:mr-[min(40rem,42vw)]" : ""}`}
+            >
+              <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
+                <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-elevated)]/50 py-1 md:hidden">
                 {session ? (
                   <>
                     <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
@@ -1293,12 +1285,13 @@ export function SmileChatGeneral() {
                 )}
               </div>
               {composerPanel}
-              <p className="mt-0.5 pb-0 text-center text-[0.6rem] text-[var(--text-faint)]">
-                © {new Date().getFullYear()} FIGHURAI
-              </p>
+                <p className="mt-0.5 pb-0 text-center text-[0.6rem] text-[var(--text-faint)]">
+                  © {new Date().getFullYear()} FIGHURAI
+                </p>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
       {buildSidebarOpen ? (
         <aside className="hidden w-[min(40rem,42vw)] shrink-0 border-l border-white/[0.08] bg-[var(--bg-elevated)]/80 backdrop-blur-md md:flex md:flex-col">
