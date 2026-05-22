@@ -2,7 +2,7 @@
 export const SITE_TITLE = "FIGHURAI";
 export const SITE_DESCRIPTION =
   "Build apps, agents, and workflows with AI — your general assistant on fighur.ai.";
-/** Header logo (128px). */
+/** Header logo (128px, transparent background — tab/share use circled favicon assets). */
 export const SITE_ICON = "/images/smile-icon-128.png";
 /** Link preview when the site is shared (iMessage, Slack, X, etc.). */
 export const SITE_OG_IMAGE = "/images/og-image.png";
