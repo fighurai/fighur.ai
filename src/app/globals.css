@@ -39,8 +39,8 @@ body {
 }
 
 .chat-scroll {
-  max-height: min(calc(100dvh - 3.25rem - 11.5rem), 560px);
   scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Empty home — prompt box centered in viewport */
@@ -137,7 +137,7 @@ body {
 .chat-output-bubble .studio-md > :last-child,
 .chat-scroll .studio-md > :last-child {
   margin-bottom: 0;
-  padding-bottom: 0;
+  padding-bottom: 0.35em;
 }
 
 .chat-scroll .stream-live,

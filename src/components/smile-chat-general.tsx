@@ -305,6 +305,7 @@ export function SmileChatGeneral() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
   const [composerInset, setComposerInset] = useState(0);
+  const COMPOSER_SCROLL_BUFFER_PX = 24;
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -770,16 +771,24 @@ export function SmileChatGeneral() {
     if (!el) return;
 
     const measure = () => {
-      setComposerInset(el.offsetHeight);
+      const dock = composerDockRef.current;
+      if (!dock) return;
+      const height = Math.ceil(dock.getBoundingClientRect().height);
+      setComposerInset(height + COMPOSER_SCROLL_BUFFER_PX);
     };
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener("resize", measure);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", measure);
+    vv?.addEventListener("scroll", measure);
     return () => {
       ro.disconnect();
       window.removeEventListener("resize", measure);
+      vv?.removeEventListener("resize", measure);
+      vv?.removeEventListener("scroll", measure);
     };
   }, [showEmpty, error, session, attachments.length, pending, listening, translatingSpeech]);
   const lastAssistantMessageId = useMemo(() => {
@@ -1166,8 +1175,10 @@ export function SmileChatGeneral() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
+      <div
+        className={`flex min-h-0 flex-1 flex-col ${showEmpty ? "" : "h-[calc(100dvh-3.25rem)] max-h-[calc(100dvh-3.25rem)] overflow-hidden"}`}
+      >
+        <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
@@ -1234,7 +1245,7 @@ export function SmileChatGeneral() {
                 scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
               }}
             >
-              <div className="chat-thread flex w-full min-h-0 flex-col space-y-3">
+              <div className="chat-thread flex w-full min-h-0 flex-col space-y-3 pb-2">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
@@ -1250,7 +1261,7 @@ export function SmileChatGeneral() {
                     className={`group flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`relative min-w-0 rounded-2xl px-4 pt-2.5 pb-1.5 text-sm leading-relaxed sm:px-5 ${
+                      className={`relative min-w-0 rounded-2xl px-4 pt-2.5 pb-3 text-sm leading-relaxed sm:px-5 ${
                         m.role === "user"
                           ? "ml-auto w-fit max-w-[88%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
                           : isStreaming
