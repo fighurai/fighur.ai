@@ -1,6 +1,6 @@
 # Work modes (Chat · CoWork · Codex)
 
-FIGHURAI Settings let you pick how the assistant behaves. These are **behavior presets** inspired by two major agent products—not live integrations with Anthropic or OpenAI’s separate apps.
+FIGHURAI Settings let you pick how the assistant behaves. Modes change **system instructions** and which **live tools** run on the server (Claude models with connectors get read-only tools).
 
 ## Chat (default)
 
@@ -41,5 +41,7 @@ References: [Introducing Codex](https://openai.com/index/introducing-codex/), [C
 ## How to use in FIGHURAI
 
 1. **Settings** → **Work mode** → choose **Chat**, **CoWork**, or **Codex**.
-2. **CoWork** works best with **This device · folder** and connected Google/Microsoft accounts (for planning; live API tools may still be limited).
-3. **Codex** works best when you ask to build, fix, or refactor software—use the Build panel for HTML/code previews.
+2. **Connect** Google and/or Microsoft in Settings for Gmail, Calendar, and Outlook reads (OAuth tokens on the server).
+3. **CoWork** + **This device · folder** (Chrome): picks a folder, indexes text files in-browser, and sends a manifest each chat. Claude can call `list_device_files` / `read_device_file`.
+4. **Claude (Anthropic)** models use an **agent tool loop** when connectors or device manifest are available (`list_gmail_recent`, calendar tools, etc.). Other providers get a one-shot **live snapshot** in CoWork mode when possible.
+5. **Codex** + Build panel: multi-file fences like ` ```typescript src/app/page.tsx ` with a file tab bar in the Code panel.

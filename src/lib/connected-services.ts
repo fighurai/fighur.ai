@@ -86,7 +86,7 @@ export function writeConnectedServices(next: ConnectedServicesState): void {
 /** Payload for /api/chat (booleans + work mode string). */
 export function toConnectedServicesPayload(
   state: ConnectedServicesState,
-): Record<string, boolean | string> {
+): Record<string, boolean | string | undefined> {
   const out: Record<string, boolean | string> = {
     workMode: state.workMode,
     coworkDevice: state.workMode === "cowork",

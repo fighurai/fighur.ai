@@ -21,7 +21,8 @@ import {
 } from "@/lib/auth-storage";
 import { ANONYMOUS_SPEND_LIMIT_USD } from "@/lib/usage-constants";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
-import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
+import { buildDeviceManifestForChat } from "@/lib/device-files-client";
+import { activeBuildFile, extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
   downloadBuildCode,
@@ -326,6 +327,7 @@ export function SmileChatGeneral() {
   const [chatReady, setChatReady] = useState<boolean | null>(null);
   const [buildSidebarOpen, setBuildSidebarOpen] = useState(false);
   const [buildPanelTab, setBuildPanelTab] = useState<BuildPanelTab>("preview");
+  const [selectedBuildFilePath, setSelectedBuildFilePath] = useState<string | null>(null);
   const [latestBuildArtifact, setLatestBuildArtifact] = useState<BuildArtifact | null>(null);
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [session, setSession] = useState<SmileSession | null>(null);
@@ -676,11 +678,16 @@ export function SmileChatGeneral() {
       .filter((m) => m.id !== assistantId)
       .map(({ role, content }) => ({ role, content }));
 
+    const connected = readConnectedServices();
+    const deviceManifest =
+      connected.services.deviceFiles.connected ? await buildDeviceManifestForChat() : null;
+
     const chatPayload = JSON.stringify({
       messages: history,
       model: selectedModel,
       attachments: attachmentsForRequest,
-      connectedServices: toConnectedServicesPayload(readConnectedServices()),
+      connectedServices: toConnectedServicesPayload(connected),
+      deviceManifest: deviceManifest ?? undefined,
       userSession: session
         ? {
             email: session.email,
@@ -745,6 +752,7 @@ export function SmileChatGeneral() {
         const artifact = extractBuildArtifact(snapshot);
         if (artifact) {
           setLatestBuildArtifact(artifact);
+          setSelectedBuildFilePath(artifact.primaryPath ?? artifact.files?.[0]?.path ?? null);
           setBuildSidebarOpen(true);
           setBuildPanelTab("preview");
         }
@@ -939,15 +947,27 @@ export function SmileChatGeneral() {
     [latestBuildArtifact],
   );
   const canPreviewImage = Boolean(previewImageUrl);
+  const activeFile = useMemo(
+    () => (latestBuildArtifact ? activeBuildFile(latestBuildArtifact, selectedBuildFilePath) : null),
+    [latestBuildArtifact, selectedBuildFilePath],
+  );
+
+  const buildFileList = latestBuildArtifact?.files ?? [];
+
   const canPreviewHtml =
     !canPreviewImage &&
-    (latestBuildArtifact?.language === "html" || latestBuildArtifact?.language === "htm") &&
-    Boolean(latestBuildArtifact?.code.trim());
+    activeFile &&
+    (activeFile.language === "html" || activeFile.language === "htm") &&
+    Boolean(activeFile.code.trim());
 
   const downloadWorkspaceCode = useCallback(() => {
-    if (!latestBuildArtifact) return;
-    downloadBuildCode(latestBuildArtifact);
-  }, [latestBuildArtifact]);
+    if (!latestBuildArtifact || !activeFile) return;
+    downloadBuildCode({
+      language: activeFile.language,
+      code: activeFile.code,
+      primaryPath: activeFile.path,
+    });
+  }, [latestBuildArtifact, activeFile]);
 
   const downloadWorkspaceImage = useCallback(async () => {
     if (!previewImageUrl) return;
@@ -1148,7 +1168,7 @@ export function SmileChatGeneral() {
     <iframe
       title="Build preview"
       sandbox="allow-scripts allow-forms allow-modals"
-      srcDoc={latestBuildArtifact?.code ?? ""}
+      srcDoc={activeFile?.code ?? ""}
       className="h-full min-h-[24rem] w-full rounded-xl border border-white/[0.12] bg-white"
     />
   ) : (
@@ -1159,10 +1179,31 @@ export function SmileChatGeneral() {
     </div>
   );
 
-  const workspaceCodeBody = latestBuildArtifact ? (
-    <pre className="overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 text-xs text-[var(--text-primary)]">
-      <code>{latestBuildArtifact.code}</code>
-    </pre>
+  const workspaceCodeBody = latestBuildArtifact && activeFile ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {buildFileList.length > 1 ? (
+        <div className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-2">
+          {buildFileList.map((f) => (
+            <button
+              key={f.path}
+              type="button"
+              onClick={() => setSelectedBuildFilePath(f.path)}
+              className={`max-w-full truncate rounded-lg px-2 py-1 text-[0.65rem] ${
+                (selectedBuildFilePath ?? activeFile.path) === f.path
+                  ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
+                  : "text-[var(--text-muted)] hover:bg-white/[0.06]"
+              }`}
+              title={f.path}
+            >
+              {f.path}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <pre className="min-h-0 flex-1 overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-4 text-xs text-[var(--text-primary)]">
+        <code>{activeFile.code}</code>
+      </pre>
+    </div>
   ) : (
     <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
       No code artifact yet. Describe what you are building to generate code here.

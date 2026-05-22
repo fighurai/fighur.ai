@@ -9,6 +9,10 @@ import {
   writeConnectedServices,
   type ConnectedServicesState,
 } from "@/lib/connected-services";
+import {
+  idbClearDeviceHandle,
+  saveDeviceDirectoryHandle,
+} from "@/lib/device-files-client";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
 async function fetchConnectStatus(): Promise<ConnectStatusResponse> {
@@ -136,6 +140,7 @@ export function SettingsControls() {
     }
     try {
       const handle = await picker();
+      await saveDeviceDirectoryHandle(handle);
       const next = readConnectedServices();
       next.services.deviceFiles = { connected: true, label: handle.name };
       persistLocal(next);
@@ -147,6 +152,7 @@ export function SettingsControls() {
   };
 
   const disconnectDevice = () => {
+    void idbClearDeviceHandle();
     const next = readConnectedServices();
     next.services.deviceFiles = { connected: false };
     persistLocal(next);

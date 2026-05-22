@@ -45,6 +45,9 @@ export function extensionForLanguage(language: string): string {
 }
 
 export function buildCodeFilename(artifact: ChatBuildArtifact): string {
+  if (artifact.primaryPath?.trim()) {
+    return artifact.primaryPath.replace(/^\/+/, "");
+  }
   const ext = extensionForLanguage(artifact.language);
   if (ext === "html") return "index.html";
   if (ext === "tsx" || ext === "jsx") return `component.${ext}`;

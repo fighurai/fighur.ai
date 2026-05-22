@@ -83,6 +83,7 @@ The user selected **Codex** mode—modeled on [OpenAI Codex](https://openai.com/
 **How to behave**
 - Treat requests as **engineering tasks**: reproduce → plan → implement → verify.
 - Prefer **multi-file**, production-minded changes with file paths and modules named explicitly.
+- Label each code fence with path: \`\`\`typescript src/components/App.tsx\` (or a \`// file: path\` first line).
 - Include **commands to run** (install, test, lint, typecheck) and expected outcomes.
 - When fixing bugs: hypothesize root cause, show minimal fix, note regression tests to add.
 - For features: outline API/data/UI impact, then code in fenced blocks for the Build workspace.
@@ -93,7 +94,10 @@ The user selected **Codex** mode—modeled on [OpenAI Codex](https://openai.com/
 **Do not** claim you opened a cloud sandbox, merged a GitHub PR, or ran tests unless tool results prove it.`;
 }
 
-function integrationsContext(flags: Partial<ChatIntegrationFlags> | null | undefined): string {
+function integrationsContext(
+  flags: Partial<ChatIntegrationFlags> | null | undefined,
+  agentToolsEnabled?: boolean,
+): string {
   if (!flags) return "";
   const active: string[] = [];
   const mode = flags.workMode ?? (flags.coworkDevice ? "cowork" : "chat");
@@ -108,16 +112,23 @@ function integrationsContext(flags: Partial<ChatIntegrationFlags> | null | undef
   if (flags.deviceFiles) active.push("This device’s files and folders");
   if (active.length === 0) return "";
 
+  const toolRules = agentToolsEnabled
+    ? `**Live tools (enabled this session)**
+- You have **read-only tools** for connected Gmail, Google Calendar, Outlook, Microsoft calendar, and indexed device files.
+- **Call tools** when the user asks about inbox, schedule, or files on disk—do not guess inbox contents.
+- Tool results are authoritative; cite subjects/dates/paths from them.
+- You cannot send email, delete mail, or write to disk—only read/list. Offer drafts and scripts for write actions.
+- For Codex mode, still use fenced code blocks with paths: \`\`\`typescript src/path.ts\` for multi-file builds.`
+    : `**Capability rules**
+- OAuth may be connected but tools are unavailable on this model path—do not claim live mail/calendar reads.
+- Provide plans, drafts, and scripts; never claim sends/deletes without proof.`;
+
   return `
 
 ## User connections (Settings)
 The user indicated they care about these integrations: **${active.join(" · ")}**.
 
-**Critical capability rules**
-- Gmail / Microsoft / Slack flags may mean the user completed **real OAuth** on this server (tokens in httpOnly cookies). This chat still has **no wired tool calls** to those APIs unless you see explicit tool JSON in the thread—so do not claim you fetched mail, sent email, or listed Slack channels from their account.
-- Never claim you already sent an email, moved files, or read their messages without real tool results.
-- Do provide: clear plans, safe automation designs, copy they can paste into Gmail/Outlook, folder structures, scripts (e.g. shell/Python), and how to use their linked accounts safely in a client or automation they control.
-- When they ask to “sort files” or “send email”, default to **advisory + drafts + runnable local scripts** unless tool results prove an action ran.`;
+${toolRules}`;
 }
 
 function builderContext(target: SmileBuilderTarget): string {
@@ -156,6 +167,7 @@ export function buildSmileSystemPrompt(
   target: SmileBuilderTarget = "application",
   integrations?: Partial<ChatIntegrationFlags> | null,
   account?: { email: string; name?: string } | null,
+  options?: { agentToolsEnabled?: boolean },
 ): string {
   return `You are **FIGHURAI**, a general-purpose assistant similar to ChatGPT, Claude, or Perplexity.
 
@@ -175,7 +187,7 @@ Rules:
 11. The server picks **application**, **agent**, **workflow**, or **general** from the user’s **latest message**. Use a build mode section only when the latest message clearly asks to build an app/site, agent/bot, or automation—not for everyday Q&A.
 ${accountContext(account)}
 ${workModeContext(integrations)}
-${integrationsContext(integrations)}
+${integrationsContext(integrations, options?.agentToolsEnabled)}
 ${builderContext(target)}
 ${timeContext()}`;
 }

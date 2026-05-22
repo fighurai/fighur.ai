@@ -24,6 +24,11 @@ import {
   wrapStreamWithUsageAccounting,
 } from "@/lib/chat-request-guard";
 import { readVerifiedSession } from "@/lib/session-cookie";
+import type { AgentToolContext } from "@/lib/agent-tools/types";
+import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
+import { streamAnthropicWithTools } from "@/lib/agent-loop";
+import { parseDeviceManifest } from "@/lib/device-manifest";
+import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import {
   buildSmileSystemPrompt,
   type ChatIntegrationFlags,
@@ -279,6 +284,7 @@ export async function POST(request: Request) {
     model?: unknown;
     attachments?: unknown;
     connectedServices?: unknown;
+    deviceManifest?: unknown;
     userSession?: unknown;
   };
 
@@ -452,7 +458,22 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
   }
   const verified = ctx.session;
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
-  const system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession);
+  const deviceManifest = parseDeviceManifest(b.deviceManifest);
+  const agentCtx: AgentToolContext = {
+    request,
+    flags: integrationFlags ?? {},
+    deviceManifest,
+  };
+  const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
+  let system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession, {
+    agentToolsEnabled: agentToolsAvailable,
+  });
+  if (!agentToolsAvailable) {
+    system += await buildIntegrationSnapshot(request, integrationFlags);
+  }
+  if (deviceManifest?.entries.length) {
+    system += `\n\n## Device folder indexed\n${deviceManifest.entries.length} paths under "${deviceManifest.rootName}". Use list_device_files / read_device_file when answering file questions.`;
+  }
   const budgetedMessages = trimMessagesToBudget(messages, system);
   const estimatedChars = estimateMessageChars(budgetedMessages) + system.length;
   if (estimatedChars > MAX_REQUEST_CHAR_BUDGET) {
@@ -481,6 +502,18 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
   try {
     switch (option.provider) {
       case "anthropic":
+        if (agentToolsAvailable) {
+          return finish(
+            await streamAnthropicWithTools(
+              key,
+              option.apiModel,
+              system,
+              budgetedMessages,
+              agentCtx,
+              request.signal,
+            ),
+          );
+        }
         return finish(
           await streamAnthropic(system, budgetedMessages, option.apiModel, key, request.signal),
         );
