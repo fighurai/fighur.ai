@@ -42,18 +42,45 @@ Azure app **fighur ai**:
 
 ### Allow personal Microsoft accounts (@outlook.com, @hotmail.com, etc.)
 
-Your app is probably **“My organization only”** today — that blocks personal accounts. Change it once:
+Your app is probably **“My organization only”** today — that blocks personal accounts.
 
-1. [Azure Portal](https://portal.azure.com/) → **Microsoft Entra ID** → **App registrations** → **fighur ai**.
-2. Open **Authentication** (left menu).
-3. Under **Supported account types**, click **Edit** (or **Add a platform** if you have not set Web yet).
-4. Select:
+If the Authentication page fails with:
 
-   **Accounts in any organizational directory (Any Microsoft Entra ID tenant - Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)**
+`Property api.requestedAccessTokenVersion is invalid`
 
-   (Wording may be slightly different; choose the option that explicitly includes **personal Microsoft accounts**, not “My organization only”.)
+use the **Manifest** editor instead (Azure requires token version **2** before personal accounts work).
 
-5. Click **Save** at the top of the Authentication page.
+#### Fix via Manifest (recommended)
+
+1. [Azure Portal](https://portal.azure.com/) → **App registrations** → **fighur ai** → **Manifest** (left menu).
+2. Find `"signInAudience"` and `"api"` in the JSON.
+3. Set these values (numbers must be `2`, not `"2"`):
+
+   ```json
+   "signInAudience": "AzureADandPersonalMicrosoftAccount",
+   "api": {
+     "requestedAccessTokenVersion": 2,
+     ...
+   }
+   ```
+
+   If your manifest uses a top-level `"accessTokenAcceptedVersion": 2` instead of `api.requestedAccessTokenVersion`, set that to `2` and keep `signInAudience` as above.
+
+4. Click **Save** on the Manifest page.
+5. Go to **Authentication** and confirm supported accounts now show multitenant + personal.
+
+**Order tip:** If Save fails, try setting only `"api": { "requestedAccessTokenVersion": 2 }` first, Save, then change `signInAudience`, Save again.
+
+**Other blockers:**
+
+- **Application ID URI** under **Expose an API**: for multitenant apps it must use a verified domain (e.g. `api://4c5436c0-3e68-4c79-af81-8d3a745f6d2c` is fine). Remove a custom URI on an unverified domain if Save still fails.
+- **Certificates & secrets**: with personal accounts, keep at most **two** client secrets and **two** certificates before changing `signInAudience`.
+
+#### Authentication UI (after manifest saves)
+
+1. **Authentication** → **Supported account types** should already reflect personal + work.
+2. If not, select **Accounts in any organizational directory and personal Microsoft accounts**.
+3. Click **Save**.
 
 6. Under **Platform configurations** → **Web**, confirm redirect URIs (add if missing):
 
