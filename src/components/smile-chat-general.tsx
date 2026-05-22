@@ -412,7 +412,11 @@ export function SmileChatGeneral() {
         if (available.length === 0) {
           setError(
             data.setupHint ??
-              "Chat is not configured: add an API key in Vercel for the fighur.ai project and redeploy.",
+              "Chat is not configured: add ANTHROPIC_API_KEY in Vercel for the fighur.ai project and redeploy.",
+          );
+        } else {
+          setError((prev) =>
+            prev?.includes("not configured") || prev?.includes("unavailable") ? null : prev,
           );
         }
       })
@@ -1334,33 +1338,20 @@ export function SmileChatGeneral() {
               className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
               role="status"
             >
-              <p className="font-semibold text-amber-50">Chat models are unavailable on the server</p>
+              <p className="font-semibold text-amber-50">Claude is not available on this server</p>
               <p className="mt-1.5 text-amber-100/90">
-                Every model shows “unavailable” because this Vercel project has{" "}
-                <strong>no API keys</strong> yet. Keys on another site (e.g. fighurai.com) do not apply here —
-                add them to the <strong>fighur.ai</strong> project.
+                Add <code className="text-[0.65rem]">ANTHROPIC_API_KEY</code> to the{" "}
+                <strong>fighur.ai</strong> Vercel project (Production), redeploy, then refresh. Keys on other
+                sites do not apply here.
               </p>
-              <ol className="mt-2 list-decimal space-y-1 pl-4 text-amber-100/85">
-                <li>
-                  Vercel → <strong>fighur.ai</strong> project → Settings → Environment Variables
-                </li>
-                <li>
-                  Add one key for <strong>Production</strong> (easiest free option:{" "}
-                  <code className="text-[0.65rem]">GROQ_API_KEY</code> from{" "}
-                  <a
-                    href="https://console.groq.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  >
-                    console.groq.com
-                  </a>
-                  , or <code className="text-[0.65rem]">ANTHROPIC_API_KEY</code> for Claude)
-                </li>
-                <li>Deployments → Redeploy (required after adding variables)</li>
-                <li>Refresh this page — models should no longer say unavailable</li>
-              </ol>
             </div>
+          ) : chatReady === true && availableModels.length > 0 ? (
+            <p className="mb-2 text-xs text-[var(--accent)]" role="status">
+              Claude is connected
+              {session?.plan === "pro"
+                ? " · add more API keys in Vercel to enable additional models"
+                : " · free accounts use Claude only"}
+            </p>
           ) : null}
 
           {!session?.userId && usage && !usage.signupRequired && usage.limitUsd != null ? (
