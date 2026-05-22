@@ -305,7 +305,6 @@ export function SmileChatGeneral() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
   const [composerInset, setComposerInset] = useState(0);
-  const COMPOSER_SCROLL_BUFFER_PX = 24;
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -774,7 +773,8 @@ export function SmileChatGeneral() {
       const dock = composerDockRef.current;
       if (!dock) return;
       const height = Math.ceil(dock.getBoundingClientRect().height);
-      setComposerInset(height + COMPOSER_SCROLL_BUFFER_PX);
+      const gap = window.matchMedia("(max-width: 767px)").matches ? 16 : 8;
+      setComposerInset(height + gap);
     };
 
     measure();
@@ -1245,7 +1245,7 @@ export function SmileChatGeneral() {
                 scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
               }}
             >
-              <div className="chat-thread flex w-full min-h-0 flex-col space-y-3 pb-2">
+              <div className="chat-thread mt-auto flex w-full flex-col space-y-3">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
