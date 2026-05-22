@@ -43,17 +43,11 @@ body {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   overscroll-behavior-y: contain;
+  overflow-y: scroll;
 }
 
-@media (max-width: 767px) {
-  .chat-scroll {
-    overflow-y: scroll;
-  }
-}
-
-.composer-scroll-spacer {
-  flex-shrink: 0;
-  pointer-events: none;
+.chat-thread-gutter {
+  box-sizing: border-box;
 }
 
 /* Empty home — prompt box centered in viewport */

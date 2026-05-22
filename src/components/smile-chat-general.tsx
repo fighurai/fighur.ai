@@ -793,7 +793,7 @@ export function SmileChatGeneral() {
       const dock = composerDockRef.current;
       if (!dock) return;
       const height = dock.offsetHeight;
-      const gap = window.matchMedia("(max-width: 767px)").matches ? 32 : 8;
+      const gap = window.matchMedia("(max-width: 767px)").matches ? 36 : 16;
       setComposerInset(height + gap);
     };
 
@@ -1245,7 +1245,7 @@ export function SmileChatGeneral() {
         </div>
 
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
           {chatReady === false ? (
             <div
@@ -1288,9 +1288,14 @@ export function SmileChatGeneral() {
           ) : (
             <div
               ref={listRef}
-              className="chat-scroll mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-y-auto overscroll-y-contain"
+              className="chat-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain"
+              style={{
+                paddingBottom: composerInset > 0 ? composerInset : undefined,
+                scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
+              }}
             >
-              <div className="chat-thread flex w-full flex-col space-y-3 md:mt-auto">
+              <div className="chat-thread-gutter flex min-h-full flex-col justify-end">
+                <div className="chat-thread flex w-full flex-col space-y-3">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
@@ -1339,14 +1344,8 @@ export function SmileChatGeneral() {
                   </div>
                 );
               })}
+                </div>
               </div>
-              {composerInset > 0 ? (
-                <div
-                  aria-hidden
-                  className="composer-scroll-spacer shrink-0"
-                  style={{ height: composerInset }}
-                />
-              ) : null}
             </div>
           )}
 
