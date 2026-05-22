@@ -246,7 +246,7 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
     return (
       <div className="stream-live" aria-live="polite" aria-atomic="false">
         <StreamingSmiley />
-        <StreamingText ref={streamTextRef} />
+        <StreamingText ref={streamTextRef} markdownComponents={assistantMarkdownComponents} />
       </div>
     );
   }

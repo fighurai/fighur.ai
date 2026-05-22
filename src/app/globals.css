@@ -184,17 +184,28 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Blinking caret while tokens stream in */
-.stream-cursor::after {
+/* Blinking caret while tokens stream in (plain or markdown) */
+.stream-cursor::after,
+.stream-cursor-inline::after {
   content: "";
   display: inline-block;
   width: 2px;
   height: 1.05em;
-  margin-left: 1px;
+  margin-left: 2px;
   vertical-align: text-bottom;
   background: var(--accent);
   opacity: 0.85;
   animation: stream-caret 1s step-end infinite;
+}
+
+.stream-live-md .studio-md > :first-child {
+  margin-top: 0;
+}
+
+.stream-md-partial h1,
+.stream-md-partial h2,
+.stream-md-partial h3 {
+  color: var(--text-primary);
 }
 
 @keyframes stream-caret {
