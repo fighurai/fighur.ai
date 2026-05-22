@@ -16,6 +16,23 @@ function manifestKeyForUser(userId: string): string {
 
 const LEGACY_HANDLE_KEY = "folder";
 
+/** In-memory handle so Apply can call requestPermission in the same click event. */
+const handleCache = new Map<string, FileSystemDirectoryHandle>();
+
+export function cacheDeviceDirectoryHandle(
+  userId: string,
+  handle: FileSystemDirectoryHandle | null,
+): void {
+  if (handle) handleCache.set(userId, handle);
+  else handleCache.delete(userId);
+}
+
+export function getCachedDeviceDirectoryHandle(
+  userId: string,
+): FileSystemDirectoryHandle | null {
+  return handleCache.get(userId) ?? null;
+}
+
 const TEXT_EXTENSIONS = new Set([
   "txt",
   "md",
@@ -205,6 +222,7 @@ export async function loadDeviceManifestSnapshot(
 export async function idbClearDeviceHandle(userId?: string | null): Promise<void> {
   try {
     if (userId) {
+      handleCache.delete(userId);
       await idbDelete(handleKeyForUser(userId));
       await idbDelete(manifestKeyForUser(userId));
     }
@@ -219,6 +237,7 @@ export async function saveDeviceDirectoryHandle(
   userId: string,
 ): Promise<void> {
   if (!userId) return;
+  handleCache.set(userId, handle);
   await idbSet(handleKeyForUser(userId), handle);
   await idbDelete(manifestKeyForUser(userId));
 }
@@ -227,10 +246,17 @@ export async function loadDeviceDirectoryHandle(
   userId: string | null | undefined,
 ): Promise<FileSystemDirectoryHandle | null> {
   if (!userId) return null;
+  const cached = handleCache.get(userId);
+  if (cached) return cached;
   try {
     const keyed = await idbGet<FileSystemDirectoryHandle>(handleKeyForUser(userId));
-    if (keyed) return keyed;
-    return await idbGet<FileSystemDirectoryHandle>(LEGACY_HANDLE_KEY);
+    if (keyed) {
+      handleCache.set(userId, keyed);
+      return keyed;
+    }
+    const legacy = await idbGet<FileSystemDirectoryHandle>(LEGACY_HANDLE_KEY);
+    if (legacy) handleCache.set(userId, legacy);
+    return legacy;
   } catch {
     return null;
   }
@@ -344,6 +370,7 @@ export async function connectDeviceFolder(userId: string): Promise<ConnectDevice
       }
       await ensureReadPermission(handle);
       await ensureWritePermission(handle);
+      handleCache.set(userId, handle);
       await saveDeviceDirectoryHandle(handle, userId);
       return { ok: true, rootName: handle.name, mode: "native" };
     } catch (e) {

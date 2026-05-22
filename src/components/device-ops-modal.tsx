@@ -9,6 +9,7 @@ type Props = {
   resultMessage: string | null;
   canWrite: boolean;
   onApply: () => void;
+  onReconnect: () => void;
   onCancel: () => void;
 };
 
@@ -19,6 +20,7 @@ export function DeviceOpsModal({
   resultMessage,
   canWrite,
   onApply,
+  onReconnect,
   onCancel,
 }: Props) {
   if (!open || !payload) return null;
@@ -50,8 +52,8 @@ export function DeviceOpsModal({
         ) : null}
         {!canWrite ? (
           <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200/90">
-            Apply needs Chrome or Edge with a live folder link (not Safari snapshot-only). Disconnect
-            in Settings, reconnect, and allow <strong>edit</strong> access when prompted.
+            To apply moves, use <strong>Chrome or Edge</strong>, reconnect the folder below, and
+            choose <strong>Allow edit access</strong> when the browser prompts you.
           </p>
         ) : null}
         <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-xs text-[var(--text-muted)]">
@@ -67,30 +69,40 @@ export function DeviceOpsModal({
         </ul>
         {resultMessage ? (
           <p
-            className={`mt-3 text-xs ${resultMessage.includes("Applied") && !resultMessage.includes("Issues") ? "text-emerald-300/90" : "text-red-300/90"}`}
+            className={`mt-3 text-xs leading-relaxed ${resultMessage.startsWith("Applied") && !resultMessage.includes("Issues") ? "text-emerald-300/90" : "text-red-300/90"}`}
           >
             {resultMessage}
           </p>
         ) : null}
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={applying}
-            className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-sm text-[var(--text-muted)] hover:bg-white/[0.06] disabled:opacity-50"
-          >
-            {resultMessage ? "Close" : "Cancel"}
-          </button>
-          <button
-            type="button"
-            onClick={onApply}
-            disabled={applying}
-            className="rounded-xl bg-[var(--accent)]/20 px-4 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/35 hover:bg-[var(--accent)]/30 disabled:opacity-50"
-          >
-            {applying
-              ? "Applying…"
-              : `Apply ${payload.ops.length} change${payload.ops.length === 1 ? "" : "s"}`}
-          </button>
+        <div className="mt-5 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onReconnect}
+              disabled={applying}
+              className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-sm text-[var(--text-muted)] hover:bg-white/[0.06] disabled:opacity-50"
+            >
+              Reconnect folder
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={applying}
+              className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-sm text-[var(--text-muted)] hover:bg-white/[0.06] disabled:opacity-50"
+            >
+              {resultMessage ? "Close" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={onApply}
+              disabled={applying}
+              className="rounded-xl bg-[var(--accent)]/20 px-4 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/35 hover:bg-[var(--accent)]/30 disabled:opacity-50"
+            >
+              {applying
+                ? "Applying…"
+                : `Apply ${payload.ops.length} change${payload.ops.length === 1 ? "" : "s"}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>

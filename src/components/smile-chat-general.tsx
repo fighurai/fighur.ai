@@ -20,16 +20,27 @@ import {
   type UsageSummary,
 } from "@/lib/auth-storage";
 import { ANONYMOUS_SPEND_LIMIT_USD } from "@/lib/usage-constants";
-import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
+import {
+  readConnectedServices,
+  toConnectedServicesPayload,
+  writeConnectedServices,
+} from "@/lib/connected-services";
 import {
   fetchServerConversations,
   saveServerConversations,
 } from "@/lib/conversation-sync";
-import { buildDeviceManifestForChat } from "@/lib/device-files-client";
 import {
-  applyDeviceFileOps,
+  buildDeviceManifestForChat,
+  connectDeviceFolder,
+  getCachedDeviceDirectoryHandle,
+  loadDeviceDirectoryHandle,
+} from "@/lib/device-files-client";
+import {
+  applyDeviceFileOpsWithHandle,
+  beginWritePermissionRequest,
   canApplyDeviceFileOps,
   parseDeviceOpsFromText,
+  prepareDeviceWriteAccessFromClick,
   type DeviceOpsPayload,
 } from "@/lib/device-file-ops";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
@@ -858,7 +869,9 @@ export function SmileChatGeneral() {
           if (opsPayload && opsPayload.ops.length > 0) {
             setPendingDeviceOps(opsPayload);
             setDeviceOpsResult(null);
-            void canApplyDeviceFileOps(session.userId).then(setDeviceCanWrite);
+            void loadDeviceDirectoryHandle(session.userId).then((h) => {
+              setDeviceCanWrite(Boolean(h));
+            });
             setDeviceOpsOpen(true);
           }
         }
@@ -1695,40 +1708,80 @@ export function SmileChatGeneral() {
           setPendingDeviceOps(null);
           setDeviceOpsResult(null);
         }}
+        onReconnect={() => {
+          const userId = readSession()?.userId;
+          if (!userId) {
+            setDeviceOpsResult("Sign in required.");
+            return;
+          }
+          setDeviceOpsApplying(true);
+          setDeviceOpsResult(null);
+          void connectDeviceFolder(userId)
+            .then((result) => {
+              if (result.ok) {
+                const next = readConnectedServices(userId);
+                next.services.deviceFiles = {
+                  connected: true,
+                  label: `${result.rootName} (read & organize)`,
+                };
+                writeConnectedServices(next, userId);
+                setDeviceCanWrite(true);
+                setDeviceOpsResult("Folder reconnected. Click Apply again.");
+              } else if (!("cancelled" in result && result.cancelled)) {
+                setDeviceOpsResult("error" in result ? result.error : "Could not reconnect.");
+              }
+            })
+            .finally(() => setDeviceOpsApplying(false));
+        }}
         onApply={() => {
-          const userId = session?.userId;
+          const userId = readSession()?.userId;
           const payload = pendingDeviceOps;
           if (!userId || !payload) {
             setDeviceOpsResult("Sign in required to apply file changes.");
             return;
           }
+          const cachedHandle = getCachedDeviceDirectoryHandle(userId);
+          const permissionPromise = cachedHandle
+            ? beginWritePermissionRequest(cachedHandle)
+            : null;
           setDeviceOpsApplying(true);
           setDeviceOpsResult(null);
-          void applyDeviceFileOps(userId, payload)
-            .then((result) => {
+          void (async () => {
+            try {
+              const prep = await prepareDeviceWriteAccessFromClick(
+                userId,
+                cachedHandle,
+                permissionPromise,
+              );
+              if (!prep.ok) {
+                setDeviceOpsResult(prep.error);
+                setDeviceCanWrite(false);
+                return;
+              }
+              setDeviceCanWrite(true);
+              const result = await applyDeviceFileOpsWithHandle(prep.handle, payload);
               if (result.applied === 0 && result.errors.length > 0) {
-                setDeviceOpsResult(result.errors.slice(0, 4).join(" "));
+                setDeviceOpsResult(result.errors.slice(0, 5).join(" "));
                 return;
               }
               const msg =
                 result.errors.length > 0
-                  ? `Applied ${result.applied} of ${payload.ops.length}. Issues: ${result.errors.slice(0, 3).join("; ")}`
+                  ? `Applied ${result.applied} of ${payload.ops.length}. Some issues: ${result.errors.slice(0, 2).join("; ")}`
                   : `Applied ${result.applied} change${result.applied === 1 ? "" : "s"} successfully.`;
               setDeviceOpsResult(msg);
-              if (result.errors.length === 0) {
+              if (result.applied > 0 && result.errors.length === 0) {
                 window.setTimeout(() => {
                   setDeviceOpsOpen(false);
                   setPendingDeviceOps(null);
                   setDeviceOpsResult(null);
                 }, 1200);
               }
-            })
-            .catch((e) => {
+            } catch (e) {
               setDeviceOpsResult(e instanceof Error ? e.message : "Apply failed.");
-            })
-            .finally(() => {
+            } finally {
               setDeviceOpsApplying(false);
-            });
+            }
+          })();
         }}
       />
     </div>

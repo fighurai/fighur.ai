@@ -2,7 +2,9 @@
 
 import {
   ensureWritePermission,
+  getCachedDeviceDirectoryHandle,
   loadDeviceDirectoryHandle,
+  loadDeviceManifestSnapshot,
   supportsNativeDirectoryPicker,
 } from "@/lib/device-files-client";
 
@@ -25,6 +27,11 @@ type DirHandle = FileSystemDirectoryHandle & {
   ) => Promise<FileSystemDirectoryHandle>;
   getFileHandle: (name: string, options?: { create?: boolean }) => Promise<FileSystemFileHandle>;
   removeEntry?: (name: string, options?: { recursive?: boolean }) => Promise<void>;
+};
+
+type PermHandle = FileSystemDirectoryHandle & {
+  queryPermission?: (opts: { mode: "readwrite" }) => Promise<PermissionState>;
+  requestPermission?: (opts: { mode: "readwrite" }) => Promise<PermissionState>;
 };
 
 type MoveableFile = FileSystemFileHandle & {
@@ -123,11 +130,102 @@ export function parseDeviceOpsFromText(text: string): DeviceOpsPayload | null {
   }
 }
 
-/** True when a live folder handle exists (Chrome/Edge picker, not Safari snapshot-only). */
+export type DeviceWriteAccess =
+  | { ok: true; handle: FileSystemDirectoryHandle; rootName: string }
+  | { ok: false; error: string; needsReconnect: boolean };
+
+/**
+ * Invoke synchronously inside the Apply button click handler (user gesture).
+ * Await the returned promise later — only the call must happen during the click.
+ */
+export function beginWritePermissionRequest(
+  handle: FileSystemDirectoryHandle,
+): Promise<PermissionState> | null {
+  const h = handle as PermHandle;
+  if (!h.requestPermission) return null;
+  return h.requestPermission({ mode: "readwrite" });
+}
+
+async function confirmWriteAccess(
+  handle: FileSystemDirectoryHandle,
+  permissionPromise: Promise<PermissionState> | null,
+): Promise<DeviceWriteAccess> {
+  if (permissionPromise) {
+    const perm = await permissionPromise;
+    if (perm !== "granted") {
+      return {
+        ok: false,
+        needsReconnect: true,
+        error:
+          'Write access was blocked. Click "Reconnect folder" below, pick the same folder, and choose Allow / Edit when the browser asks.',
+      };
+    }
+  } else {
+    const h = handle as PermHandle;
+    if (h.requestPermission) {
+      const current = await h.queryPermission?.({ mode: "readwrite" });
+      if (current !== "granted") {
+        const req = await h.requestPermission({ mode: "readwrite" });
+        if (req !== "granted") {
+          return {
+            ok: false,
+            needsReconnect: true,
+            error:
+              'Write access was blocked. Click "Reconnect folder" below, pick the same folder, and choose Allow / Edit when the browser asks.',
+          };
+        }
+      }
+    } else if (!(await ensureWritePermission(handle))) {
+      return {
+        ok: false,
+        needsReconnect: true,
+        error:
+          "Could not confirm write permission for this folder. Reconnect the folder and allow edit access.",
+      };
+    }
+  }
+
+  return { ok: true, handle, rootName: handle.name };
+}
+
+/** Use from Apply click: pass handle + permission promise started in the same click event. */
+export async function prepareDeviceWriteAccessFromClick(
+  userId: string,
+  cachedHandle: FileSystemDirectoryHandle | null,
+  permissionPromise: Promise<PermissionState> | null,
+): Promise<DeviceWriteAccess> {
+  if (!supportsNativeDirectoryPicker()) {
+    return {
+      ok: false,
+      needsReconnect: true,
+      error: "Use Chrome or Edge on desktop to apply file changes.",
+    };
+  }
+
+  const handle = cachedHandle ?? (await loadDeviceDirectoryHandle(userId));
+  if (!handle) {
+    const snapshot = await loadDeviceManifestSnapshot(userId);
+    return {
+      ok: false,
+      needsReconnect: true,
+      error: snapshot
+        ? "This folder is a read-only snapshot (Safari). Disconnect it in Settings, then reconnect in Chrome or Edge and allow edit access."
+        : 'No folder linked. Click "Reconnect folder" below or open Settings → This device · folder.',
+    };
+  }
+
+  return confirmWriteAccess(handle, permissionPromise);
+}
+
+export async function prepareDeviceWriteAccess(userId: string): Promise<DeviceWriteAccess> {
+  const cached = getCachedDeviceDirectoryHandle(userId);
+  return prepareDeviceWriteAccessFromClick(userId, cached, null);
+}
+
+/** True when a live folder handle exists (Chrome/Edge picker). */
 export async function canApplyDeviceFileOps(userId: string): Promise<boolean> {
   if (!supportsNativeDirectoryPicker()) return false;
-  const handle = await loadDeviceDirectoryHandle(userId);
-  return Boolean(handle);
+  return Boolean(await loadDeviceDirectoryHandle(userId));
 }
 
 function normalizeOpPaths(op: DeviceFileOp, rootName: string): DeviceFileOp {
@@ -179,31 +277,11 @@ export type ApplyDeviceOpsResult = {
   errors: string[];
 };
 
-/** Apply file moves/renames/mkdirs on the connected folder after user confirms. */
-export async function applyDeviceFileOps(
-  userId: string,
+/** Apply ops using an already-authorized handle (from prepareDeviceWriteAccess). */
+export async function applyDeviceFileOpsWithHandle(
+  handle: FileSystemDirectoryHandle,
   payload: DeviceOpsPayload,
 ): Promise<ApplyDeviceOpsResult> {
-  const handle = await loadDeviceDirectoryHandle(userId);
-  if (!handle) {
-    return {
-      applied: 0,
-      errors: [
-        "No live folder link (Safari snapshot cannot apply moves). Disconnect and reconnect the folder in Chrome or Edge, then allow edit access.",
-      ],
-    };
-  }
-
-  const writable = await ensureWritePermission(handle);
-  if (!writable) {
-    return {
-      applied: 0,
-      errors: [
-        "Write permission denied. Disconnect the folder in Settings, connect again, and choose Allow when the browser asks to edit files.",
-      ],
-    };
-  }
-
   const rootName = handle.name;
   const errors: string[] = [];
   let applied = 0;
@@ -219,9 +297,21 @@ export async function applyDeviceFileOps(
           : op.op === "rename"
             ? `${op.path} → ${op.newName}`
             : op.path;
-      errors.push(`${label}: ${e instanceof Error ? e.message : "failed"}`);
+      const msg = e instanceof Error ? e.message : "failed";
+      errors.push(`${label}: ${msg}`);
     }
   }
 
   return { applied, errors };
+}
+
+export async function applyDeviceFileOps(
+  userId: string,
+  payload: DeviceOpsPayload,
+): Promise<ApplyDeviceOpsResult> {
+  const prep = await prepareDeviceWriteAccess(userId);
+  if (!prep.ok) {
+    return { applied: 0, errors: [prep.error] };
+  }
+  return applyDeviceFileOpsWithHandle(prep.handle, payload);
 }
