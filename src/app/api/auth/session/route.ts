@@ -39,6 +39,7 @@ export async function GET(request: Request) {
     name: profile.name,
     roles: normalizeRoles(profile.roles),
     environmentId: profile.environmentId ?? profile.userId,
+    plan: profile.plan,
   });
 }
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
       name: profile?.name ?? name,
       roles: normalizeRoles(profile?.roles),
       environmentId: profile?.environmentId ?? userId,
+      plan: profile?.plan ?? "free",
     }),
   );
   const withCookie = await attachSessionCookie(res, {

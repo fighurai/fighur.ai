@@ -36,6 +36,17 @@ export function userDir(userId: string): string {
 
 export type AuthProvider = "email" | "google" | "microsoft";
 
+export type UserPlan = "free" | "pro";
+
+export function normalizePlan(raw: unknown): UserPlan {
+  return raw === "pro" ? "pro" : "free";
+}
+
+function planFromEmail(email: string): UserPlan {
+  const list = process.env.SMILE_PRO_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
+  return list.includes(email.trim().toLowerCase()) ? "pro" : "free";
+}
+
 export type UserProfile = {
   userId: string;
   email: string;
@@ -50,6 +61,8 @@ export type UserProfile = {
   passwordHash?: string;
   ssoSubjects?: { google?: string; microsoft?: string };
   emailVerified?: boolean;
+  /** free = unlimited Claude; pro = all models */
+  plan: UserPlan;
 };
 
 async function ensureDirSecure(dir: string): Promise<void> {
@@ -68,6 +81,7 @@ export type EnsureUserOptions = {
   roles?: Role[];
   ssoSubject?: { provider: "google" | "microsoft"; subject: string };
   emailVerified?: boolean;
+  plan?: UserPlan;
 };
 
 /** Create or resolve a user folder keyed by email (hashed index). */
@@ -127,6 +141,8 @@ export async function ensureUser(
       passwordHash: opts.passwordHash ?? existing.passwordHash,
       ssoSubjects: Object.keys(ssoSubjects).length ? ssoSubjects : existing.ssoSubjects,
       emailVerified: opts.emailVerified ?? existing.emailVerified,
+      plan:
+        normalizePlan(existing.plan) === "pro" || planFromEmail(email) === "pro" ? "pro" : "free",
     };
   } catch {
     profile = {
@@ -143,6 +159,7 @@ export async function ensureUser(
         ? { [opts.ssoSubject.provider]: opts.ssoSubject.subject }
         : undefined,
       emailVerified: opts.emailVerified,
+      plan: opts.plan ? normalizePlan(opts.plan) : planFromEmail(email),
     };
   }
 
@@ -186,8 +203,23 @@ export async function readUserProfile(userId: string): Promise<UserProfile | nul
       passwordHash: p.passwordHash,
       ssoSubjects: p.ssoSubjects,
       emailVerified: p.emailVerified,
+      plan: normalizePlan(p.plan),
     };
   } catch {
     return null;
   }
+}
+
+export async function setUserPlan(userId: string, plan: UserPlan): Promise<boolean> {
+  const profile = await readUserProfile(userId);
+  if (!profile) return false;
+  const updated: UserProfile = {
+    ...profile,
+    plan: normalizePlan(plan),
+    updatedAt: new Date().toISOString(),
+  };
+  await writeFile(path.join(userDir(userId), "profile.json"), JSON.stringify(updated, null, 0), {
+    mode: 0o600,
+  });
+  return true;
 }

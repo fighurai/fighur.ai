@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { resolveUserRoles } from "@/lib/auth-guard";
-import { normalizeRoles, type Role } from "@/lib/rbac";
+import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import {
   CHAT_MODEL_OPTIONS,
   getChatModelAvailability,
@@ -9,18 +8,19 @@ import {
   pickDefaultModelId,
 } from "@/lib/chat-models";
 import {
-  allowedModelIdsForRoles,
+  allowedModelIdsForPlan,
   FREE_TIER_MODEL_ID,
-  isFullModelAccess,
+  hasAllModelsAccess,
 } from "@/lib/plan-access";
+import { normalizeRoles, type Role } from "@/lib/rbac";
 import { readVerifiedSession } from "@/lib/session-cookie";
-
 export async function GET(request: Request) {
   const availability = getChatModelAvailability();
   const configuredProviders = listConfiguredProviders();
   const session = await readVerifiedSession(request);
   const roles: Role[] = session ? await resolveUserRoles(session.userId) : normalizeRoles(["viewer"]);
-  const allowed = new Set(allowedModelIdsForRoles(roles));
+  const plan = session ? await resolveUserPlan(session.userId) : ("free" as const);
+  const allowed = new Set(allowedModelIdsForPlan(plan, roles));
 
   const models = CHAT_MODEL_OPTIONS.map((m) => ({
     id: m.id,
@@ -36,13 +36,19 @@ export async function GET(request: Request) {
       ? FREE_TIER_MODEL_ID
       : pickDefaultModelId();
 
+  const clientPlan = session
+    ? hasAllModelsAccess(plan, roles)
+      ? "pro"
+      : "free"
+    : "trial";
+
   return NextResponse.json({
     models,
     defaultModel,
     chatReady,
     configuredProviders,
     signedIn: Boolean(session),
-    plan: session ? (isFullModelAccess(roles) ? "full" : "free") : "trial",
+    plan: clientPlan,
     freeTierModelId: FREE_TIER_MODEL_ID,
     setupHint: chatReady
       ? undefined

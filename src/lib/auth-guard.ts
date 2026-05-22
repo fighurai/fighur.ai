@@ -7,7 +7,12 @@ import {
   getUserUsage,
   remainingAnonymousUsd,
 } from "@/lib/usage-wallet";
-import { readUserProfile, type UserProfile } from "@/lib/user-data-store";
+import {
+  normalizePlan,
+  readUserProfile,
+  type UserPlan,
+  type UserProfile,
+} from "@/lib/user-data-store";
 
 export type ChatAccessResult =
   | { allowed: true; userId?: string; anonId?: string; roles: Role[] }
@@ -22,6 +27,11 @@ export type ChatAccessResult =
 export async function resolveUserRoles(userId: string): Promise<Role[]> {
   const profile = await readUserProfile(userId);
   return normalizeRoles(profile?.roles);
+}
+
+export async function resolveUserPlan(userId: string): Promise<UserPlan> {
+  const profile = await readUserProfile(userId);
+  return normalizePlan(profile?.plan);
 }
 
 export async function requirePermission(

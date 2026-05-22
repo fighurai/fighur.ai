@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       name: profile.name,
       roles: normalizeRoles(profile.roles),
       environmentId: profile.environmentId,
+      plan: profile.plan,
     }),
   );
   const withCookie = await attachSessionCookie(res, {

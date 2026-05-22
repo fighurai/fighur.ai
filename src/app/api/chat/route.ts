@@ -10,7 +10,7 @@ import {
   type ChatProvider,
 } from "@/lib/chat-models";
 import { resolveChatModelForAccess } from "@/lib/plan-access";
-import { resolveUserRoles } from "@/lib/auth-guard";
+import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import { normalizeRoles } from "@/lib/rbac";
 import { openAIStreamToTextStream } from "@/lib/openai-stream";
 import { inferSmileBuilderTargetFromPrompt, lastUserMessageText } from "@/lib/infer-builder-target";
@@ -319,7 +319,8 @@ export async function POST(request: Request) {
 
   const { ctx } = prep;
   const roles = ctx.session ? await resolveUserRoles(ctx.session.userId) : normalizeRoles(["viewer"]);
-  const option = resolveChatModelForAccess(requestedId, roles);
+  const plan = ctx.session ? await resolveUserPlan(ctx.session.userId) : ("free" as const);
+  const option = resolveChatModelForAccess(requestedId, plan, roles);
   if (!option) {
     return NextResponse.json({ error: noChatProvidersMessage() }, { status: 503 });
   }

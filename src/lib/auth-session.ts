@@ -38,6 +38,7 @@ export function sessionJsonBody(profile: {
   name?: string;
   roles?: string[];
   environmentId?: string;
+  plan?: string;
 }) {
   return {
     ok: true,
@@ -46,5 +47,6 @@ export function sessionJsonBody(profile: {
     name: profile.name,
     roles: profile.roles,
     environmentId: profile.environmentId ?? profile.userId,
+    plan: profile.plan ?? "free",
   };
 }

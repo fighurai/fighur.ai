@@ -15,7 +15,8 @@ export type AuditAction =
   | "chat.denied"
   | "connect.grant"
   | "connect.revoke"
-  | "usage.limit_reached";
+  | "usage.limit_reached"
+  | "billing.upgrade";
 
 export type AuditEntry = {
   id: string;

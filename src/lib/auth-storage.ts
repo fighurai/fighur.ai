@@ -5,6 +5,7 @@ export type SmileSession = {
   name?: string;
   roles?: string[];
   environmentId?: string;
+  plan?: "free" | "pro";
 };
 
 export type UsageSummary = {
@@ -35,6 +36,7 @@ export function readSession(): SmileSession | null {
       const userId = (parsed as { userId?: unknown }).userId;
       const roles = (parsed as { roles?: unknown }).roles;
       const environmentId = (parsed as { environmentId?: unknown }).environmentId;
+      const plan = (parsed as { plan?: unknown }).plan;
       return {
         email,
         name: typeof name === "string" ? name.trim() || undefined : undefined,
@@ -42,6 +44,7 @@ export function readSession(): SmileSession | null {
         roles: Array.isArray(roles) ? roles.filter((r): r is string => typeof r === "string") : undefined,
         environmentId:
           typeof environmentId === "string" && environmentId.length > 0 ? environmentId : undefined,
+        plan: plan === "pro" || plan === "free" ? plan : undefined,
       };
     }
     return null;
@@ -78,6 +81,7 @@ async function persistSessionFromResponse(res: Response): Promise<boolean> {
     name?: string;
     roles?: string[];
     environmentId?: string;
+    plan?: "free" | "pro";
   };
   if (typeof data.userId !== "string" || typeof data.email !== "string") return false;
   writeSession({
@@ -86,6 +90,7 @@ async function persistSessionFromResponse(res: Response): Promise<boolean> {
     name: data.name,
     roles: data.roles,
     environmentId: data.environmentId,
+    plan: data.plan === "pro" ? "pro" : "free",
   });
   return true;
 }
@@ -157,6 +162,7 @@ export async function hydrateServerSession(): Promise<void> {
       userId?: string;
       email?: string;
       name?: string;
+      plan?: string;
     };
     if (data.signedIn && data.userId && data.email) {
       writeSession({
@@ -170,6 +176,7 @@ export async function hydrateServerSession(): Promise<void> {
           typeof (data as { environmentId?: unknown }).environmentId === "string"
             ? (data as { environmentId: string }).environmentId
             : data.userId,
+        plan: data.plan === "pro" ? "pro" : "free",
       });
     }
     return;

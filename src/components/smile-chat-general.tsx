@@ -1044,7 +1044,7 @@ export function SmileChatGeneral() {
               {availableModels.length === 1 ? (
                 <span
                   className="min-w-0 truncate rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] sm:px-4 sm:py-2"
-                  title={session?.userId ? "Free plan includes Claude only" : undefined}
+                  title={session?.userId && session.plan !== "pro" ? "Free plan includes Claude only" : undefined}
                 >
                   {availableModels[0].label}
                 </span>
@@ -1393,8 +1393,18 @@ export function SmileChatGeneral() {
 
           {session?.userId ? (
             <p className="mb-2 text-[0.65rem] text-[var(--text-faint)]">
-              Free account · Claude only · private environment{" "}
-              {session.environmentId?.slice(0, 8) ?? session.userId.slice(0, 8)}…
+              {session.plan === "pro" ? (
+                <>Pro · all models · </>
+              ) : (
+                <>
+                  Free · Claude only ·{" "}
+                  <Link href="/upgrade" className="text-[var(--accent)] underline-offset-2 hover:underline">
+                    Upgrade to Pro
+                  </Link>
+                  {" · "}
+                </>
+              )}
+              private environment {session.environmentId?.slice(0, 8) ?? session.userId.slice(0, 8)}…
             </p>
           ) : null}
 

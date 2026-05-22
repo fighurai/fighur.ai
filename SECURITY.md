@@ -12,6 +12,7 @@ This document describes security controls implemented in the application. **SOC 
 | Audit logs | Append-only JSONL in `.data/audit/` and per-user `users/{id}/audit/` |
 | Data isolation | Per-user directory `users/{uuid}/` (profile, OAuth, usage, conversations) |
 | Usage gate | Anonymous trial capped at **$5** estimated token spend; sign-up required to continue |
+| Plans | **Free** = unlimited Claude · **Pro** = all models (Stripe hook planned) |
 | Transport | HSTS, `X-Frame-Options`, `nosniff` via middleware |
 | OAuth integrations | PKCE, sealed pending state, per-user encrypted token files |
 
