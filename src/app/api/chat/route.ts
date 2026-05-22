@@ -74,7 +74,12 @@ function parseIntegrationPayload(raw: unknown): Partial<ChatIntegrationFlags> | 
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   const out: Partial<ChatIntegrationFlags> = {};
-  const keys: (keyof ChatIntegrationFlags)[] = [
+  const wm = o.workMode;
+  if (wm === "chat" || wm === "cowork" || wm === "codex") {
+    out.workMode = wm;
+    if (wm === "cowork") out.coworkDevice = true;
+  }
+  const boolKeys = [
     "coworkDevice",
     "gmail",
     "outlook",
@@ -82,10 +87,11 @@ function parseIntegrationPayload(raw: unknown): Partial<ChatIntegrationFlags> | 
     "microsoft365",
     "slack",
     "deviceFiles",
-  ];
-  for (const k of keys) {
+  ] as const;
+  for (const k of boolKeys) {
     if (o[k] === true) out[k] = true;
   }
+  if (out.workMode === "cowork") out.coworkDevice = true;
   return Object.keys(out).length ? out : null;
 }
 
@@ -437,9 +443,16 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     parseIntegrationPayload(b.connectedServices),
     cookieFlags,
   );
+  let effectiveBuilderTarget = builderTarget;
+  if (integrationFlags?.workMode === "codex" && effectiveBuilderTarget === "general") {
+    effectiveBuilderTarget = "application";
+  }
+  if (integrationFlags?.workMode === "cowork" && effectiveBuilderTarget === "general") {
+    effectiveBuilderTarget = "workflow";
+  }
   const verified = ctx.session;
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
-  const system = buildSmileSystemPrompt(builderTarget, integrationFlags, userSession);
+  const system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession);
   const budgetedMessages = trimMessagesToBudget(messages, system);
   const estimatedChars = estimateMessageChars(budgetedMessages) + system.length;
   if (estimatedChars > MAX_REQUEST_CHAR_BUDGET) {

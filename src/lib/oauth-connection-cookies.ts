@@ -76,13 +76,24 @@ export async function getLiveOAuthIntegrationFlags(
   return getCookieOAuthIntegrationFlags(request, secret);
 }
 
+const INTEGRATION_BOOL_KEYS = [
+  "coworkDevice",
+  "gmail",
+  "outlook",
+  "googleCalendar",
+  "microsoft365",
+  "slack",
+  "deviceFiles",
+] as const;
+
 export function mergeIntegrationFlags(
   fromBody: Partial<ChatIntegrationFlags> | null,
   fromCookies: Partial<ChatIntegrationFlags>,
 ): Partial<ChatIntegrationFlags> | null {
   const merged: Partial<ChatIntegrationFlags> = { ...(fromBody ?? {}) };
-  for (const k of Object.keys(fromCookies) as (keyof ChatIntegrationFlags)[]) {
+  for (const k of INTEGRATION_BOOL_KEYS) {
     if (fromCookies[k] === true) merged[k] = true;
   }
+  if (merged.workMode === "cowork") merged.coworkDevice = true;
   return Object.keys(merged).length ? merged : null;
 }

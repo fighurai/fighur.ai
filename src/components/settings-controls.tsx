@@ -9,6 +9,7 @@ import {
   writeConnectedServices,
   type ConnectedServicesState,
 } from "@/lib/connected-services";
+import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
 async function fetchConnectStatus(): Promise<ConnectStatusResponse> {
   const res = await fetch("/api/connect/status", { cache: "no-store" });
@@ -88,8 +89,12 @@ export function SettingsControls() {
     writeConnectedServices(next);
   }, []);
 
-  const toggleCowork = () => {
-    persistLocal({ ...local, coworkDevice: !local.coworkDevice });
+  const setWorkMode = (workMode: WorkMode) => {
+    persistLocal({
+      ...local,
+      workMode,
+      coworkDevice: workMode === "cowork",
+    });
   };
 
   const disconnectProvider = async (provider: "google" | "microsoft") => {
@@ -159,16 +164,57 @@ export function SettingsControls() {
         onClick={() => setOpen((o) => !o)}
       >
         Settings
+        {local.workMode !== "chat" ? (
+          <span className="ml-1.5 rounded-full bg-[var(--accent)]/20 px-1.5 py-0.5 text-[0.6rem] font-semibold text-[var(--accent)]">
+            {workModeLabel(local.workMode)}
+          </span>
+        ) : null}
       </button>
       {open ? (
         <div
           id={panelId}
           className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] w-[min(22rem,calc(100vw-1.5rem))] max-h-[min(36rem,78vh)] overflow-y-auto rounded-2xl border border-white/[0.1] bg-[var(--bg-elevated)] p-4 shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
         >
-          <p className="text-xs font-semibold text-[var(--text-primary)]">Connections</p>
+          <p className="text-xs font-semibold text-[var(--text-primary)]">Work mode</p>
+          <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
+            Choose how FIGHURAI behaves—modeled on Anthropic{" "}
+            <span className="text-[var(--text-muted)]">CoWork</span> (knowledge work) and OpenAI{" "}
+            <span className="text-[var(--text-muted)]">Codex</span> (coding agent). Not a separate product login.
+          </p>
+          <ul className="mt-3 space-y-2" role="radiogroup" aria-label="Work mode">
+            {WORK_MODE_OPTIONS.map((opt) => {
+              const selected = local.workMode === opt.id;
+              return (
+                <li key={opt.id}>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setWorkMode(opt.id)}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                      selected
+                        ? "border-[var(--accent)]/45 bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]/25"
+                        : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.14] hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-[var(--text-primary)]">{opt.label}</span>
+                      <span className="text-[0.6rem] text-[var(--text-faint)]">{opt.inspiredBy}</span>
+                    </div>
+                    <p className="mt-0.5 text-[0.65rem] font-medium text-[var(--accent)]/90">{opt.tagline}</p>
+                    <p className="mt-1 text-[0.65rem] leading-relaxed text-[var(--text-faint)]">
+                      {opt.description}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="mt-5 text-xs font-semibold text-[var(--text-primary)]">Connections</p>
           <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
             Sign in first, then connect accounts. Tokens are encrypted on this server and in httpOnly cookies
-            tied to your user id (works on Vercel without a data volume).
+            tied to your user id.
           </p>
           {oauth?.needsSignInForConnect && configured ? (
             <p className="mt-2 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
@@ -182,7 +228,7 @@ export function SettingsControls() {
             <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[0.65rem] text-amber-100/90">
               Set <code className="text-[0.6rem]">SMILE_APP_SECRET</code> or{" "}
               <code className="text-[0.6rem]">SMILE_OAUTH_COOKIE_SECRET</code> (16+ chars) plus Google /
-              Google / Microsoft client IDs to enable sign-in and connections.
+              Microsoft client IDs to enable sign-in and connections.
             </p>
           ) : null}
           {connectError || oauthError ? (
@@ -191,22 +237,19 @@ export function SettingsControls() {
             </p>
           ) : null}
 
-          <label className="mt-4 flex cursor-pointer items-start gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-[var(--text-muted)]">
-            <input
-              type="checkbox"
-              checked={local.coworkDevice}
-              onChange={toggleCowork}
-              className="mt-0.5 rounded border-white/20"
-            />
-            <span>
-              <span className="font-medium text-[var(--text-primary)]">Cowork-style device help</span>
-              <span className="mt-0.5 block text-[0.7rem] text-[var(--text-faint)]">
-                Plans for organizing files and drafts. Pair with{" "}
-                <span className="font-medium text-[var(--text-primary)]">This device</span> below to pick a
-                folder (browser-supported).
-              </span>
-            </span>
-          </label>
+          {local.workMode === "cowork" ? (
+            <p className="mt-3 rounded-lg border border-sky-500/20 bg-sky-500/8 px-2.5 py-2 text-[0.65rem] leading-relaxed text-sky-100/90">
+              <span className="font-medium">CoWork tip:</span> connect{" "}
+              <span className="font-medium">This device · folder</span> below for file-organizing plans and
+              local scripts.
+            </p>
+          ) : null}
+          {local.workMode === "codex" ? (
+            <p className="mt-3 rounded-lg border border-violet-500/20 bg-violet-500/8 px-2.5 py-2 text-[0.65rem] leading-relaxed text-violet-100/90">
+              <span className="font-medium">Codex tip:</span> ask to build, fix, or refactor code—outputs route to
+              the Build workspace when you use fenced code blocks.
+            </p>
+          ) : null}
 
           <p className="mt-4 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
             Accounts (OAuth)

@@ -1,3 +1,5 @@
+import { normalizeWorkMode, type WorkMode } from "@/lib/work-mode";
+
 export const SERVICE_IDS = [
   "gmail",
   "outlook",
@@ -10,7 +12,9 @@ export const SERVICE_IDS = [
 export type ServiceId = (typeof SERVICE_IDS)[number];
 
 export type ConnectedServicesState = {
-  /** User wants “Cowork”-style help: organize files on device, drafts, etc. */
+  /** How the assistant should behave (Chat · CoWork · Codex). */
+  workMode: WorkMode;
+  /** @deprecated Use workMode === "cowork". Kept for migration. */
   coworkDevice: boolean;
   services: Record<ServiceId, { connected: boolean; label?: string }>;
 };
@@ -28,6 +32,7 @@ export const SERVICE_LABELS: Record<ServiceId, string> = {
 
 function defaultState(): ConnectedServicesState {
   return {
+    workMode: "chat",
     coworkDevice: false,
     services: {
       gmail: { connected: false },
@@ -47,7 +52,12 @@ export function readConnectedServices(): ConnectedServicesState {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw) as Partial<ConnectedServicesState>;
     const base = defaultState();
-    if (typeof parsed.coworkDevice === "boolean") base.coworkDevice = parsed.coworkDevice;
+    const legacyCowork = typeof parsed.coworkDevice === "boolean" ? parsed.coworkDevice : false;
+    base.workMode = normalizeWorkMode(
+      (parsed as { workMode?: unknown }).workMode,
+      legacyCowork,
+    );
+    base.coworkDevice = base.workMode === "cowork";
     for (const id of SERVICE_IDS) {
       const s = parsed.services?.[id];
       if (s && typeof s === "object" && typeof s.connected === "boolean") {
@@ -73,9 +83,14 @@ export function writeConnectedServices(next: ConnectedServicesState): void {
   }
 }
 
-/** Plain object for /api/chat — booleans only. */
-export function toConnectedServicesPayload(state: ConnectedServicesState): Record<string, boolean> {
-  const out: Record<string, boolean> = { coworkDevice: state.coworkDevice };
+/** Payload for /api/chat (booleans + work mode string). */
+export function toConnectedServicesPayload(
+  state: ConnectedServicesState,
+): Record<string, boolean | string> {
+  const out: Record<string, boolean | string> = {
+    workMode: state.workMode,
+    coworkDevice: state.workMode === "cowork",
+  };
   for (const id of SERVICE_IDS) {
     out[id] = state.services[id].connected;
   }

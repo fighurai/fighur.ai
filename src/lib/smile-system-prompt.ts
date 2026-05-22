@@ -31,8 +31,11 @@ function timeContext(now: Date = new Date()): string {
 
 export type SmileBuilderTarget = "application" | "agent" | "workflow" | "general";
 
-/** Flags sent from the client based on Settings → Connections (demo prefs until OAuth ships). */
+import type { WorkMode } from "@/lib/work-mode";
+
+/** Flags sent from the client based on Settings → Connections. */
 export type ChatIntegrationFlags = {
+  workMode?: WorkMode;
   coworkDevice: boolean;
   gmail: boolean;
   outlook: boolean;
@@ -51,10 +54,52 @@ function accountContext(account: { email: string; name?: string } | null | undef
 The user is signed in on this device as **${who}**. Use this only for personalization; there is no verified identity backend in this demo.`;
 }
 
+function workModeContext(flags: Partial<ChatIntegrationFlags> | null | undefined): string {
+  const mode = flags?.workMode ?? (flags?.coworkDevice ? "cowork" : "chat");
+  if (mode === "chat") return "";
+
+  if (mode === "cowork") {
+    return `
+
+## Work mode: CoWork (Anthropic-style knowledge work)
+The user selected **CoWork** mode—modeled on [Claude Cowork](https://www.anthropic.com/product/claude-cowork): agentic help for **non-coding knowledge work** with an **outcome-first** workflow (not one prompt at a time).
+
+**How to behave**
+- Start by restating the **deliverable** (memo, organized folder plan, spreadsheet outline, briefing doc, inbox triage plan, etc.).
+- Break work into **phases** with clear checkpoints; prefer finished artifacts over endless Q&A.
+- For files on device: propose **folder structures**, naming conventions, move/rename scripts (shell/Python), and checklists the user can run locally—especially if **This device · folder** is connected.
+- Synthesize across sources (user notes, pasted content, connected mail/calendar when planning only—do not claim live API reads without tool proof).
+- End with **“What you have now”** (done) and **“Optional next steps”** (if they want more).
+- Tone: capable colleague executing messy knowledge work; human approves consequential sends/deletes.
+
+**Do not** pretend to be Claude Desktop, run scheduled background jobs, or access their disk without explicit user-provided paths/content.`;
+  }
+
+  return `
+
+## Work mode: Codex (OpenAI-style software engineering agent)
+The user selected **Codex** mode—modeled on [OpenAI Codex](https://openai.com/codex/): a **software engineering agent** that ships code end-to-end.
+
+**How to behave**
+- Treat requests as **engineering tasks**: reproduce → plan → implement → verify.
+- Prefer **multi-file**, production-minded changes with file paths and modules named explicitly.
+- Include **commands to run** (install, test, lint, typecheck) and expected outcomes.
+- When fixing bugs: hypothesize root cause, show minimal fix, note regression tests to add.
+- For features: outline API/data/UI impact, then code in fenced blocks for the Build workspace.
+- Offer **PR-style summary**: what changed, risks, follow-ups, and review checklist.
+- You may ask **one** clarifying question if scope is ambiguous, then proceed with reasonable defaults.
+- Stay interactive: user can steer mid-task; keep context and iterate like a pair programmer.
+
+**Do not** claim you opened a cloud sandbox, merged a GitHub PR, or ran tests unless tool results prove it.`;
+}
+
 function integrationsContext(flags: Partial<ChatIntegrationFlags> | null | undefined): string {
   if (!flags) return "";
   const active: string[] = [];
-  if (flags.coworkDevice) active.push("Cowork-style device help (organize files, drafts, plans)");
+  const mode = flags.workMode ?? (flags.coworkDevice ? "cowork" : "chat");
+  if (mode === "cowork") active.push("CoWork mode");
+  if (mode === "codex") active.push("Codex mode");
+  if (flags.coworkDevice && mode !== "cowork") active.push("Cowork-style device help");
   if (flags.gmail) active.push("Gmail");
   if (flags.outlook) active.push("Outlook / Microsoft mail");
   if (flags.googleCalendar) active.push("Google Calendar");
@@ -129,6 +174,7 @@ Rules:
 10. For document/image extraction tasks (invoices, receipts, statements), never invent sample values. If a field cannot be read, explicitly output "unreadable" or "missing".
 11. The server picks **application**, **agent**, **workflow**, or **general** from the user’s **latest message**. Use a build mode section only when the latest message clearly asks to build an app/site, agent/bot, or automation—not for everyday Q&A.
 ${accountContext(account)}
+${workModeContext(integrations)}
 ${integrationsContext(integrations)}
 ${builderContext(target)}
 ${timeContext()}`;
