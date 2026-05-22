@@ -1698,23 +1698,37 @@ export function SmileChatGeneral() {
         onApply={() => {
           const userId = session?.userId;
           const payload = pendingDeviceOps;
-          if (!userId || !payload) return;
+          if (!userId || !payload) {
+            setDeviceOpsResult("Sign in required to apply file changes.");
+            return;
+          }
           setDeviceOpsApplying(true);
           setDeviceOpsResult(null);
-          void applyDeviceFileOps(userId, payload).then((result) => {
-            const msg =
-              result.errors.length > 0
-                ? `Applied ${result.applied} of ${payload.ops.length}. Issues: ${result.errors.slice(0, 3).join("; ")}`
-                : `Applied ${result.applied} change${result.applied === 1 ? "" : "s"} successfully.`;
-            setDeviceOpsResult(msg);
-            setDeviceOpsApplying(false);
-            if (result.applied > 0 && result.errors.length === 0) {
-              window.setTimeout(() => {
-                setDeviceOpsOpen(false);
-                setPendingDeviceOps(null);
-              }, 1500);
-            }
-          });
+          void applyDeviceFileOps(userId, payload)
+            .then((result) => {
+              if (result.applied === 0 && result.errors.length > 0) {
+                setDeviceOpsResult(result.errors.slice(0, 4).join(" "));
+                return;
+              }
+              const msg =
+                result.errors.length > 0
+                  ? `Applied ${result.applied} of ${payload.ops.length}. Issues: ${result.errors.slice(0, 3).join("; ")}`
+                  : `Applied ${result.applied} change${result.applied === 1 ? "" : "s"} successfully.`;
+              setDeviceOpsResult(msg);
+              if (result.errors.length === 0) {
+                window.setTimeout(() => {
+                  setDeviceOpsOpen(false);
+                  setPendingDeviceOps(null);
+                  setDeviceOpsResult(null);
+                }, 1200);
+              }
+            })
+            .catch((e) => {
+              setDeviceOpsResult(e instanceof Error ? e.message : "Apply failed.");
+            })
+            .finally(() => {
+              setDeviceOpsApplying(false);
+            });
         }}
       />
     </div>

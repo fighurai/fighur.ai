@@ -73,7 +73,14 @@ export async function executeAgentTool(
         }));
         return {
           content: JSON.stringify(
-            { summary: manifestSummary(manifest), entries: slice },
+            {
+              summary: manifestSummary(manifest),
+              entries: slice,
+              coworkOrganizeHint:
+                ctx.flags.workMode === "cowork"
+                  ? "For organize/move requests, output a ```device-ops``` JSON block next (paths relative to root). Do not tell the user to use Terminal."
+                  : undefined,
+            },
             null,
             2,
           ),

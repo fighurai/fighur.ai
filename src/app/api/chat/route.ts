@@ -480,7 +480,10 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     system += await buildIntegrationSnapshot(request, integrationFlags);
   }
   if (deviceManifest?.entries.length) {
-    system += `\n\n## Device folder indexed\n${deviceManifest.entries.length} paths under "${deviceManifest.rootName}". Use list_device_files / read_device_file when answering file questions.`;
+    system += `\n\n## Device folder indexed\n${deviceManifest.entries.length} paths under "${deviceManifest.rootName}". Use list_device_files / read_device_file when answering file questions. Paths are relative to that root (do not repeat "${deviceManifest.rootName}/" prefix).`;
+    if (integrationFlags?.workMode === "cowork" && integrationFlags?.deviceFiles) {
+      system += `\n\n## CoWork file organization (active)\nFor organize/sort/move requests: call list_device_files, then output a \`\`\`device-ops\`\`\` JSON block. Never refuse with "read-only" or Terminal instructions—the user clicks Apply in the app to execute your ops.`;
+    }
   }
   const budgetedMessages = trimMessagesToBudget(messages, system);
   const estimatedChars = estimateMessageChars(budgetedMessages) + system.length;
