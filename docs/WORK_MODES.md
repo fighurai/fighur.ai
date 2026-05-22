@@ -42,6 +42,6 @@ References: [Introducing Codex](https://openai.com/index/introducing-codex/), [C
 
 1. **Settings** → **Work mode** → choose **Chat**, **CoWork**, or **Codex**.
 2. **Connect** Google and/or Microsoft in Settings for Gmail, Calendar, and Outlook reads (OAuth tokens on the server).
-3. **CoWork** + **This device · folder** (Chrome): picks a folder, indexes text files in-browser, and sends a manifest each chat. Claude can call `list_device_files` / `read_device_file`.
+3. **CoWork** + **This device · folder** (Chrome/Edge/Safari desktop): picks a folder, indexes text files in-browser, and sends a manifest each chat. Safari uses a one-time folder snapshot (reconnect to refresh). Claude can call `list_device_files` / `read_device_file`.
 4. **Claude (Anthropic)** models use an **agent tool loop** when connectors or device manifest are available (`list_gmail_recent`, calendar tools, etc.). Other providers get a one-shot **live snapshot** in CoWork mode when possible.
 5. **Codex** + Build panel: multi-file fences like ` ```typescript src/app/page.tsx ` with a file tab bar in the Code panel.

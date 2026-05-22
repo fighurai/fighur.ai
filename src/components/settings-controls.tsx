@@ -11,8 +11,9 @@ import {
   type ConnectedServicesState,
 } from "@/lib/connected-services";
 import {
+  connectDeviceFolder,
   idbClearDeviceHandle,
-  saveDeviceDirectoryHandle,
+  supportsDeviceFolderPicker,
 } from "@/lib/device-files-client";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
@@ -134,32 +135,32 @@ export function SettingsControls() {
   const connectGoogle = () => startOAuthConnect("/api/connect/google");
   const connectMicrosoft = () => startOAuthConnect("/api/connect/microsoft");
 
-  const connectDeviceFolder = async () => {
+  const connectDeviceFolderHandler = async () => {
     setDeviceError(null);
     const userId = readSession()?.userId;
     if (!userId) {
       setDeviceError("Sign in to link a folder to your account.");
       return;
     }
-    const w = window as Window & {
-      showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
-    };
-    const picker = w.showDirectoryPicker?.bind(window);
-    if (!picker) {
-      setDeviceError("This browser does not support folder pickers (try Chrome desktop).");
+    if (!supportsDeviceFolderPicker()) {
+      setDeviceError("This browser cannot pick folders. Use Safari or Chrome on desktop.");
       return;
     }
-    try {
-      const handle = await picker();
-      await saveDeviceDirectoryHandle(handle, userId);
+    const result = await connectDeviceFolder(userId);
+    if (result.ok) {
       const next = readConnectedServices(userId);
-      next.services.deviceFiles = { connected: true, label: handle.name };
+      next.services.deviceFiles = {
+        connected: true,
+        label:
+          result.mode === "webkit"
+            ? `${result.rootName} (Safari snapshot — reconnect to refresh files)`
+            : result.rootName,
+      };
       persistLocal(next);
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") {
-        setDeviceError(e instanceof Error ? e.message : "Could not open folder.");
-      }
+      return;
     }
+    if ("cancelled" in result && result.cancelled) return;
+    if ("error" in result) setDeviceError(result.error);
   };
 
   const disconnectDevice = () => {
@@ -379,7 +380,7 @@ export function SettingsControls() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => void connectDeviceFolder()}
+                    onClick={() => void connectDeviceFolderHandler()}
                     className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
                   >
                     Choose…
