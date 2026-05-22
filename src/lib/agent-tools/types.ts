@@ -1,3 +1,4 @@
+import type { DeviceOpsPayload } from "@/lib/device-file-ops";
 import type { DeviceManifest } from "@/lib/device-manifest";
 import type { ChatIntegrationFlags } from "@/lib/smile-system-prompt";
 
@@ -20,4 +21,6 @@ export type AgentToolDefinition = {
 export type AgentToolResult = {
   content: string;
   isError?: boolean;
+  /** When set, the chat stream appends a device-ops block so the Apply popup appears. */
+  deviceOps?: DeviceOpsPayload;
 };

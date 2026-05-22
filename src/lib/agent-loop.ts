@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { availableAgentTools } from "@/lib/agent-tools/registry";
 import { executeAgentTool } from "@/lib/agent-tools/execute";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
+import { formatDeviceOpsFence, type DeviceOpsPayload } from "@/lib/device-file-ops";
 
 const MAX_TOOL_ROUNDS = 8;
 
@@ -40,6 +41,7 @@ export async function streamAnthropicWithTools(
   const resolvedModel = process.env.ANTHROPIC_MODEL?.trim() || model;
   const encoder = new TextEncoder();
   let conversation = toAnthropicMessages(messages);
+  let pendingDeviceOps: DeviceOpsPayload | null = null;
 
   return new Response(
     new ReadableStream({
@@ -71,6 +73,9 @@ export async function streamAnthropicWithTools(
             );
 
             if (final.stop_reason !== "tool_use" || toolUses.length === 0) {
+              if (pendingDeviceOps) {
+                controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
+              }
               return;
             }
 
@@ -86,6 +91,9 @@ export async function streamAnthropicWithTools(
                   ? (tu.input as Record<string, unknown>)
                   : {};
               const result = await executeAgentTool(tu.name, input, ctx);
+              if (result.deviceOps) {
+                pendingDeviceOps = result.deviceOps;
+              }
               toolResults.push({
                 type: "tool_result",
                 tool_use_id: tu.id,
@@ -100,6 +108,9 @@ export async function streamAnthropicWithTools(
             ];
           }
 
+          if (pendingDeviceOps) {
+            controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
+          }
           controller.enqueue(
             encoder.encode("\n\n_Reached tool round limit; answer may be incomplete._"),
           );

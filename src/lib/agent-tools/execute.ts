@@ -7,6 +7,7 @@ import {
   listOutlookRecent,
 } from "@/lib/integrations/microsoft-api";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
+import { deviceOpsFromToolInput } from "@/lib/device-file-ops";
 import { manifestSummary } from "@/lib/device-manifest";
 import { getGoogleAccessToken, getMicrosoftAccessToken } from "@/lib/oauth-token";
 
@@ -77,8 +78,8 @@ export async function executeAgentTool(
               summary: manifestSummary(manifest),
               entries: slice,
               coworkOrganizeHint:
-                ctx.flags.workMode === "cowork"
-                  ? "For organize/move requests, output a ```device-ops``` JSON block next (paths relative to root). Do not tell the user to use Terminal."
+                ctx.flags.workMode === "cowork" || ctx.flags.coworkDevice
+                  ? "Next: call propose_device_file_ops with your move/rename/mkdir plan (paths relative to root). The app shows an Apply button—never tell the user to use Terminal or that Apply does not exist."
                   : undefined,
             },
             null,
@@ -106,6 +107,35 @@ export async function executeAgentTool(
             null,
             2,
           ),
+        };
+      }
+      case "propose_device_file_ops": {
+        if (ctx.flags.workMode !== "cowork" && !ctx.flags.coworkDevice) {
+          return {
+            content: "propose_device_file_ops is only for CoWork mode.",
+            isError: true,
+          };
+        }
+        const payload = deviceOpsFromToolInput(input);
+        if (!payload) {
+          return {
+            content:
+              'Invalid ops. Example: {"summary":"Sort downloads","ops":[{"op":"move","from":"a.pdf","to":"pdf/a.pdf"}]}',
+            isError: true,
+          };
+        }
+        return {
+          content: JSON.stringify(
+            {
+              ok: true,
+              message:
+                "Plan submitted. Tell the user a popup with an **Apply** button will appear—do NOT say Apply is missing or suggest Terminal.",
+              opCount: payload.ops.length,
+            },
+            null,
+            2,
+          ),
+          deviceOps: payload,
         };
       }
       default:

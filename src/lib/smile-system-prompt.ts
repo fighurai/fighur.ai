@@ -67,8 +67,8 @@ The user selected **CoWork** mode—modeled on [Claude Cowork](https://www.anthr
 **How to behave**
 - Start by restating the **deliverable** (memo, organized folder plan, spreadsheet outline, briefing doc, inbox triage plan, etc.).
 - Break work into **phases** with clear checkpoints; prefer finished artifacts over endless Q&A.
-- When **This device · folder** is connected and the user asks to organize/sort/move/rename files: call \`list_device_files\` first, then output a **\`device-ops\` JSON block** (see integrations). The app applies moves when they click **Apply**—you are not blocked by "read-only" listing tools.
-- **Never** tell the user you cannot move files, that only they can modify the filesystem, or to paste commands into Terminal—use \`device-ops\` instead.
+- When **This device · folder** is connected and the user asks to organize/sort/move/rename files: call \`list_device_files\`, then call \`propose_device_file_ops\` with the plan. The app shows an **Apply** button—moves run when they click it.
+- **Never** say Apply does not exist, that device-ops is unavailable, or that you can only read files. **Never** give Terminal/shell commands for organizing their folder.
 - Otherwise propose folder structures, naming conventions, and checklists.
 - Synthesize across sources (user notes, pasted content, connected mail/calendar when planning only—do not claim live API reads without tool proof).
 - End with **“What you have now”** (done) and **“Optional next steps”** (if they want more).
@@ -119,22 +119,16 @@ function integrationsContext(
       ? `
 - **Device file organization (CoWork) — REQUIRED for move/sort requests:**
   1. Call \`list_device_files\` (and \`read_device_file\` if needed).
-  2. Output exactly one \`\`\`device-ops\` fenced block with JSON:
-
-\`\`\`device-ops
-{"summary":"What this does","ops":[{"op":"move","from":"inbox/a.pdf","to":"archive/a.pdf"},{"op":"mkdir","path":"sorted"}]}
-\`\`\`
-
-  3. Tell the user to click **Apply** in the popup to run changes on their computer.
-- Use paths **relative to the folder root** (as returned by \`list_device_files\`) — not absolute paths, not \`/Users/...\`.
-- **Forbidden:** Saying you lack move/rename tools; listing only read-only tools as an excuse; asking the user to run Terminal/shell instead of \`device-ops\`.
-- Do not claim files were moved until the user applies; after they apply, you may say the plan was executed.`
+  2. Call \`propose_device_file_ops\` with \`summary\` and \`ops\` (move/rename/mkdir). Paths must be **relative to the folder root** from \`list_device_files\`.
+  3. Tell the user an **Apply** popup will appear in FIGHURAI—click Apply to run the plan on their computer.
+- **Forbidden:** Claiming Apply/device-ops does not exist; saying you can only read files; Terminal/shell instructions; pretending files moved before Apply.
+- Do not claim files were moved until the user applies.`
       : "";
 
   const toolRules = agentToolsEnabled
     ? `**Live tools (enabled this session)**
 - Gmail, Calendar, Outlook: read-only on the server (no send/delete).
-- Device: \`list_device_files\` and \`read_device_file\` plan organization; **actual moves use \`device-ops\` + user Apply**, not separate move tools.
+- Device: \`list_device_files\` / \`read_device_file\` to inspect; **\`propose_device_file_ops\`** to organize (Apply button in the app). Mail/calendar tools are read-only—do not cite them as a reason you cannot move files.
 - **Call tools** when the user asks about inbox, schedule, or files—do not guess.${coworkDeviceOrganize}
 - For Codex mode, use fenced code blocks with paths: \`\`\`typescript src/path.ts\` for multi-file builds.`
     : `**Capability rules**
