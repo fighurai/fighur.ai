@@ -40,8 +40,9 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   metadataBase: new URL(siteUrl),
   icons: {
-    icon: [{ url: SITE_ICON, type: "image/png" }],
-    apple: [{ url: SITE_ICON, type: "image/png" }],
+    icon: [{ url: SITE_ICON, type: "image/png", sizes: "128x128" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+    shortcut: "/favicon.ico",
   },
   openGraph: {
     title: SITE_TITLE,
