@@ -305,6 +305,7 @@ export function SmileChatGeneral() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
   const [composerInset, setComposerInset] = useState(0);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -761,9 +762,28 @@ export function SmileChatGeneral() {
   const showEmpty = messages.length === 0;
   const busy = pending || translatingSpeech;
 
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, []);
+
+  const updateScrollToBottom = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const canScroll = scrollHeight > clientHeight + 12;
+    const atBottom = scrollTop + clientHeight >= scrollHeight - 56;
+    setShowScrollToBottom(canScroll && !atBottom);
+  }, []);
+
   useEffect(() => {
     if (showEmpty) {
       setComposerInset(0);
+      setShowScrollToBottom(false);
       return;
     }
     const el = composerDockRef.current;
@@ -772,12 +792,13 @@ export function SmileChatGeneral() {
     const measure = () => {
       const dock = composerDockRef.current;
       if (!dock) return;
-      const height = Math.ceil(dock.getBoundingClientRect().height);
-      const gap = window.matchMedia("(max-width: 767px)").matches ? 16 : 8;
+      const height = dock.offsetHeight;
+      const gap = window.matchMedia("(max-width: 767px)").matches ? 32 : 8;
       setComposerInset(height + gap);
     };
 
     measure();
+    requestAnimationFrame(measure);
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     window.addEventListener("resize", measure);
@@ -790,7 +811,35 @@ export function SmileChatGeneral() {
       vv?.removeEventListener("resize", measure);
       vv?.removeEventListener("scroll", measure);
     };
-  }, [showEmpty, error, session, attachments.length, pending, listening, translatingSpeech]);
+  }, [
+    showEmpty,
+    error,
+    session,
+    attachments.length,
+    pending,
+    listening,
+    translatingSpeech,
+    messages.length,
+    streamBuffer,
+  ]);
+
+  useEffect(() => {
+    if (showEmpty) return;
+    const el = listRef.current;
+    if (!el) return;
+
+    updateScrollToBottom();
+    el.addEventListener("scroll", updateScrollToBottom, { passive: true });
+    const ro = new ResizeObserver(updateScrollToBottom);
+    ro.observe(el);
+    const thread = el.querySelector(".chat-thread");
+    if (thread) ro.observe(thread);
+
+    return () => {
+      el.removeEventListener("scroll", updateScrollToBottom);
+      ro.disconnect();
+    };
+  }, [showEmpty, messages, streamBuffer, composerInset, updateScrollToBottom]);
   const lastAssistantMessageId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant") return messages[i].id;
@@ -1196,7 +1245,7 @@ export function SmileChatGeneral() {
         </div>
 
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "pt-3 sm:pt-4 md:pt-6"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
           {chatReady === false ? (
             <div
@@ -1239,13 +1288,9 @@ export function SmileChatGeneral() {
           ) : (
             <div
               ref={listRef}
-              className="chat-scroll mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-y-auto"
-              style={{
-                paddingBottom: composerInset > 0 ? composerInset : undefined,
-                scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
-              }}
+              className="chat-scroll mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-y-auto overscroll-y-contain"
             >
-              <div className="chat-thread mt-auto flex w-full flex-col space-y-3">
+              <div className="chat-thread flex w-full flex-col space-y-3 md:mt-auto">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
@@ -1295,8 +1340,39 @@ export function SmileChatGeneral() {
                 );
               })}
               </div>
+              {composerInset > 0 ? (
+                <div
+                  aria-hidden
+                  className="composer-scroll-spacer shrink-0"
+                  style={{ height: composerInset }}
+                />
+              ) : null}
             </div>
           )}
+
+          {!showEmpty && showScrollToBottom ? (
+            <button
+              type="button"
+              onClick={() => scrollChatToBottom()}
+              className="scroll-to-bottom-btn absolute left-1/2 z-30 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/[0.14] bg-[var(--bg-elevated)]/95 text-[var(--accent)] shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:border-[var(--accent)]/40 hover:bg-[var(--bg-elevated)] active:scale-95"
+              style={{ bottom: composerInset > 0 ? composerInset + 10 : 160 }}
+              aria-label="Scroll to latest messages"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+                aria-hidden
+              >
+                <path d="M12 5v14M6 13l6 6 6-6" />
+              </svg>
+            </button>
+          ) : null}
         </div>
 
         {!showEmpty ? (
