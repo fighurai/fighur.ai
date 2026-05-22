@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { establishServerSession } from "@/lib/auth-storage";
+import { signUpWithPassword } from "@/lib/auth-storage";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -20,26 +20,46 @@ export default function SignUpPage() {
         Create account
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        The server creates a private folder for your user id and sets a sealed httpOnly session cookie.
-        Add real password checks and email verification when you move to production auth.
+        Get a private data environment, RBAC permissions, and unlimited chat after your $5 trial. Passwords
+        are hashed with scrypt on the server.
       </p>
+
+      <div className="mt-6 flex flex-col gap-2">
+        <a
+          href="/api/auth/sso/google"
+          className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.04] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-white/[0.08]"
+        >
+          Sign up with Google
+        </a>
+        <a
+          href="/api/auth/sso/microsoft"
+          className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.04] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-white/[0.08]"
+        >
+          Sign up with Microsoft
+        </a>
+      </div>
+
+      <p className="my-4 text-center text-xs text-[var(--text-faint)]">or create with email</p>
+
       <form
-        className="mt-8 space-y-4"
+        className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault();
           setFormError(null);
           const trimmed = email.trim();
-          if (!trimmed.includes("@")) return;
+          if (!trimmed.includes("@") || password.length < 8) {
+            setFormError("Enter a valid email and password (8+ characters).");
+            return;
+          }
           setBusy(true);
           try {
-            const ok = await establishServerSession({
+            const result = await signUpWithPassword({
               email: trimmed,
+              password,
               name: name.trim() || undefined,
             });
-            if (!ok) {
-              setFormError(
-                "Could not create your account on the server. Check SMILE_APP_SECRET or SMILE_OAUTH_COOKIE_SECRET (16+ characters).",
-              );
+            if (!result.ok) {
+              setFormError(result.error || "Sign up failed.");
               return;
             }
             router.push("/");
@@ -49,7 +69,9 @@ export default function SignUpPage() {
         }}
       >
         {formError ? (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">{formError}</p>
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            {formError}
+          </p>
         ) : null}
         <label className="block text-xs font-medium text-[var(--text-muted)]">
           Name (optional)
@@ -77,10 +99,11 @@ export default function SignUpPage() {
           <input
             type="password"
             autoComplete="new-password"
+            required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1.5 w-full rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]/40"
-            placeholder="Optional for demo"
           />
         </label>
         <button

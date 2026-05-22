@@ -16,6 +16,11 @@ import {
   getLiveOAuthIntegrationFlags,
   mergeIntegrationFlags,
 } from "@/lib/oauth-connection-cookies";
+import {
+  applyAnonCookie,
+  prepareChatRequest,
+  wrapStreamWithUsageAccounting,
+} from "@/lib/chat-request-guard";
 import { readVerifiedSession } from "@/lib/session-cookie";
 import {
   buildSmileSystemPrompt,
@@ -80,19 +85,6 @@ function parseIntegrationPayload(raw: unknown): Partial<ChatIntegrationFlags> | 
     if (o[k] === true) out[k] = true;
   }
   return Object.keys(out).length ? out : null;
-}
-
-function parseUserSession(raw: unknown): { email: string; name?: string } | null {
-  if (!raw || typeof raw !== "object") return null;
-  const email = (raw as { email?: unknown }).email;
-  if (typeof email !== "string") return null;
-  const trimmed = email.trim().slice(0, 320);
-  if (!trimmed || !trimmed.includes("@")) return null;
-  const name = (raw as { name?: unknown }).name;
-  return {
-    email: trimmed,
-    name: typeof name === "string" ? name.trim().slice(0, 120) || undefined : undefined,
-  };
 }
 
 function trimMessagesToBudget(
@@ -436,11 +428,12 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     parseIntegrationPayload(b.connectedServices),
     cookieFlags,
   );
-  const verified = await readVerifiedSession(request);
-  const clientUser = parseUserSession(b.userSession);
-  const userSession = verified
-    ? { email: verified.email, name: verified.name }
-    : clientUser;
+  const prep = await prepareChatRequest(request);
+  if (!prep.ok) return prep.response;
+
+  const { ctx } = prep;
+  const verified = ctx.session;
+  const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
   const system = buildSmileSystemPrompt(builderTarget, integrationFlags, userSession);
   const budgetedMessages = trimMessagesToBudget(messages, system);
   const estimatedChars = estimateMessageChars(budgetedMessages) + system.length;
@@ -454,54 +447,71 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     );
   }
 
+  const modelId = option.id;
+  const usageOpts = {
+    modelId,
+    inputChars: estimatedChars,
+    session: ctx.session,
+    anonId: ctx.anonId,
+    ip: ctx.ip,
+    userAgent: ctx.userAgent,
+  };
+
+  const finish = (res: Response) =>
+    applyAnonCookie(wrapStreamWithUsageAccounting(res, usageOpts), ctx.anonCookieToSet);
+
   try {
     switch (option.provider) {
       case "anthropic":
-        return await streamAnthropic(
-          system,
-          budgetedMessages,
-          option.apiModel,
-          key,
-          request.signal,
+        return finish(
+          await streamAnthropic(system, budgetedMessages, option.apiModel, key, request.signal),
         );
       case "openai":
-        return await streamOpenAICompatible(
-          "https://api.openai.com/v1/chat/completions",
-          key,
-          option,
-          system,
-          budgetedMessages,
-          {},
+        return finish(
+          await streamOpenAICompatible(
+            "https://api.openai.com/v1/chat/completions",
+            key,
+            option,
+            system,
+            budgetedMessages,
+            {},
+          ),
         );
       case "groq":
-        return await streamOpenAICompatible(
-          "https://api.groq.com/openai/v1/chat/completions",
-          key,
-          option,
-          system,
-          budgetedMessages,
-          {},
+        return finish(
+          await streamOpenAICompatible(
+            "https://api.groq.com/openai/v1/chat/completions",
+            key,
+            option,
+            system,
+            budgetedMessages,
+            {},
+          ),
         );
       case "openrouter":
-        return await streamOpenAICompatible(
-          "https://openrouter.ai/api/v1/chat/completions",
-          key,
-          option,
-          system,
-          budgetedMessages,
-          {
-            "HTTP-Referer": process.env.OPENROUTER_REFERER?.trim() || "http://localhost:3010",
-            "X-Title": "FIGHURAI",
-          },
+        return finish(
+          await streamOpenAICompatible(
+            "https://openrouter.ai/api/v1/chat/completions",
+            key,
+            option,
+            system,
+            budgetedMessages,
+            {
+              "HTTP-Referer": process.env.OPENROUTER_REFERER?.trim() || "http://localhost:3010",
+              "X-Title": "FIGHURAI",
+            },
+          ),
         );
       case "nvidia":
-        return await streamOpenAICompatible(
-          "https://integrate.api.nvidia.com/v1/chat/completions",
-          key,
-          option,
-          system,
-          budgetedMessages,
-          {},
+        return finish(
+          await streamOpenAICompatible(
+            "https://integrate.api.nvidia.com/v1/chat/completions",
+            key,
+            option,
+            system,
+            budgetedMessages,
+            {},
+          ),
         );
       default:
         return NextResponse.json({ error: "Unknown provider" }, { status: 500 });

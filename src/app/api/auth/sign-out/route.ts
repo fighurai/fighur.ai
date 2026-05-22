@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server";
 
+import { appendAudit } from "@/lib/audit-log";
+import { COOKIE_ANON } from "@/lib/anonymous-session";
 import { COOKIE_GOOGLE, COOKIE_MICROSOFT, COOKIE_SLACK } from "@/lib/oauth-connection-cookies";
-import { COOKIE_SESSION } from "@/lib/session-cookie";
+import { clientIp, userAgent } from "@/lib/request-context";
+import { readVerifiedSession, COOKIE_SESSION } from "@/lib/session-cookie";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const session = await readVerifiedSession(request);
+  const ip = clientIp(request);
+  const ua = userAgent(request);
+
+  if (session) {
+    await appendAudit({
+      action: "auth.sign_out",
+      outcome: "success",
+      userId: session.userId,
+      ip,
+      userAgent: ua,
+    });
+  }
+
   const res = NextResponse.json({ ok: true });
   const secure = process.env.NODE_ENV === "production";
   const clear = (name: string) => {
@@ -16,5 +33,6 @@ export async function POST() {
   clear("smile_oauth_google_pending");
   clear("smile_oauth_microsoft_pending");
   clear("smile_oauth_slack_pending");
+  clear(COOKIE_ANON);
   return res;
 }

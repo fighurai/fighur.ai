@@ -13,10 +13,13 @@ import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
 import {
   clearSessionAndServer,
+  fetchUsageSummary,
   hydrateServerSession,
   readSession,
   type SmileSession,
+  type UsageSummary,
 } from "@/lib/auth-storage";
+import { ANONYMOUS_SPEND_LIMIT_USD } from "@/lib/usage-constants";
 import { readConnectedServices, toConnectedServicesPayload } from "@/lib/connected-services";
 import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
@@ -326,6 +329,7 @@ export function SmileChatGeneral() {
   const [latestBuildArtifact, setLatestBuildArtifact] = useState<BuildArtifact | null>(null);
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [session, setSession] = useState<SmileSession | null>(null);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -346,8 +350,12 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     setSession(readSession());
-    const onAuth = () => setSession(readSession());
+    const onAuth = () => {
+      setSession(readSession());
+      void fetchUsageSummary().then(setUsage);
+    };
     window.addEventListener("smile-auth-changed", onAuth);
+    void fetchUsageSummary().then(setUsage);
     return () => window.removeEventListener("smile-auth-changed", onAuth);
   }, []);
 
@@ -605,6 +613,13 @@ export function SmileChatGeneral() {
     const trimmed = input.trim();
     if (!trimmed || pending || translatingSpeech || sendInFlightRef.current) return;
 
+    if (!session?.userId && usage?.signupRequired) {
+      setError(
+        `You have used $${ANONYMOUS_SPEND_LIMIT_USD.toFixed(2)} in trial AI usage. Create a free account to continue.`,
+      );
+      return;
+    }
+
     const modelMeta = availableModels.find((m) => m.id === selectedModel);
     if (!modelMeta?.available) {
       setError(
@@ -681,8 +696,17 @@ export function SmileChatGeneral() {
         res = await postChat();
       }
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error((errJson as { error?: string }).error || `Request failed (${res.status})`);
+        const errJson = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          signupRequired?: boolean;
+        };
+        void fetchUsageSummary().then(setUsage);
+        if (res.status === 402 && errJson.signupRequired) {
+          setError(errJson.error || `Create an account to continue after $${ANONYMOUS_SPEND_LIMIT_USD} of trial usage.`);
+          setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          return;
+        }
+        throw new Error(errJson.error || `Request failed (${res.status})`);
       }
 
       const reader = res.body?.getReader();
@@ -738,6 +762,7 @@ export function SmileChatGeneral() {
           prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
         );
         setStreamingMessageId(null);
+        void fetchUsageSummary().then(setUsage);
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
@@ -1327,6 +1352,41 @@ export function SmileChatGeneral() {
                 <li>Refresh this page — models should no longer say unavailable</li>
               </ol>
             </div>
+          ) : null}
+
+          {!session?.userId && usage && !usage.signupRequired && usage.limitUsd != null ? (
+            <div className="mb-3 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-3 py-2.5 text-xs leading-relaxed text-[var(--text-muted)]">
+              Trial usage:{" "}
+              <span className="font-medium text-[var(--text-primary)]">
+                ${usage.spentUsd.toFixed(2)} / ${usage.limitUsd.toFixed(2)}
+              </span>
+              {usage.remainingUsd != null ? (
+                <> · ${usage.remainingUsd.toFixed(2)} remaining before sign-up is required</>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!session?.userId && usage?.signupRequired ? (
+            <div
+              className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
+              role="alert"
+            >
+              <p className="font-semibold text-amber-50">Trial limit reached</p>
+              <p className="mt-1">
+                You have used ${usage.spentUsd.toFixed(2)} in AI tokens.{" "}
+                <Link href="/sign-up" className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">
+                  Create a free account
+                </Link>{" "}
+                to continue chatting in your private environment.
+              </p>
+            </div>
+          ) : null}
+
+          {session?.userId ? (
+            <p className="mb-2 text-[0.65rem] text-[var(--text-faint)]">
+              Private environment · {session.environmentId?.slice(0, 8) ?? session.userId.slice(0, 8)}…
+              {session.roles?.length ? ` · ${session.roles.join(", ")}` : ""}
+            </p>
           ) : null}
 
           {showEmpty ? (

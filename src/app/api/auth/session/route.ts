@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 
+import { appendAudit } from "@/lib/audit-log";
+import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
-import { COOKIE_SESSION, readSessionPayload, sealSessionPayload, type SmileServerSession } from "@/lib/session-cookie";
+import { clientIp, userAgent } from "@/lib/request-context";
+import { readSessionPayload } from "@/lib/session-cookie";
 import { ensureUser, readUserProfile } from "@/lib/user-data-store";
+import { normalizeRoles } from "@/lib/rbac";
 
-const SESSION_MAX_AGE = 60 * 60 * 24 * 60;
-
-function cookieOpts() {
-  const secure = process.env.NODE_ENV === "production";
-  return { httpOnly: true, secure, sameSite: "lax" as const, path: "/", maxAge: SESSION_MAX_AGE };
+function demoEmailAuthEnabled(): boolean {
+  return process.env.SMILE_ALLOW_DEMO_EMAIL_AUTH === "true";
 }
 
 export async function GET(request: Request) {
@@ -36,6 +37,8 @@ export async function GET(request: Request) {
     userId: profile.userId,
     email: profile.email,
     name: profile.name,
+    roles: normalizeRoles(profile.roles),
+    environmentId: profile.environmentId ?? profile.userId,
   });
 }
 
@@ -55,40 +58,60 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const email = typeof body.email === "string" ? body.email.trim() : "";
+  if (!demoEmailAuthEnabled()) {
+    return NextResponse.json(
+      {
+        error:
+          "Email-only sign-in is disabled. Use /sign-up with a password or SSO (Google / Microsoft).",
+      },
+      { status: 403 },
+    );
+  }
+
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const name = typeof body.name === "string" ? body.name.trim() : undefined;
   if (!email.includes("@") || email.length > 320) {
     return NextResponse.json({ error: "Valid email required" }, { status: 400 });
   }
 
+  const ip = clientIp(request);
+  const ua = userAgent(request);
+
   let userId: string;
   try {
-    const u = await ensureUser(email, name);
+    const u = await ensureUser(email, { name, authProvider: "email" });
     userId = u.userId;
   } catch {
     return NextResponse.json({ error: "Could not create user storage" }, { status: 500 });
   }
 
   const profile = await readUserProfile(userId);
-  const sessionPayload: SmileServerSession = {
-    v: 1,
+  const res = NextResponse.json(
+    sessionJsonBody({
+      userId,
+      email: profile?.email ?? email,
+      name: profile?.name ?? name,
+      roles: normalizeRoles(profile?.roles),
+      environmentId: profile?.environmentId ?? userId,
+    }),
+  );
+  const withCookie = await attachSessionCookie(res, {
     userId,
     email: profile?.email ?? email,
     name: profile?.name ?? name,
-    iat: Date.now(),
-  };
-
-  const sealed = sealSessionPayload(sessionPayload);
-  if (!sealed) {
+  });
+  if (!withCookie) {
     return NextResponse.json({ error: "Could not seal session" }, { status: 500 });
   }
 
-  const res = NextResponse.json({
-    ok: true,
+  await appendAudit({
+    action: "auth.sign_in",
+    outcome: "success",
     userId,
-    email: sessionPayload.email,
-    name: sessionPayload.name,
+    ip,
+    userAgent: ua,
+    meta: { demo: true },
   });
-  res.cookies.set(COOKIE_SESSION, sealed, cookieOpts());
-  return res;
+
+  return withCookie;
 }

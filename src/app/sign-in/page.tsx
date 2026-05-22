@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { establishServerSession } from "@/lib/auth-storage";
+import { signInWithPassword } from "@/lib/auth-storage";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -19,23 +19,41 @@ export default function SignInPage() {
         Sign in
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Your account is stored on this server: a private data folder and httpOnly session cookie.
-        Password verification is not wired yet — the server still trusts the email you submit on this demo.
+        Secure account with password hashing, RBAC, audit logs, and a private data environment per user.
       </p>
+
+      <div className="mt-6 flex flex-col gap-2">
+        <a
+          href="/api/auth/sso/google"
+          className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.04] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-white/[0.08]"
+        >
+          Continue with Google
+        </a>
+        <a
+          href="/api/auth/sso/microsoft"
+          className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.04] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-white/[0.08]"
+        >
+          Continue with Microsoft
+        </a>
+      </div>
+
+      <p className="my-4 text-center text-xs text-[var(--text-faint)]">or sign in with email</p>
+
       <form
-        className="mt-8 space-y-4"
+        className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault();
           setFormError(null);
           const trimmed = email.trim();
-          if (!trimmed.includes("@")) return;
+          if (!trimmed.includes("@") || password.length < 8) {
+            setFormError("Enter a valid email and password (8+ characters).");
+            return;
+          }
           setBusy(true);
           try {
-            const ok = await establishServerSession({ email: trimmed });
-            if (!ok) {
-              setFormError(
-                "Could not start a server session. Is the app running, and is SMILE_APP_SECRET or SMILE_OAUTH_COOKIE_SECRET set (16+ characters)?",
-              );
+            const result = await signInWithPassword({ email: trimmed, password });
+            if (!result.ok) {
+              setFormError(result.error || "Sign in failed.");
               return;
             }
             router.push("/");
@@ -45,7 +63,9 @@ export default function SignInPage() {
         }}
       >
         {formError ? (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">{formError}</p>
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            {formError}
+          </p>
         ) : null}
         <label className="block text-xs font-medium text-[var(--text-muted)]">
           Email
@@ -55,7 +75,7 @@ export default function SignInPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none ring-0 focus:border-[var(--accent)]/40"
+            className="mt-1.5 w-full rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]/40"
           />
         </label>
         <label className="block text-xs font-medium text-[var(--text-muted)]">
@@ -63,10 +83,11 @@ export default function SignInPage() {
           <input
             type="password"
             autoComplete="current-password"
+            required
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1.5 w-full rounded-xl border border-white/[0.12] bg-white/[0.04] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]/40"
-            placeholder="Optional for demo"
           />
         </label>
         <button
@@ -74,7 +95,7 @@ export default function SignInPage() {
           disabled={busy}
           className="w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_0_24px_var(--accent-glow)] transition hover:brightness-110 disabled:opacity-50"
         >
-          {busy ? "Connecting…" : "Continue"}
+          {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>
       <p className="mt-6 text-center text-xs text-[var(--text-faint)]">
