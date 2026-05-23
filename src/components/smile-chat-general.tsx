@@ -1409,6 +1409,14 @@ export function SmileChatGeneral() {
               {session.name ? `${session.name} · ` : null}
               {session.email}
             </p>
+            {session.plan !== "pro" ? (
+              <Link
+                href="/upgrade"
+                className="block py-0.5 text-center text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+              >
+                Upgrade to Pro
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -1432,6 +1440,12 @@ export function SmileChatGeneral() {
               className="rounded-lg border border-white/[0.1] py-2 text-center text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
             >
               Create account
+            </Link>
+            <Link
+              href="/upgrade"
+              className="py-1 text-center text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+            >
+              Upgrade to Pro
             </Link>
           </div>
         )}
@@ -1501,13 +1515,6 @@ export function SmileChatGeneral() {
                 sites do not apply here.
               </p>
             </div>
-          ) : chatReady === true && availableModels.length > 0 ? (
-            <p className="mb-2 text-xs text-[var(--accent)]" role="status">
-              Claude is connected
-              {session?.plan === "pro"
-                ? " · add more API keys in Vercel to enable additional models"
-                : " · free accounts use Claude only"}
-            </p>
           ) : null}
 
           {!session?.userId && usage?.signupRequired ? (
@@ -1524,23 +1531,6 @@ export function SmileChatGeneral() {
                 for unlimited free chat with Claude in your private environment.
               </p>
             </div>
-          ) : null}
-
-          {session?.userId ? (
-            <p className="mb-2 text-[0.65rem] text-[var(--text-faint)]">
-              {session.plan === "pro" ? (
-                <>Pro · all models · </>
-              ) : (
-                <>
-                  Free · Claude only ·{" "}
-                  <Link href="/upgrade" className="text-[var(--accent)] underline-offset-2 hover:underline">
-                    Upgrade to Pro
-                  </Link>
-                  {" · "}
-                </>
-              )}
-              private environment {session.environmentId?.slice(0, 8) ?? session.userId.slice(0, 8)}…
-            </p>
           ) : null}
 
           {showEmpty ? (
@@ -1645,6 +1635,14 @@ export function SmileChatGeneral() {
                 {session ? (
                   <>
                     <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
+                    {session.plan !== "pro" ? (
+                      <>
+                        <span className="text-[var(--text-faint)]">·</span>
+                        <Link href="/upgrade" className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                          Upgrade to Pro
+                        </Link>
+                      </>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -1663,6 +1661,10 @@ export function SmileChatGeneral() {
                     <span className="text-[var(--text-faint)]">·</span>
                     <Link href="/sign-up" className="text-xs font-medium text-[var(--text-muted)]">
                       Create account
+                    </Link>
+                    <span className="text-[var(--text-faint)]">·</span>
+                    <Link href="/upgrade" className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                      Upgrade to Pro
                     </Link>
                   </>
                 )}
