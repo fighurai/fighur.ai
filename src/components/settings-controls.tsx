@@ -412,7 +412,7 @@ export function SettingsControls() {
                     </p>
                   ) : (
                     <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">
-                      Pick a folder (Chrome/Edge to organize; Safari for read-only plans)
+                      Pick a folder (Chrome/Edge: Apply in browser; Safari: download organizer script)
                     </p>
                   )}
                 </div>

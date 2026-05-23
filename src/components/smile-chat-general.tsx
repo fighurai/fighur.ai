@@ -46,6 +46,7 @@ import {
   type DeviceOpsPayload,
 } from "@/lib/device-file-ops";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
+import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
 import { activeBuildFile, extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
@@ -368,6 +369,7 @@ export function SmileChatGeneral() {
   const [deviceOpsApplying, setDeviceOpsApplying] = useState(false);
   const [deviceOpsResult, setDeviceOpsResult] = useState<string | null>(null);
   const [deviceCanWrite, setDeviceCanWrite] = useState(false);
+  const [deviceOpsRootName, setDeviceOpsRootName] = useState("Folder");
 
   const serverSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -879,6 +881,9 @@ export function SmileChatGeneral() {
           if (opsPayload && opsPayload.ops.length > 0) {
             setPendingDeviceOps(opsPayload);
             setDeviceOpsResult(null);
+            void buildDeviceManifestForChat(session.userId).then((m) => {
+              if (m?.rootName) setDeviceOpsRootName(m.rootName);
+            });
             void loadDeviceDirectoryHandle(session.userId).then((h) => {
               setDeviceCanWrite(Boolean(h));
             });
@@ -1713,6 +1718,13 @@ export function SmileChatGeneral() {
         applying={deviceOpsApplying}
         resultMessage={deviceOpsResult}
         canWrite={deviceCanWrite}
+        onDownloadSafari={() => {
+          if (!pendingDeviceOps) return;
+          downloadSafariOrganizeScript(pendingDeviceOps, deviceOpsRootName);
+          setDeviceOpsResult(
+            "Downloaded fighur-organize.command — open it from Downloads, pick your folder, and press Enter when done.",
+          );
+        }}
         onCancel={() => {
           setDeviceOpsOpen(false);
           setPendingDeviceOps(null);

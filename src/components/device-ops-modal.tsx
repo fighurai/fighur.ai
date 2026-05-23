@@ -1,6 +1,7 @@
 "use client";
 
 import type { DeviceOpsPayload } from "@/lib/device-file-ops";
+import { isSafariBrowser } from "@/lib/device-ops-safari";
 
 type Props = {
   open: boolean;
@@ -10,6 +11,7 @@ type Props = {
   canWrite: boolean;
   onApply: () => void;
   onReconnect: () => void;
+  onDownloadSafari: () => void;
   onCancel: () => void;
 };
 
@@ -21,9 +23,12 @@ export function DeviceOpsModal({
   canWrite,
   onApply,
   onReconnect,
+  onDownloadSafari,
   onCancel,
 }: Props) {
   if (!open || !payload) return null;
+
+  const safariMode = isSafariBrowser();
 
   return (
     <div
@@ -50,10 +55,16 @@ export function DeviceOpsModal({
         {payload.summary ? (
           <p className="mt-2 text-sm text-[var(--text-muted)]">{payload.summary}</p>
         ) : null}
-        {!canWrite ? (
+        {safariMode ? (
+          <p className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs leading-relaxed text-sky-100/90">
+            <strong>Safari</strong> cannot move files inside the browser (Apple limitation). Click{" "}
+            <strong>Download for Safari</strong>, open <strong>fighur-organize.command</strong> from
+            Downloads, pick your folder in Finder, and the moves run automatically.
+          </p>
+        ) : !canWrite ? (
           <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200/90">
-            To apply moves, use <strong>Chrome or Edge</strong>, reconnect the folder below, and
-            choose <strong>Allow edit access</strong> when the browser prompts you.
+            To apply in-browser, use <strong>Chrome or Edge</strong>, reconnect the folder, and allow{" "}
+            <strong>edit access</strong>.
           </p>
         ) : null}
         <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-xs text-[var(--text-muted)]">
@@ -76,14 +87,16 @@ export function DeviceOpsModal({
         ) : null}
         <div className="mt-5 flex flex-col gap-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={onReconnect}
-              disabled={applying}
-              className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-sm text-[var(--text-muted)] hover:bg-white/[0.06] disabled:opacity-50"
-            >
-              Reconnect folder
-            </button>
+            {!safariMode ? (
+              <button
+                type="button"
+                onClick={onReconnect}
+                disabled={applying}
+                className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-sm text-[var(--text-muted)] hover:bg-white/[0.06] disabled:opacity-50"
+              >
+                Reconnect folder
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={onCancel}
@@ -92,16 +105,27 @@ export function DeviceOpsModal({
             >
               {resultMessage ? "Close" : "Cancel"}
             </button>
-            <button
-              type="button"
-              onClick={onApply}
-              disabled={applying}
-              className="rounded-xl bg-[var(--accent)]/20 px-4 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/35 hover:bg-[var(--accent)]/30 disabled:opacity-50"
-            >
-              {applying
-                ? "Applying…"
-                : `Apply ${payload.ops.length} change${payload.ops.length === 1 ? "" : "s"}`}
-            </button>
+            {safariMode ? (
+              <button
+                type="button"
+                onClick={onDownloadSafari}
+                disabled={applying}
+                className="rounded-xl bg-[var(--accent)]/20 px-4 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/35 hover:bg-[var(--accent)]/30 disabled:opacity-50"
+              >
+                Download for Safari
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onApply}
+                disabled={applying}
+                className="rounded-xl bg-[var(--accent)]/20 px-4 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/35 hover:bg-[var(--accent)]/30 disabled:opacity-50"
+              >
+                {applying
+                  ? "Applying…"
+                  : `Apply ${payload.ops.length} change${payload.ops.length === 1 ? "" : "s"}`}
+              </button>
+            )}
           </div>
         </div>
       </div>

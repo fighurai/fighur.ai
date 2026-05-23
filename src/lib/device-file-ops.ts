@@ -7,6 +7,7 @@ import {
   loadDeviceManifestSnapshot,
   supportsNativeDirectoryPicker,
 } from "@/lib/device-files-client";
+import { isSafariBrowser } from "@/lib/device-ops-safari";
 
 export type { DeviceFileOp, DeviceOpsPayload } from "@/lib/device-ops-parse";
 import type { DeviceFileOp, DeviceOpsPayload } from "@/lib/device-ops-parse";
@@ -166,6 +167,15 @@ export async function prepareDeviceWriteAccessFromClick(
   permissionPromise: Promise<PermissionState> | null,
 ): Promise<DeviceWriteAccess> {
   if (!supportsNativeDirectoryPicker()) {
+    const snapshot = await loadDeviceManifestSnapshot(userId);
+    if (isSafariBrowser() || snapshot) {
+      return {
+        ok: false,
+        needsReconnect: false,
+        error:
+          "Safari cannot apply moves in the browser. Use Download for Safari in the popup — it uses Finder to pick your folder, then organizes files.",
+      };
+    }
     return {
       ok: false,
       needsReconnect: true,
