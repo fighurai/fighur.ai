@@ -96,11 +96,36 @@ The user selected **Codex** mode—modeled on [OpenAI Codex](https://openai.com/
 **Do not** claim you opened a cloud sandbox, merged a GitHub PR, or ran tests unless tool results prove it.`;
 }
 
+function liveDataContext(agentToolsEnabled?: boolean): string {
+  if (!agentToolsEnabled) {
+    return `
+
+## Live data
+You do not have live web or weather tools in this session. Say you cannot verify current events or weather without browsing—do not invent live facts.`;
+  }
+  return `
+
+## Live data (internet & weather)
+- **get_weather** — current conditions and 5-day forecast for any city. **Always call this** for weather questions.
+- **web_search** — search the public internet for news, prices, sports, company info, and anything time-sensitive. **Call before** answering questions about current events or "today".
+- You **have** internet access through these tools. **Never** say you cannot browse the web or check live weather when tools are available.
+- Cite sources from search results (title + URL) when reporting facts from the web.`;
+}
+
 function integrationsContext(
   flags: Partial<ChatIntegrationFlags> | null | undefined,
   agentToolsEnabled?: boolean,
 ): string {
-  if (!flags) return "";
+  if (!flags) {
+    if (!agentToolsEnabled) return "";
+    return `
+
+## User connections (Settings)
+No mail/calendar/device connectors are active this session.
+
+**Live tools (enabled this session)**
+- **get_weather** and **web_search** are always available—use them for weather and current events.`;
+  }
   const active: string[] = [];
   const mode = flags.workMode ?? (flags.coworkDevice ? "cowork" : "chat");
   if (mode === "cowork") active.push("CoWork mode");
@@ -112,7 +137,7 @@ function integrationsContext(
   if (flags.microsoft365) active.push("Microsoft 365");
   if (flags.slack) active.push("Slack");
   if (flags.deviceFiles) active.push("This device’s files and folders");
-  if (active.length === 0) return "";
+  if (active.length === 0 && !agentToolsEnabled) return "";
 
   const coworkDeviceOrganize =
     flags?.deviceFiles
@@ -127,18 +152,24 @@ function integrationsContext(
 
   const toolRules = agentToolsEnabled
     ? `**Live tools (enabled this session)**
-- Gmail, Calendar, Outlook: read-only on the server (no send/delete).
+- **get_weather** and **web_search** are always available—use them for weather and current events.
+- Gmail, Calendar, Outlook: read-only on the server (no send/delete) when connected.
 - Device: \`list_device_files\` / \`read_device_file\` to inspect; **\`propose_device_file_ops\`** to organize (Apply button in the app). Mail/calendar tools are read-only—do not cite them as a reason you cannot move files.
-- **Call tools** when the user asks about inbox, schedule, or files—do not guess.${coworkDeviceOrganize}
+- **Call tools** when the user asks about weather, news, inbox, schedule, or files—do not guess.${coworkDeviceOrganize}
 - For Codex mode, use fenced code blocks with paths: \`\`\`typescript src/path.ts\` for multi-file builds.`
     : `**Capability rules**
 - OAuth may be connected but tools are unavailable on this model path—do not claim live mail/calendar reads.
 - Provide plans, drafts, and scripts; never claim sends/deletes without proof.`;
 
+  const header =
+    active.length > 0
+      ? `The user indicated they care about these integrations: **${active.join(" · ")}**.`
+      : "No mail/calendar/device connectors are active this session.";
+
   return `
 
 ## User connections (Settings)
-The user indicated they care about these integrations: **${active.join(" · ")}**.
+${header}
 
 ${toolRules}`;
 }
@@ -198,6 +229,7 @@ Rules:
 10. For document/image extraction tasks (invoices, receipts, statements), never invent sample values. If a field cannot be read, explicitly output "unreadable" or "missing".
 11. The server picks **application**, **agent**, **workflow**, or **general** from the user’s **latest message**. Use a build mode section only when the latest message clearly asks to build an app/site, agent/bot, or automation—not for everyday Q&A.
 ${accountContext(account)}
+${liveDataContext(options?.agentToolsEnabled)}
 ${workModeContext(integrations)}
 ${integrationsContext(integrations, options?.agentToolsEnabled)}
 ${builderContext(target)}

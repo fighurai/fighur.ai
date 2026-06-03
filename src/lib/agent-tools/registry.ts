@@ -7,6 +7,36 @@ export async function availableAgentTools(
   const tools: AgentToolDefinition[] = [];
   const { flags } = ctx;
 
+  tools.push({
+    name: "get_weather",
+    description:
+      "Get current weather and 5-day forecast for a city or place. Use for any weather question—do not guess or say you lack live data.",
+    input_schema: {
+      type: "object",
+      properties: {
+        location: {
+          type: "string",
+          description: 'City or place, e.g. "New York", "London", "Tokyo"',
+        },
+      },
+      required: ["location"],
+    },
+  });
+
+  tools.push({
+    name: "web_search",
+    description:
+      "Search the public internet for current news, facts, prices, events, and anything after your knowledge cutoff. Use before answering time-sensitive questions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query" },
+        max_results: { type: "number", description: "Max results (1–10, default 6)" },
+      },
+      required: ["query"],
+    },
+  });
+
   const cowork = flags.workMode === "cowork" || flags.coworkDevice === true;
   const googleToken =
     flags.gmail || flags.googleCalendar || cowork

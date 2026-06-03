@@ -6,6 +6,8 @@ import {
   listMicrosoftCalendarUpcoming,
   listOutlookRecent,
 } from "@/lib/integrations/microsoft-api";
+import { fetchWeather } from "@/lib/integrations/weather-api";
+import { searchWeb } from "@/lib/integrations/web-search-api";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
 import { manifestSummary } from "@/lib/device-manifest";
@@ -23,6 +25,20 @@ export async function executeAgentTool(
 ): Promise<AgentToolResult> {
   try {
     switch (name) {
+      case "get_weather": {
+        const location = typeof input.location === "string" ? input.location : "";
+        const res = await fetchWeather(location);
+        if (!res.ok) return { content: res.error, isError: true };
+        return { content: JSON.stringify(res, null, 2) };
+      }
+      case "web_search": {
+        const query = typeof input.query === "string" ? input.query : "";
+        const max =
+          typeof input.max_results === "number" ? Math.min(10, Math.max(1, input.max_results)) : 6;
+        const res = await searchWeb(query, max);
+        if (!res.ok) return { content: res.error, isError: true };
+        return { content: JSON.stringify(res, null, 2) };
+      }
       case "list_gmail_recent": {
         const token = await getGoogleAccessToken(ctx.request);
         if (!token) return { content: "Gmail not connected.", isError: true };
