@@ -106,10 +106,11 @@ You do not have live web or weather tools in this session. Say you cannot verify
   return `
 
 ## Live data (internet & weather)
-- **get_weather** — current conditions and 5-day forecast for any city. **Always call this** for weather questions.
-- **web_search** — search the public internet for news, prices, sports, company info, and anything time-sensitive. **Call before** answering questions about current events or "today".
-- You **have** internet access through these tools. **Never** say you cannot browse the web or check live weather when tools are available.
-- Cite sources from search results (title + URL) when reporting facts from the web.`;
+- **get_weather** — live forecast. For "weather here" / "my weather" call with **no location** (uses detected city).
+- **web_search** — search the internet for news, prices, sports, and current events.
+- **fetch_url** — **open and read any http(s) link** the user sends. **Always call fetch_url** when they paste a URL. Summarize what you read.
+- You have **full internet access** via these tools. **Forbidden:** "I don't have internet access", "I can't browse that link", "I cannot open websites".
+- Cite sources (title + URL) from tool results.`;
 }
 
 function integrationsContext(
@@ -124,7 +125,7 @@ function integrationsContext(
 No mail/calendar/device connectors are active this session.
 
 **Live tools (enabled this session)**
-- **get_weather** and **web_search** are always available—use them for weather and current events.`;
+- **get_weather**, **web_search**, and **fetch_url** are always available—use them for weather, search, and links.`;
   }
   const active: string[] = [];
   const mode = flags.workMode ?? (flags.coworkDevice ? "cowork" : "chat");
@@ -152,7 +153,7 @@ No mail/calendar/device connectors are active this session.
 
   const toolRules = agentToolsEnabled
     ? `**Live tools (enabled this session)**
-- **get_weather** and **web_search** are always available—use them for weather and current events.
+- **get_weather**, **web_search**, and **fetch_url** are always available—use them for weather, search, and links.
 - Gmail, Calendar, Outlook: read-only on the server (no send/delete) when connected.
 - Device: \`list_device_files\` / \`read_device_file\` to inspect; **\`propose_device_file_ops\`** to organize (Apply button in the app). Mail/calendar tools are read-only—do not cite them as a reason you cannot move files.
 - **Call tools** when the user asks about weather, news, inbox, schedule, or files—do not guess.${coworkDeviceOrganize}

@@ -27,7 +27,9 @@ import { readVerifiedSession } from "@/lib/session-cookie";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
 import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
 import { streamAnthropicWithTools } from "@/lib/agent-loop";
+import { parseClientLocationPayload } from "@/lib/client-location";
 import { parseDeviceManifest } from "@/lib/device-manifest";
+import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-user-location";
 import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import {
   buildSmileSystemPrompt,
@@ -286,6 +288,7 @@ export async function POST(request: Request) {
     connectedServices?: unknown;
     deviceManifest?: unknown;
     userSession?: unknown;
+    clientLocation?: unknown;
   };
 
   const rawMessages = b.messages;
@@ -467,15 +470,26 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     effectiveBuilderTarget = "workflow";
   }
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
+  const clientHint = parseClientLocationPayload(b.clientLocation);
+  const userLocation = await resolveUserLocation(request, clientHint);
   const agentCtx: AgentToolContext = {
     request,
     flags: integrationFlags ?? {},
     deviceManifest,
+    userLocation,
   };
   const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
   let system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession, {
     agentToolsEnabled: agentToolsAvailable,
   });
+  system += userLocationSystemContext(userLocation);
+
+  const lastUserText = lastUserMessageText(messages);
+  const linkedUrls = lastUserText.match(/https?:\/\/[^\s)\]>"']+/gi);
+  if (linkedUrls?.length && agentToolsAvailable) {
+    const unique = [...new Set(linkedUrls.map((u) => u.replace(/[.,;]+$/, "")))].slice(0, 3);
+    system += `\n\n## Link(s) in the user's message\nYou **must** call **fetch_url** for each URL before answering:\n${unique.map((u) => `- ${u}`).join("\n")}`;
+  }
   if (!agentToolsAvailable) {
     system += await buildIntegrationSnapshot(request, integrationFlags);
   }

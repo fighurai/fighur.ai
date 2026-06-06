@@ -81,13 +81,33 @@ async function geocode(query: string): Promise<
   };
 }
 
-/** Current weather + 5-day daily forecast via Open-Meteo (no API key). */
-export async function fetchWeather(locationQuery: string): Promise<WeatherResult> {
-  const q = locationQuery.trim();
-  if (!q) return { ok: false, error: "location is required (city name or place)" };
+async function reverseGeocode(lat: number, lon: number): Promise<
+  | { name: string; lat: number; lon: number; timezone: string }
+  | { error: string }
+> {
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/reverse");
+  url.searchParams.set("latitude", String(lat));
+  url.searchParams.set("longitude", String(lon));
+  url.searchParams.set("language", "en");
+  url.searchParams.set("format", "json");
 
-  const geo = await geocode(q);
-  if ("error" in geo) return { ok: false, error: geo.error };
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) return { error: `Reverse geocoding failed (${res.status})` };
+  const data = (await res.json()) as {
+    results?: Array<{ name: string; latitude: number; longitude: number; timezone?: string; admin1?: string; country?: string }>;
+  };
+  const hit = data.results?.[0];
+  if (!hit) return { error: "Could not resolve coordinates to a place name." };
+  const label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(", ");
+  return {
+    name: label,
+    lat: hit.latitude,
+    lon: hit.longitude,
+    timezone: hit.timezone ?? "auto",
+  };
+}
+
+async function forecastForGeo(geo: { name: string; lat: number; lon: number; timezone: string }): Promise<WeatherResult> {
 
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", String(geo.lat));
@@ -159,4 +179,32 @@ export async function fetchWeather(locationQuery: string): Promise<WeatherResult
     },
     forecast,
   };
+}
+
+/** Weather at coordinates (browser / IP geo). */
+export async function fetchWeatherAtCoordinates(
+  latitude: number,
+  longitude: number,
+): Promise<WeatherResult> {
+  const geo = await reverseGeocode(latitude, longitude);
+  if ("error" in geo) {
+    return forecastForGeo({
+      name: `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
+      lat: latitude,
+      lon: longitude,
+      timezone: "auto",
+    });
+  }
+  return forecastForGeo(geo);
+}
+
+/** Current weather + 5-day daily forecast via Open-Meteo (no API key). */
+export async function fetchWeather(locationQuery: string): Promise<WeatherResult> {
+  const q = locationQuery.trim();
+  if (!q) return { ok: false, error: "location is required (city name or place)" };
+
+  const geo = await geocode(q);
+  if ("error" in geo) return { ok: false, error: geo.error };
+
+  return forecastForGeo(geo);
 }

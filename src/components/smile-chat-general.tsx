@@ -47,6 +47,8 @@ import {
 } from "@/lib/device-file-ops";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
+import { detectBrowserLocation } from "@/lib/browser-geolocation";
+import type { UserLocationHint } from "@/lib/client-location";
 import { activeBuildFile, extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
@@ -371,6 +373,7 @@ export function SmileChatGeneral() {
   const [deviceCanWrite, setDeviceCanWrite] = useState(false);
   const [deviceOpsRootName, setDeviceOpsRootName] = useState("Folder");
 
+  const clientLocationRef = useRef<UserLocationHint | null>(null);
   const serverSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const promptifyAbortRef = useRef<AbortController | null>(null);
@@ -442,6 +445,12 @@ export function SmileChatGeneral() {
     },
     [applyConversationList],
   );
+
+  useEffect(() => {
+    void detectBrowserLocation().then((loc) => {
+      clientLocationRef.current = loc;
+    });
+  }, []);
 
   useEffect(() => {
     setSession(readSession());
@@ -777,6 +786,7 @@ export function SmileChatGeneral() {
       attachments: attachmentsForRequest,
       connectedServices: toConnectedServicesPayload(connected),
       deviceManifest: deviceManifest ?? undefined,
+      clientLocation: clientLocationRef.current ?? undefined,
       userSession: session
         ? {
             email: session.email,

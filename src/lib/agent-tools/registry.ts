@@ -10,23 +10,23 @@ export async function availableAgentTools(
   tools.push({
     name: "get_weather",
     description:
-      "Get current weather and 5-day forecast for a city or place. Use for any weather question—do not guess or say you lack live data.",
+      'Current weather and 5-day forecast. For "weather here" or "my weather" leave location empty to use the user\'s detected city. Never guess weather.',
     input_schema: {
       type: "object",
       properties: {
         location: {
           type: "string",
-          description: 'City or place, e.g. "New York", "London", "Tokyo"',
+          description:
+            'City name, or omit / use "here" for the user\'s detected location',
         },
       },
-      required: ["location"],
     },
   });
 
   tools.push({
     name: "web_search",
     description:
-      "Search the public internet for current news, facts, prices, events, and anything after your knowledge cutoff. Use before answering time-sensitive questions.",
+      "Search the public internet for current news, facts, prices, and events. Use for time-sensitive questions.",
     input_schema: {
       type: "object",
       properties: {
@@ -34,6 +34,19 @@ export async function availableAgentTools(
         max_results: { type: "number", description: "Max results (1–10, default 6)" },
       },
       required: ["query"],
+    },
+  });
+
+  tools.push({
+    name: "fetch_url",
+    description:
+      "Read and summarize a public web page from a URL the user shared or asked about. REQUIRED when the user posts a link—never say you cannot open linked websites.",
+    input_schema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Full http(s) URL to read" },
+      },
+      required: ["url"],
     },
   });
 

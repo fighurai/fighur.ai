@@ -6,8 +6,10 @@ import {
   listMicrosoftCalendarUpcoming,
   listOutlookRecent,
 } from "@/lib/integrations/microsoft-api";
-import { fetchWeather } from "@/lib/integrations/weather-api";
+import { fetchWebPage } from "@/lib/integrations/fetch-url";
+import { fetchWeather, fetchWeatherAtCoordinates } from "@/lib/integrations/weather-api";
 import { searchWeb } from "@/lib/integrations/web-search-api";
+import { formatUserLocationLabel } from "@/lib/client-location";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
 import { manifestSummary } from "@/lib/device-manifest";
@@ -26,10 +28,44 @@ export async function executeAgentTool(
   try {
     switch (name) {
       case "get_weather": {
-        const location = typeof input.location === "string" ? input.location : "";
+        let location = typeof input.location === "string" ? input.location.trim() : "";
+        const useHere = !location || /^(here|my\s*(city|location|area)|local|current\s*location)$/i.test(location);
+
+        if (useHere && ctx.userLocation) {
+          const { latitude, longitude, city } = ctx.userLocation;
+          if (latitude !== undefined && longitude !== undefined) {
+            const res = await fetchWeatherAtCoordinates(latitude, longitude);
+            if (!res.ok) return { content: res.error, isError: true };
+            return { content: JSON.stringify({ detectedFrom: "coordinates", ...res }, null, 2) };
+          }
+          if (city) location = city;
+        }
+
+        if (useHere && !location) {
+          const label = ctx.userLocation ? formatUserLocationLabel(ctx.userLocation) : null;
+          return {
+            content: label
+              ? `Could not resolve weather for detected area (${label}). Ask the user for their city or enable location in the browser.`
+              : "User location unknown. Ask which city or enable location permission in the browser.",
+            isError: true,
+          };
+        }
+
         const res = await fetchWeather(location);
         if (!res.ok) return { content: res.error, isError: true };
         return { content: JSON.stringify(res, null, 2) };
+      }
+      case "fetch_url": {
+        const url = typeof input.url === "string" ? input.url : "";
+        const res = await fetchWebPage(url);
+        if (!res.ok) return { content: res.error, isError: true };
+        return {
+          content: JSON.stringify(
+            { title: res.title, url: res.url, provider: res.provider, content: res.content },
+            null,
+            2,
+          ),
+        };
       }
       case "web_search": {
         const query = typeof input.query === "string" ? input.query : "";
