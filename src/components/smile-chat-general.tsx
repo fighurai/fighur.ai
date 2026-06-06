@@ -56,6 +56,11 @@ import {
   buildClientCanvasContext,
   canvasEditPrefill,
 } from "@/lib/client-canvas-context";
+import {
+  isImageUpload,
+  MAX_IMAGE_UPLOAD_BYTES,
+  prepareImageAttachmentDataUrl,
+} from "@/lib/image-attachment";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
   downloadImageUrl,
@@ -100,9 +105,7 @@ type PromptAttachment = {
 };
 
 const MAX_ATTACHMENTS = 6;
-const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
-const MAX_IMAGE_DIMENSION = 1600;
-const MAX_IMAGE_DATA_URL_CHARS = 120_000;
+const MAX_ATTACHMENT_BYTES = MAX_IMAGE_UPLOAD_BYTES;
 
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -303,47 +306,6 @@ function humanFileSize(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("Could not read file"));
-    };
-    reader.onerror = () => reject(reader.error ?? new Error("Read error"));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function imageFileToCompressedDataUrl(file: File): Promise<string> {
-  const sourceUrl = await fileToDataUrl(file);
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const el = new window.Image();
-    el.onload = () => resolve(el);
-    el.onerror = () => reject(new Error("Could not decode image"));
-    el.src = sourceUrl;
-  });
-
-  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
-  const width = Math.max(1, Math.round(img.width * scale));
-  const height = Math.max(1, Math.round(img.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not process image");
-  ctx.drawImage(img, 0, 0, width, height);
-
-  const qualities = [0.85, 0.7, 0.55, 0.4];
-  for (const q of qualities) {
-    const out = canvas.toDataURL("image/jpeg", q);
-    if (out.length <= MAX_IMAGE_DATA_URL_CHARS) return out;
-  }
-  const fallback = canvas.toDataURL("image/jpeg", 0.3);
-  if (fallback.length <= MAX_IMAGE_DATA_URL_CHARS) return fallback;
-  throw new Error("Image is too large after compression. Try a smaller image.");
 }
 
 export function SmileChatGeneral() {
@@ -694,9 +656,9 @@ export function SmileChatGeneral() {
         try {
           let kind: PromptAttachment["kind"] = "binary";
           let content = "";
-          if (file.type.startsWith("image/")) {
+          if (isImageUpload(file)) {
             kind = "image";
-            content = await imageFileToCompressedDataUrl(file);
+            content = await prepareImageAttachmentDataUrl(file);
           } else if (
             file.type.startsWith("text/") ||
             /\.(txt|md|json|csv|html|css|js|ts|tsx|jsx|xml|yml|yaml)$/i.test(file.name)
@@ -708,13 +670,17 @@ export function SmileChatGeneral() {
           next.push({
             id: id(),
             name: file.name,
-            mimeType: file.type || "application/octet-stream",
+            mimeType:
+              kind === "image" && content.startsWith("data:image/jpeg")
+                ? "image/jpeg"
+                : file.type || "application/octet-stream",
             size: file.size,
             kind,
             content,
           });
-        } catch {
-          setError(`Could not read "${file.name}".`);
+        } catch (e) {
+          const detail = e instanceof Error ? e.message : "Unknown error";
+          setError(`Could not attach "${file.name}": ${detail}`);
         }
       }
 
@@ -1139,7 +1105,7 @@ export function SmileChatGeneral() {
             multiple
             onChange={onPickFiles}
             className="hidden"
-            accept="*/*"
+            accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.md,.csv,.json"
           />
           {attachments.length > 0 ? (
             <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
@@ -1148,6 +1114,14 @@ export function SmileChatGeneral() {
                   key={a.id}
                   className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1 text-[0.7rem] text-[var(--text-muted)]"
                 >
+                  {a.kind === "image" && a.content.startsWith("data:image") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.content}
+                      alt=""
+                      className="h-8 w-8 rounded-md object-cover ring-1 ring-white/10"
+                    />
+                  ) : null}
                   {a.name} ({humanFileSize(a.size)})
                   <button
                     type="button"

@@ -410,6 +410,17 @@ export async function POST(request: Request) {
 Use attached files as source of truth. If a value is unreadable or missing, say "unreadable" or "missing" instead of guessing.
 `;
 
+      const visionHint =
+        imageAttachments.length > 0
+          ? `
+
+## Attached image(s) — vision
+The user attached ${imageAttachments.length} image(s). **Look at the image carefully** before answering.
+- For brochures, flyers, menus, slides: read all visible text and layout; suggest concrete design/copy improvements or produce an improved version in Canvas (\`index.html\` + \`styles.css\`).
+- For screenshots/UI: describe what you see and offer specific fixes.
+- Never say you cannot see the image when it is attached below.`
+          : "";
+
       if (imageAttachments.length > 0) {
         const imageBlocks = imageAttachments
           .map((img) => parseDataUrl(img.content))
@@ -419,7 +430,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
           const blocks: Array<Record<string, unknown>> = [
             {
               type: "text",
-              text: `${baseInstruction}\n${contextParts.join("\n\n")}`.trim(),
+              text: `${baseInstruction}${visionHint}\n${contextParts.join("\n\n")}`.trim(),
             },
             ...imageBlocks.map((img) => ({
               type: "image",
@@ -438,7 +449,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
           const blocks: Array<Record<string, unknown>> = [
             {
               type: "text",
-              text: `${baseInstruction}\n${contextParts.join("\n\n")}`.trim(),
+              text: `${baseInstruction}${visionHint}\n${contextParts.join("\n\n")}`.trim(),
             },
             ...imageBlocks.map((img) => ({
               type: "image_url",
