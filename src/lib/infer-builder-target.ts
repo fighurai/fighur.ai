@@ -57,13 +57,13 @@ function classifyPromptIntent(text: string): SmileBuilderTarget {
   if (agent) return "agent";
 
   const application =
-    /\b(build|create|make|scaffold|develop|implement|code)\b.*\b(app|application|website|web\s*app|web\s*site|landing\s*page|dashboard|saas|storefront|portal|ui|frontend|full[-\s]?stack|next\.?js|react|vue|svelte|html|tool)\b/i.test(
+    /\b(build|create|make|design|scaffold|develop|implement|code)\b.*\b(app|application|website|web\s*app|web\s*site|landing\s*page|dashboard|saas|storefront|portal|ui|frontend|full[-\s]?stack|next\.?js|react|vue|svelte|html|tool|page)\b/i.test(
       t,
     ) ||
-    /\b(an?\s+application|a\s+website|web\s*app|landing\s*page|next\.?js|react\s+app|dashboard|saas|mobile\s+app|deploy\s+my\s+app)\b/i.test(
+    /\b(an?\s+application|a\s+website|web\s*app|landing\s*page|next\.?js|react\s+app|dashboard|saas|mobile\s+app|deploy\s+my\s+app|modern\s+(site|page|ui|website))\b/i.test(
       t,
     ) ||
-    /\b(write|generate|show)\b.*\b(code|html|react|typescript|javascript|script)\b/i.test(t);
+    /\b(write|generate|show|design)\b.*\b(code|html|react|typescript|javascript|script|ui|website|page)\b/i.test(t);
   if (application) return "application";
 
   return "general";

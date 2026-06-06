@@ -143,23 +143,7 @@ export function extractBuildArtifact(
   return null;
 }
 
-/** Wrap HTML fragments so iframe preview renders partial markup during streaming. */
-export function normalizeHtmlForPreview(code: string): string {
-  const trimmed = code.trim();
-  if (!trimmed) return trimmed;
-  if (/<!doctype/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) return trimmed;
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>body{margin:0;font-family:system-ui,-apple-system,sans-serif;line-height:1.5}</style>
-</head>
-<body>
-${trimmed}
-</body>
-</html>`;
-}
+export { normalizeHtmlForPreview, composePreviewDocument } from "@/lib/html-preview";
 
 export function activeBuildFile(
   artifact: ChatBuildArtifact,
