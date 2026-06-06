@@ -30,6 +30,7 @@ import { streamAnthropicWithTools } from "@/lib/agent-loop";
 import { parseClientLocationPayload } from "@/lib/client-location";
 import { parseDeviceManifest } from "@/lib/device-manifest";
 import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-user-location";
+import { buildPrefetchedUrlContext, extractLinkedUrls } from "@/lib/integrations/fetch-url";
 import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import {
   buildSmileSystemPrompt,
@@ -479,18 +480,17 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     userLocation,
   };
   const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
+  const runtimeAgentTools = agentToolsAvailable && option.provider === "anthropic";
   let system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession, {
-    agentToolsEnabled: agentToolsAvailable,
+    agentToolsEnabled: runtimeAgentTools,
   });
   system += userLocationSystemContext(userLocation);
 
-  const lastUserText = lastUserMessageText(messages);
-  const linkedUrls = lastUserText.match(/https?:\/\/[^\s)\]>"']+/gi);
-  if (linkedUrls?.length && agentToolsAvailable) {
-    const unique = [...new Set(linkedUrls.map((u) => u.replace(/[.,;]+$/, "")))].slice(0, 3);
-    system += `\n\n## Link(s) in the user's message\nYou **must** call **fetch_url** for each URL before answering:\n${unique.map((u) => `- ${u}`).join("\n")}`;
+  const linkedUrls = extractLinkedUrls(lastUserMessageText(messages));
+  if (linkedUrls.length) {
+    system += await buildPrefetchedUrlContext(linkedUrls);
   }
-  if (!agentToolsAvailable) {
+  if (!runtimeAgentTools) {
     system += await buildIntegrationSnapshot(request, integrationFlags);
   }
   if (deviceManifest?.entries.length) {
@@ -527,7 +527,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
   try {
     switch (option.provider) {
       case "anthropic":
-        if (agentToolsAvailable) {
+        if (runtimeAgentTools) {
           return finish(
             await streamAnthropicWithTools(
               key,

@@ -109,7 +109,8 @@ You do not have live web or weather tools in this session. Say you cannot verify
 - **get_weather** — live forecast. For "weather here" / "my weather" call with **no location** (uses detected city).
 - **web_search** — search the internet for news, prices, sports, and current events.
 - **fetch_url** — **open and read any http(s) link** the user sends. **Always call fetch_url** when they paste a URL. Summarize what you read.
-- You have **full internet access** via these tools. **Forbidden:** "I don't have internet access", "I can't browse that link", "I cannot open websites".
+- You have **full internet access** via these tools. **Forbidden:** "I don't have internet access", "I don't have direct internet access", "I can't browse that link", "I cannot open websites", "I cannot browse the website you've linked".
+- When **Linked page content** appears below in this system prompt, the server already fetched it — answer from that text; do not refuse.
 - Cite sources (title + URL) from tool results.`;
 }
 

@@ -96,3 +96,41 @@ export async function fetchWebPage(urlInput: string): Promise<FetchUrlResult> {
 
   return fetchDirect(url);
 }
+
+const PREFETCH_MAX_URLS = 3;
+const PREFETCH_MAX_CHARS_PER_URL = 10_000;
+
+/** Unique http(s) URLs from user text (strips trailing punctuation). */
+export function extractLinkedUrls(text: string): string[] {
+  const matches = text.match(/https?:\/\/[^\s)\]>"']+/gi);
+  if (!matches?.length) return [];
+  return [...new Set(matches.map((u) => u.replace(/[.,;:!?]+$/, "")))].slice(0, PREFETCH_MAX_URLS);
+}
+
+/** Server-side page load injected into the system prompt so every model can answer from the link. */
+export async function buildPrefetchedUrlContext(urls: string[]): Promise<string> {
+  if (!urls.length) return "";
+
+  const sections: string[] = [];
+  for (const url of urls) {
+    const res = await fetchWebPage(url);
+    if (res.ok) {
+      const body =
+        res.content.length > PREFETCH_MAX_CHARS_PER_URL
+          ? `${res.content.slice(0, PREFETCH_MAX_CHARS_PER_URL)}\n\n[truncated]`
+          : res.content;
+      sections.push(`### ${res.title}\n**URL:** ${res.url}\n**Source:** ${res.provider}\n\n${body}`);
+    } else {
+      sections.push(`### ${url}\n**Fetch failed:** ${res.error}`);
+    }
+  }
+
+  return `
+
+## Linked page content (already loaded by the server)
+The user's message included link(s). **Page text is below** — summarize and answer from it.
+**Forbidden:** saying you lack internet access, cannot browse, or cannot open the linked website.
+If a fetch failed, say what failed and answer from whatever content you do have.
+
+${sections.join("\n\n---\n\n")}`;
+}
