@@ -33,7 +33,11 @@ export function inferSmileBuilderTargetFromPrompt(text: string): SmileBuilderTar
 export function promptRequestsBuildWorkspace(text: string): boolean {
   const intent = classifyPromptIntent(text);
   if (intent !== "general") return true;
-  return /```[\s\S]+```/.test(text);
+  if (/```[\s\S]+```/.test(text)) return true;
+  if (/\b(edit|modify|change|update|redesign|create|generate|draw|make)\b.*\b(image|photo|picture|logo|icon|banner|graphic|svg)\b/i.test(text)) {
+    return true;
+  }
+  return false;
 }
 
 function classifyPromptIntent(text: string): SmileBuilderTarget {

@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
-/** Allow long streaming replies on Vercel (avoids abrupt "Load failed" client errors). */
-export const maxDuration = 60;
+/** Allow long streaming replies on Vercel (Pro: up to 300s; Hobby: max 60s). */
+export const maxDuration = 120;
 
 import {
   noChatProvidersMessage,
@@ -26,7 +26,9 @@ import {
 import { readVerifiedSession } from "@/lib/session-cookie";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
 import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
+import { needsAgentToolLoop } from "@/lib/agent-tools/needs-tool-loop";
 import { streamAnthropicWithTools } from "@/lib/agent-loop";
+import { buildOutputSystemContext } from "@/lib/build-output-context";
 import { parseClientLocationPayload } from "@/lib/client-location";
 import { parseDeviceManifest } from "@/lib/device-manifest";
 import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-user-location";
@@ -201,7 +203,7 @@ async function streamOpenAICompatible(
       model: option.apiModel,
       messages: openaiMessages,
       stream: true,
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 0.7,
     }),
   });
@@ -471,6 +473,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     effectiveBuilderTarget = "workflow";
   }
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
+  const lastUserText = lastUserMessageText(messages);
   const clientHint = parseClientLocationPayload(b.clientLocation);
   const userLocation = await resolveUserLocation(request, clientHint);
   const agentCtx: AgentToolContext = {
@@ -480,13 +483,17 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     userLocation,
   };
   const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
-  const runtimeAgentTools = agentToolsAvailable && option.provider === "anthropic";
+  const runtimeAgentTools =
+    agentToolsAvailable &&
+    option.provider === "anthropic" &&
+    needsAgentToolLoop(integrationFlags ?? {}, lastUserText, deviceManifest);
   let system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession, {
     agentToolsEnabled: runtimeAgentTools,
   });
+  system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
   system += userLocationSystemContext(userLocation);
 
-  const linkedUrls = extractLinkedUrls(lastUserMessageText(messages));
+  const linkedUrls = extractLinkedUrls(lastUserText);
   if (linkedUrls.length) {
     system += await buildPrefetchedUrlContext(linkedUrls);
   }

@@ -12,6 +12,8 @@ export type ChatBuildArtifact = {
   /** Codex multi-file project (optional). */
   files?: ChatBuildFile[];
   primaryPath?: string;
+  /** True when extracted from an unclosed fence during streaming. */
+  incomplete?: boolean;
 };
 
 export type ChatMessage = {

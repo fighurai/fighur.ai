@@ -49,7 +49,7 @@ import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
 import { detectBrowserLocation } from "@/lib/browser-geolocation";
 import type { UserLocationHint } from "@/lib/client-location";
-import { activeBuildFile, extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
+import { activeBuildFile, extractBuildArtifact, normalizeHtmlForPreview, stripCodeFences } from "@/lib/build-artifact";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
   downloadBuildCode,
@@ -762,14 +762,26 @@ export function SmileChatGeneral() {
     setAttachments([]);
     setError(null);
     setPending(true);
-    if (promptRequestsBuildWorkspace(trimmed)) {
+    const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
+    if (isBuildRequest) {
       setBuildSidebarOpen(true);
       setBuildPanelTab("preview");
     }
 
+    const applyBuildArtifact = (snapshot: string, allowOpen = false) => {
+      const artifact =
+        extractBuildArtifact(snapshot) ??
+        (allowOpen ? extractBuildArtifact(snapshot, { allowOpenFence: true }) : null);
+      if (!artifact) return;
+      setLatestBuildArtifact(artifact);
+      setSelectedBuildFilePath(artifact.primaryPath ?? artifact.files?.[0]?.path ?? null);
+      setBuildSidebarOpen(true);
+      setBuildPanelTab("preview");
+    };
+
     const controller = new AbortController();
     abortRef.current = controller;
-    const reqTid = window.setTimeout(() => controller.abort(), 120_000);
+    const reqTid = window.setTimeout(() => controller.abort(), 180_000);
     const history = nextMessages
       .filter((m) => m.id !== assistantId)
       .map(({ role, content }) => ({ role, content }));
@@ -846,15 +858,10 @@ export function SmileChatGeneral() {
           return;
         }
         const now = performance.now();
-        if (now - lastArtifactCheck < 400) return;
+        const throttleMs = isBuildRequest ? 120 : 400;
+        if (now - lastArtifactCheck < throttleMs) return;
         lastArtifactCheck = now;
-        const artifact = extractBuildArtifact(snapshot);
-        if (artifact) {
-          setLatestBuildArtifact(artifact);
-          setSelectedBuildFilePath(artifact.primaryPath ?? artifact.files?.[0]?.path ?? null);
-          setBuildSidebarOpen(true);
-          setBuildPanelTab("preview");
-        }
+        applyBuildArtifact(snapshot, true);
       };
 
       try {
@@ -879,6 +886,7 @@ export function SmileChatGeneral() {
       }
 
       if (streamFinished) {
+        applyBuildArtifact(fullText, true);
         const finalContent = finalizeAssistantContent(fullText);
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
@@ -1272,6 +1280,11 @@ export function SmileChatGeneral() {
       </div>
     ) : null;
 
+  const htmlPreviewDoc = useMemo(() => {
+    if (!canPreviewHtml || !activeFile?.code) return "";
+    return normalizeHtmlForPreview(activeFile.code);
+  }, [canPreviewHtml, activeFile?.code]);
+
   const workspacePreviewBody = previewImageUrl ? (
     <img
       src={previewImageUrl}
@@ -1279,12 +1292,19 @@ export function SmileChatGeneral() {
       className="mx-auto max-h-[min(70vh,32rem)] w-full rounded-xl border border-white/[0.12] bg-black/20 object-contain"
     />
   ) : canPreviewHtml ? (
-    <iframe
-      title="Build preview"
-      sandbox="allow-scripts allow-forms allow-modals"
-      srcDoc={activeFile?.code ?? ""}
-      className="h-full min-h-[24rem] w-full rounded-xl border border-white/[0.12] bg-white"
-    />
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {latestBuildArtifact?.incomplete ? (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
+          Live preview — still generating. The page will update as more HTML arrives.
+        </p>
+      ) : null}
+      <iframe
+        title="Build preview"
+        sandbox="allow-scripts allow-forms allow-modals"
+        srcDoc={htmlPreviewDoc}
+        className="h-full min-h-[24rem] w-full flex-1 rounded-xl border border-white/[0.12] bg-white"
+      />
+    </div>
   ) : (
     <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
       {latestBuildArtifact

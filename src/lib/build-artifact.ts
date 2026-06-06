@@ -16,6 +16,11 @@ const CODE_LANGUAGES = new Set([
 
 const IMAGE_LANGUAGES = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "image"]);
 
+export type ExtractBuildArtifactOptions = {
+  /** Parse the last unclosed ``` fence (for live streaming preview). */
+  allowOpenFence?: boolean;
+};
+
 /** Parse optional path from fence info: `typescript src/foo.ts` or `html:index.html` */
 function parseFenceMeta(info: string): { language: string; path?: string } {
   const raw = info.trim();
@@ -36,7 +41,15 @@ function parseFenceMeta(info: string): { language: string; path?: string } {
   return { language: lang };
 }
 
-function collectCodeFences(text: string): ChatBuildFile[] {
+function inferPathFromCode(code: string, language: string, index: number, path?: string): string {
+  if (path) return path;
+  const first = code.split("\n").find((l) => /^(?:\/\/|#)\s*file:\s*/i.test(l));
+  const m = first?.match(/^(?:\/\/|#)\s*file:\s*(.+)$/i);
+  if (m?.[1]?.trim()) return m[1].trim();
+  return `file-${index + 1}.${language || "txt"}`;
+}
+
+function collectClosedCodeFences(text: string): ChatBuildFile[] {
   const fence = /```([^\n`]*)\r?\n([\s\S]*?)```/g;
   const files: ChatBuildFile[] = [];
   let match: RegExpExecArray | null = null;
@@ -44,20 +57,36 @@ function collectCodeFences(text: string): ChatBuildFile[] {
     const { language, path } = parseFenceMeta(match[1] || "");
     const code = match[2].trim();
     if (!code) continue;
-    const inferredPath =
-      path ||
-      (() => {
-        const first = code.split("\n").find((l) => /^(?:\/\/|#)\s*file:\s*/i.test(l));
-        const m = first?.match(/^(?:\/\/|#)\s*file:\s*(.+)$/i);
-        return m?.[1]?.trim();
-      })();
     files.push({
-      path: inferredPath || `file-${files.length + 1}.${language || "txt"}`,
+      path: inferPathFromCode(code, language, files.length, path),
       language,
       code,
     });
   }
   return files;
+}
+
+/** Last unclosed fence — enough content to preview HTML while the model is still streaming. */
+function collectOpenCodeFence(text: string): ChatBuildFile | null {
+  const fenceCount = (text.match(/```/g) || []).length;
+  if (fenceCount % 2 === 0) return null;
+
+  const lastOpen = text.lastIndexOf("```");
+  if (lastOpen === -1) return null;
+
+  const tail = text.slice(lastOpen);
+  const match = /^```([^\n`]*)\r?\n([\s\S]*)$/.exec(tail);
+  if (!match) return null;
+
+  const { language, path } = parseFenceMeta(match[1] || "");
+  const code = match[2].trim();
+  if (code.length < 24) return null;
+
+  return {
+    path: inferPathFromCode(code, language, 0, path),
+    language,
+    code,
+  };
 }
 
 function pickPrimary(files: ChatBuildFile[]): ChatBuildFile {
@@ -70,30 +99,66 @@ function pickPrimary(files: ChatBuildFile[]): ChatBuildFile {
   return files[0];
 }
 
-export function extractBuildArtifact(text: string): ChatBuildArtifact | null {
-  const imageUrl = extractImagePreviewUrl(text);
-  if (imageUrl) {
-    return { language: "image", code: imageUrl };
-  }
-
-  const files = collectCodeFences(text);
+function artifactFromFiles(files: ChatBuildFile[], incomplete = false): ChatBuildArtifact | null {
   if (files.length === 0) return null;
-
   const primary = pickPrimary(files);
   if (files.length === 1) {
     return {
       language: primary.language,
       code: primary.code,
       primaryPath: primary.path,
+      incomplete,
     };
   }
-
   return {
     language: primary.language,
     code: primary.code,
     files,
     primaryPath: primary.path,
+    incomplete,
   };
+}
+
+export function extractBuildArtifact(
+  text: string,
+  options?: ExtractBuildArtifactOptions,
+): ChatBuildArtifact | null {
+  const imageUrl = extractImagePreviewUrl(text);
+  if (imageUrl) {
+    return { language: "image", code: imageUrl };
+  }
+
+  const closed = collectClosedCodeFences(text);
+  if (closed.length > 0) {
+    return artifactFromFiles(closed, false);
+  }
+
+  if (options?.allowOpenFence) {
+    const open = collectOpenCodeFence(text);
+    if (open) {
+      return artifactFromFiles([open], true);
+    }
+  }
+
+  return null;
+}
+
+/** Wrap HTML fragments so iframe preview renders partial markup during streaming. */
+export function normalizeHtmlForPreview(code: string): string {
+  const trimmed = code.trim();
+  if (!trimmed) return trimmed;
+  if (/<!doctype/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) return trimmed;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0;font-family:system-ui,-apple-system,sans-serif;line-height:1.5}</style>
+</head>
+<body>
+${trimmed}
+</body>
+</html>`;
 }
 
 export function activeBuildFile(
