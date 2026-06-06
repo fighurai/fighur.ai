@@ -54,7 +54,10 @@ type RequestAttachment = {
 const MAX_TEXT_ATTACHMENT_CHARS_PER_FILE = 8_000;
 const MAX_TEXT_ATTACHMENT_TOTAL_CHARS = 16_000;
 const MAX_IMAGE_ATTACHMENTS = 1;
-const MAX_REQUEST_CHAR_BUDGET = 120_000;
+/** Text/system char budget (vision image bytes are excluded — counted separately). */
+const MAX_REQUEST_CHAR_BUDGET = 160_000;
+/** Flat estimate per vision image for budget math (not raw base64 length). */
+const IMAGE_BUDGET_CHAR_EQUIVALENT = 8_000;
 const BUILD_OUTPUT_MAX_TOKENS = 16_384;
 const DEFAULT_OUTPUT_MAX_TOKENS = 8_192;
 
@@ -85,9 +88,17 @@ function estimateMessageChars(
       const textVal = (block as { text?: unknown }).text;
       if (typeof textVal === "string") total += textVal.length;
       const imageUrl = (block as { image_url?: { url?: unknown } }).image_url?.url;
-      if (typeof imageUrl === "string") total += imageUrl.length;
+      if (typeof imageUrl === "string") {
+        total += imageUrl.startsWith("data:image") ? IMAGE_BUDGET_CHAR_EQUIVALENT : imageUrl.length;
+        continue;
+      }
+      const blockType = (block as { type?: unknown }).type;
+      if (blockType === "image") {
+        total += IMAGE_BUDGET_CHAR_EQUIVALENT;
+        continue;
+      }
       const sourceData = (block as { source?: { data?: unknown } }).source?.data;
-      if (typeof sourceData === "string") total += sourceData.length;
+      if (typeof sourceData === "string") total += IMAGE_BUDGET_CHAR_EQUIVALENT;
     }
   }
   return total;
@@ -541,7 +552,7 @@ The user attached ${imageAttachments.length} image(s). **Look at the image caref
     return NextResponse.json(
       {
         error:
-          "Prompt is too large for this model. Try fewer/lower-resolution attachments or shorter text.",
+          "Prompt text is too long for this session. Start a new chat, shorten your message, or remove text attachments.",
       },
       { status: 400 },
     );

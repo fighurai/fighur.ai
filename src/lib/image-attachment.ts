@@ -1,6 +1,7 @@
 /** Client-side image prep for chat vision (compress + data URL). */
 
-export const MAX_IMAGE_DATA_URL_CHARS = 280_000;
+/** Max data-URL length sent to /api/chat (brochure-readable, fits server budget). */
+export const MAX_IMAGE_DATA_URL_CHARS = 140_000;
 export const MAX_IMAGE_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif|avif)$/i;
@@ -37,14 +38,14 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Resize + JPEG compress until under char budget (progressive — keeps brochure text readable).
+ * Resize + compress for Claude vision. Prioritizes readable text on brochures.
  */
 export async function prepareImageAttachmentDataUrl(file: File): Promise<string> {
   const sourceUrl = await fileToDataUrl(file);
   const img = await loadImage(sourceUrl);
 
-  const maxDimensions = [2048, 1600, 1280, 1024, 800, 640, 480];
-  const qualities = [0.92, 0.85, 0.75, 0.65, 0.5, 0.4, 0.32];
+  const maxDimensions = [1600, 1280, 1024, 896, 768, 640, 512];
+  const qualities = [0.88, 0.82, 0.75, 0.68, 0.58, 0.48, 0.38];
 
   for (const maxDim of maxDimensions) {
     const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
@@ -65,12 +66,9 @@ export async function prepareImageAttachmentDataUrl(file: File): Promise<string>
       const jpeg = canvas.toDataURL("image/jpeg", q);
       if (jpeg.length <= MAX_IMAGE_DATA_URL_CHARS) return jpeg;
     }
-
-    const png = canvas.toDataURL("image/png");
-    if (png.length <= MAX_IMAGE_DATA_URL_CHARS) return png;
   }
 
   throw new Error(
-    "Image is still too large after compression. Try a smaller screenshot or crop the file.",
+    "Image is still too large after compression. Try cropping the brochure or export as JPEG from Preview.",
   );
 }
