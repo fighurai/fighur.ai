@@ -1,4 +1,4 @@
-import type { ChatBuildArtifact } from "@/lib/chat-types";
+import type { ChatBuildArtifact, ChatBuildFile } from "@/lib/chat-types";
 
 export type PreviewDevice = "desktop" | "tablet" | "mobile";
 
@@ -8,10 +8,19 @@ export const PREVIEW_DEVICE_WIDTHS: Record<PreviewDevice, number | null> = {
   mobile: 390,
 };
 
-const REACT_LANGUAGES = new Set(["tsx", "jsx", "javascript", "typescript"]);
+const REACT_LANGUAGES = new Set(["tsx", "jsx", "javascript", "typescript", "js", "ts"]);
+const JS_LANGUAGES = new Set(["javascript", "js", "typescript", "ts"]);
 
 const TAILWIND_CLASS_HINT =
   /\b(class|className)=["'][^"']*\b(flex|grid|gap-|p-|px-|py-|m-|mx-|my-|bg-|text-|rounded|shadow|container|max-w-|min-h-|items-|justify-|space-|font-|hover:|md:|lg:)/;
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function basename(path: string): string {
+  return path.split("/").pop() ?? path;
+}
 
 function extractStyleBlocks(html: string): string {
   const blocks: string[] = [];
@@ -33,13 +42,17 @@ function injectIntoHead(html: string, injection: string): string {
   return injection + html;
 }
 
+function injectBeforeBodyClose(html: string, injection: string): string {
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${injection}\n</body>`);
+  }
+  return `${html}\n${injection}`;
+}
+
 function ensureTailwindCdn(html: string): string {
   if (/cdn\.tailwindcss\.com/i.test(html)) return html;
   if (!TAILWIND_CLASS_HINT.test(html)) return html;
-  return injectIntoHead(
-    html,
-    `<script src="https://cdn.tailwindcss.com"><\/script>`,
-  );
+  return injectIntoHead(html, `<script src="https://cdn.tailwindcss.com"><\/script>`);
 }
 
 function ensureModernFonts(html: string): string {
@@ -48,7 +61,7 @@ function ensureModernFonts(html: string): string {
     html,
     `<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">`,
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">`,
   );
 }
 
@@ -70,28 +83,118 @@ a { color: inherit; }
   return injectIntoHead(html, base);
 }
 
-/** Merge sibling CSS files from a multi-file artifact into HTML for preview. */
+function isJsFile(f: ChatBuildFile): boolean {
+  return JS_LANGUAGES.has(f.language.toLowerCase()) || /\.(js|mjs|cjs)$/i.test(f.path);
+}
+
+function isCssFile(f: ChatBuildFile): boolean {
+  return f.language.toLowerCase() === "css" || /\.css$/i.test(f.path);
+}
+
+function isHtmlFile(f: ChatBuildFile): boolean {
+  const lang = f.language.toLowerCase();
+  return lang === "html" || lang === "htm" || /\.html?$/i.test(f.path);
+}
+
+/** Pick index.html or best HTML entry for multi-file projects. */
+export function resolveHtmlEntryFile(
+  artifact: ChatBuildArtifact,
+  activeFile: { path: string; language: string; code: string },
+): { path: string; language: string; code: string } {
+  const files = artifact.files ?? [];
+  if (files.length === 0) return activeFile;
+
+  if (isHtmlFile(activeFile as ChatBuildFile)) return activeFile;
+
+  const index =
+    files.find((f) => /(^|\/)index\.html?$/i.test(f.path)) ||
+    files.find((f) => isHtmlFile(f));
+  if (index) return index;
+  return activeFile;
+}
+
+/** Merge project CSS into HTML (link tags + inline bundle). */
 export function mergeArtifactStyles(
   artifact: ChatBuildArtifact,
   htmlCode: string,
 ): string {
-  const cssFiles =
-    artifact.files?.filter((f) => f.language === "css").map((f) => f.code.trim()).filter(Boolean) ??
-    [];
+  const cssFiles = (artifact.files ?? []).filter(isCssFile);
   if (cssFiles.length === 0) return htmlCode;
 
-  const bundle = cssFiles.join("\n\n");
-  const inline = extractStyleBlocks(htmlCode);
-  const combined = inline ? `${inline}\n\n${bundle}` : bundle;
-  const styleTag = `<style>\n${combined}\n</style>`;
+  let result = htmlCode;
 
-  if (/<\/head>/i.test(htmlCode)) {
-    return htmlCode.replace(/<\/head>/i, `${styleTag}\n</head>`);
+  for (const file of cssFiles) {
+    const name = basename(file.path);
+    const code = file.code.trim();
+    if (!code) continue;
+    const linkRe = new RegExp(
+      `<link\\s+[^>]*href=["'][^"']*${escapeRegex(name)}["'][^>]*\\/?>`,
+      "gi",
+    );
+    result = result.replace(linkRe, `<style>\n/* ${name} */\n${code}\n</style>`);
   }
-  if (/<head[\s>]/i.test(htmlCode)) {
-    return htmlCode.replace(/<head([^>]*)>/i, `<head$1>\n${styleTag}\n`);
+
+  const stillExternal = cssFiles.some((f) => {
+    const name = basename(f.path);
+    return new RegExp(`href=["'][^"']*${escapeRegex(name)}["']`, "i").test(result);
+  });
+
+  if (!stillExternal) return result;
+
+  const bundle = cssFiles.map((f) => f.code.trim()).filter(Boolean).join("\n\n");
+  if (!bundle) return result;
+  const styleTag = `<style>\n${bundle}\n</style>`;
+  if (/<\/head>/i.test(result)) {
+    return result.replace(/<\/head>/i, `${styleTag}\n</head>`);
   }
-  return `${styleTag}\n${htmlCode}`;
+  return `${styleTag}\n${result}`;
+}
+
+/** Merge project JS into HTML for iframe preview (replace script src + append). */
+export function mergeArtifactScripts(
+  artifact: ChatBuildArtifact,
+  htmlCode: string,
+): string {
+  const jsFiles = (artifact.files ?? []).filter(isJsFile);
+  if (jsFiles.length === 0) return htmlCode;
+
+  let result = htmlCode;
+  const inlined = new Set<string>();
+
+  for (const file of jsFiles) {
+    const name = basename(file.path);
+    const srcRe = new RegExp(
+      `<script\\s+[^>]*src=["'][^"']*${escapeRegex(name)}["'][^>]*>\\s*</script>`,
+      "gi",
+    );
+    if (srcRe.test(result)) {
+      result = result.replace(
+        srcRe,
+        `<script>\n/* ${file.path} */\n${file.code}\n</script>`,
+      );
+      inlined.add(file.path);
+    }
+  }
+
+  const remaining = jsFiles.filter((f) => !inlined.has(f.path));
+  if (remaining.length > 0) {
+    const bundle = remaining.map((f) => `/* ${f.path} */\n${f.code}`).join("\n\n");
+    result = injectBeforeBodyClose(result, `<script>\n${bundle}\n</script>`);
+  }
+
+  return result;
+}
+
+/** Full multi-file static site bundle for Canvas preview. */
+export function bundleProjectPreview(
+  artifact: ChatBuildArtifact,
+  htmlCode: string,
+): string {
+  let html = htmlCode;
+  html = mergeArtifactStyles(artifact, html);
+  html = mergeArtifactScripts(artifact, html);
+  html = normalizeHtmlForPreview(html);
+  return html;
 }
 
 function stripModuleSyntax(source: string): string {
@@ -111,7 +214,6 @@ function detectReactComponentName(source: string): string {
   return "App";
 }
 
-/** Run a single-file React/TSX component in an iframe via Babel standalone. */
 export function wrapReactForPreview(source: string, language: string): string {
   const cleaned = stripModuleSyntax(source);
   const component = detectReactComponentName(cleaned);
@@ -149,7 +251,6 @@ export function isHtmlPreviewLanguage(language: string): boolean {
   return lang === "html" || lang === "htm";
 }
 
-/** Wrap HTML fragments in a modern document shell for iframe preview. */
 export function normalizeHtmlForPreview(code: string): string {
   const trimmed = code.trim();
   if (!trimmed) return trimmed;
@@ -186,10 +287,10 @@ export function composePreviewDocument(
     return { doc: wrapReactForPreview(activeFile.code, lang), mode: "react", language: lang };
   }
 
-  if (isHtmlPreviewLanguage(lang)) {
-    let html = mergeArtifactStyles(artifact, activeFile.code);
-    html = normalizeHtmlForPreview(html);
-    return { doc: html, mode: "html", language: lang };
+  const entry = resolveHtmlEntryFile(artifact, activeFile);
+  if (isHtmlPreviewLanguage(entry.language)) {
+    const doc = bundleProjectPreview(artifact, entry.code);
+    return { doc, mode: "html", language: entry.language };
   }
 
   return { doc: "", mode: "none", language: lang };

@@ -51,6 +51,11 @@ import { detectBrowserLocation } from "@/lib/browser-geolocation";
 import type { UserLocationHint } from "@/lib/client-location";
 import { BuildCanvas } from "@/components/build-canvas";
 import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
+import type { CanvasSection } from "@/lib/canvas-sections";
+import {
+  buildClientCanvasContext,
+  canvasEditPrefill,
+} from "@/lib/client-canvas-context";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
 import {
   downloadImageUrl,
@@ -360,6 +365,7 @@ export function SmileChatGeneral() {
   const [buildSidebarOpen, setBuildSidebarOpen] = useState(false);
   const [buildPanelTab, setBuildPanelTab] = useState<BuildPanelTab>("preview");
   const [selectedBuildFilePath, setSelectedBuildFilePath] = useState<string | null>(null);
+  const [selectedCanvasSectionId, setSelectedCanvasSectionId] = useState<string | null>(null);
   const [latestBuildArtifact, setLatestBuildArtifact] = useState<BuildArtifact | null>(null);
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
   const [session, setSession] = useState<SmileSession | null>(null);
@@ -574,6 +580,7 @@ export function SmileChatGeneral() {
     setInput("");
     setError(null);
     setLatestBuildArtifact(null);
+    setSelectedCanvasSectionId(null);
     setBuildSidebarOpen(false);
     setAttachments([]);
     saveLastActiveId(null, "assistant", conversationStorageUserId(session?.userId));
@@ -798,6 +805,11 @@ export function SmileChatGeneral() {
       connectedServices: toConnectedServicesPayload(connected),
       deviceManifest: deviceManifest ?? undefined,
       clientLocation: clientLocationRef.current ?? undefined,
+      canvasContext: buildClientCanvasContext(
+        latestBuildArtifact,
+        selectedBuildFilePath,
+        selectedCanvasSectionId,
+      ),
       userSession: session
         ? {
             email: session.email,
@@ -938,6 +950,9 @@ export function SmileChatGeneral() {
     attachments,
     session,
     availableModels,
+    latestBuildArtifact,
+    selectedBuildFilePath,
+    selectedCanvasSectionId,
   ]);
 
   const toggleListen = useCallback(() => {
@@ -1067,6 +1082,16 @@ export function SmileChatGeneral() {
     () => resolveImagePreviewUrl(latestBuildArtifact),
     [latestBuildArtifact],
   );
+
+  const handleEditCanvasSection = useCallback((section: CanvasSection) => {
+    setSelectedCanvasSectionId(section.id);
+    setBuildSidebarOpen(true);
+    setBuildPanelTab("preview");
+    setInput(canvasEditPrefill(section));
+    window.setTimeout(() => {
+      document.getElementById("smile-chat-input")?.focus();
+    }, 0);
+  }, []);
 
   const copyMessage = useCallback(async (messageId: string, content: string) => {
     const ok = await copyTextToClipboard(content);
@@ -1579,6 +1604,9 @@ export function SmileChatGeneral() {
           onTabChange={setBuildPanelTab}
           selectedPath={selectedBuildFilePath}
           onSelectPath={setSelectedBuildFilePath}
+          selectedSectionId={selectedCanvasSectionId}
+          onSelectSection={setSelectedCanvasSectionId}
+          onEditSection={handleEditCanvasSection}
           onClose={() => setBuildSidebarOpen(false)}
         />
       ) : null}
@@ -1590,6 +1618,9 @@ export function SmileChatGeneral() {
           onTabChange={setBuildPanelTab}
           selectedPath={selectedBuildFilePath}
           onSelectPath={setSelectedBuildFilePath}
+          selectedSectionId={selectedCanvasSectionId}
+          onSelectSection={setSelectedCanvasSectionId}
+          onEditSection={handleEditCanvasSection}
           onClose={() => setBuildSidebarOpen(false)}
         />
       ) : null}

@@ -7,6 +7,10 @@ import {
   listOutlookRecent,
 } from "@/lib/integrations/microsoft-api";
 import { fetchWebPage } from "@/lib/integrations/fetch-url";
+import {
+  generateImage,
+  imageResultToMarkdown,
+} from "@/lib/integrations/image-generation-api";
 import { fetchWeather, fetchWeatherAtCoordinates } from "@/lib/integrations/weather-api";
 import { searchWeb } from "@/lib/integrations/web-search-api";
 import { formatUserLocationLabel } from "@/lib/client-location";
@@ -74,6 +78,28 @@ export async function executeAgentTool(
         const res = await searchWeb(query, max);
         if (!res.ok) return { content: res.error, isError: true };
         return { content: JSON.stringify(res, null, 2) };
+      }
+      case "generate_image": {
+        const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";
+        const sizeRaw = typeof input.size === "string" ? input.size.trim() : "";
+        const size =
+          sizeRaw === "1792x1024" || sizeRaw === "1024x1792" ? sizeRaw : "1024x1024";
+        const res = await generateImage(prompt, { size });
+        if (!res.ok) return { content: res.error, isError: true };
+        const md = imageResultToMarkdown(res, prompt.slice(0, 80) || "Generated image");
+        return {
+          content: JSON.stringify(
+            {
+              ok: true,
+              provider: res.provider,
+              revisedPrompt: res.revisedPrompt,
+              markdown: md,
+              instruction: "Include the markdown image in your reply so Canvas can preview it.",
+            },
+            null,
+            2,
+          ),
+        };
       }
       case "list_gmail_recent": {
         const token = await getGoogleAccessToken(ctx.request);

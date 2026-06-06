@@ -32,6 +32,7 @@ export async function streamAnthropicWithTools(
   messages: SimpleMessage[],
   ctx: AgentToolContext,
   signal: AbortSignal | undefined,
+  maxTokens = 8192,
 ): Promise<Response> {
   const tools = await availableAgentTools(ctx);
   if (tools.length === 0) {
@@ -52,7 +53,7 @@ export async function streamAnthropicWithTools(
             const stream = anthropic.messages.stream(
               {
                 model: resolvedModel,
-                max_tokens: 8192,
+                max_tokens: maxTokens,
                 system,
                 messages: conversation,
                 tools: tools.map((t) => ({

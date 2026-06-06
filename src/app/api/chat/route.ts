@@ -14,6 +14,7 @@ import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import { normalizeRoles } from "@/lib/rbac";
 import { openAIStreamToTextStream } from "@/lib/openai-stream";
 import { inferSmileBuilderTargetFromPrompt, lastUserMessageText } from "@/lib/infer-builder-target";
+import { isIntricateWebBuild, isWebBuildRequest } from "@/lib/build-output-context";
 import {
   getLiveOAuthIntegrationFlags,
   mergeIntegrationFlags,
@@ -29,6 +30,8 @@ import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
 import { needsAgentToolLoop } from "@/lib/agent-tools/needs-tool-loop";
 import { streamAnthropicWithTools } from "@/lib/agent-loop";
 import { buildOutputSystemContext } from "@/lib/build-output-context";
+import { buildCanvasEditSystemContext } from "@/lib/canvas-edit-context";
+import { parseCanvasContextPayload } from "@/lib/client-canvas-context";
 import { parseClientLocationPayload } from "@/lib/client-location";
 import { parseDeviceManifest } from "@/lib/device-manifest";
 import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-user-location";
@@ -52,6 +55,16 @@ const MAX_TEXT_ATTACHMENT_CHARS_PER_FILE = 8_000;
 const MAX_TEXT_ATTACHMENT_TOTAL_CHARS = 16_000;
 const MAX_IMAGE_ATTACHMENTS = 1;
 const MAX_REQUEST_CHAR_BUDGET = 120_000;
+const BUILD_OUTPUT_MAX_TOKENS = 16_384;
+const DEFAULT_OUTPUT_MAX_TOKENS = 8_192;
+
+function resolveOutputMaxTokens(builderTarget: SmileBuilderTarget, userText: string): number {
+  if (builderTarget === "application" && (isWebBuildRequest(userText) || isIntricateWebBuild(userText))) {
+    return BUILD_OUTPUT_MAX_TOKENS;
+  }
+  if (builderTarget !== "general") return BUILD_OUTPUT_MAX_TOKENS;
+  return DEFAULT_OUTPUT_MAX_TOKENS;
+}
 
 function parseDataUrl(input: string): { mediaType: string; data: string } | null {
   const match = /^data:([^;]+);base64,([\s\S]+)$/.exec(input);
@@ -181,6 +194,7 @@ async function streamOpenAICompatible(
   system: string,
   messages: { role: string; content: string | Array<Record<string, unknown>> }[],
   extraHeaders: Record<string, string>,
+  maxTokens: number,
 ): Promise<Response> {
   const openaiMessages = [
     { role: "system" as const, content: system },
@@ -203,7 +217,7 @@ async function streamOpenAICompatible(
       model: option.apiModel,
       messages: openaiMessages,
       stream: true,
-      max_tokens: 8192,
+      max_tokens: maxTokens,
       temperature: 0.7,
     }),
   });
@@ -230,6 +244,7 @@ async function streamAnthropic(
   model: string,
   apiKey: string,
   signal: AbortSignal | undefined,
+  maxTokens: number,
 ): Promise<Response> {
   const anthropic = new Anthropic({ apiKey });
   const encoder = new TextEncoder();
@@ -241,7 +256,7 @@ async function streamAnthropic(
           const stream = anthropic.messages.stream(
             {
               model: process.env.ANTHROPIC_MODEL?.trim() || model,
-              max_tokens: 8192,
+              max_tokens: maxTokens,
               system,
               messages: messages
                 .filter((m) => m.role === "user" || m.role === "assistant")
@@ -292,6 +307,7 @@ export async function POST(request: Request) {
     deviceManifest?: unknown;
     userSession?: unknown;
     clientLocation?: unknown;
+    canvasContext?: unknown;
   };
 
   const rawMessages = b.messages;
@@ -491,6 +507,8 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
     agentToolsEnabled: runtimeAgentTools,
   });
   system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
+  const canvasContext = parseCanvasContextPayload(b.canvasContext);
+  system += buildCanvasEditSystemContext(canvasContext);
   system += userLocationSystemContext(userLocation);
 
   const linkedUrls = extractLinkedUrls(lastUserText);
@@ -531,6 +549,8 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
   const finish = (res: Response) =>
     applyAnonCookie(wrapStreamWithUsageAccounting(res, usageOpts), ctx.anonCookieToSet);
 
+  const outputMaxTokens = resolveOutputMaxTokens(effectiveBuilderTarget, lastUserText);
+
   try {
     switch (option.provider) {
       case "anthropic":
@@ -543,11 +563,19 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
               budgetedMessages,
               agentCtx,
               request.signal,
+              outputMaxTokens,
             ),
           );
         }
         return finish(
-          await streamAnthropic(system, budgetedMessages, option.apiModel, key, request.signal),
+          await streamAnthropic(
+            system,
+            budgetedMessages,
+            option.apiModel,
+            key,
+            request.signal,
+            outputMaxTokens,
+          ),
         );
       case "openai":
         return finish(
@@ -558,6 +586,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
             system,
             budgetedMessages,
             {},
+            outputMaxTokens,
           ),
         );
       case "groq":
@@ -569,6 +598,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
             system,
             budgetedMessages,
             {},
+            outputMaxTokens,
           ),
         );
       case "openrouter":
@@ -583,6 +613,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
               "HTTP-Referer": process.env.OPENROUTER_REFERER?.trim() || "http://localhost:3010",
               "X-Title": "FIGHURAI",
             },
+            outputMaxTokens,
           ),
         );
       case "nvidia":
@@ -594,6 +625,7 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
             system,
             budgetedMessages,
             {},
+            outputMaxTokens,
           ),
         );
       default:

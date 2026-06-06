@@ -1,4 +1,5 @@
 import type { AgentToolContext, AgentToolDefinition } from "@/lib/agent-tools/types";
+import { isImageGenerationAvailable } from "@/lib/integrations/image-generation-api";
 import { getGoogleAccessToken, getMicrosoftAccessToken } from "@/lib/oauth-token";
 
 export async function availableAgentTools(
@@ -49,6 +50,25 @@ export async function availableAgentTools(
       required: ["url"],
     },
   });
+
+  if (isImageGenerationAvailable()) {
+    tools.push({
+      name: "generate_image",
+      description:
+        "Generate a photo-realistic or artistic raster image from a text prompt (DALL·E 3). REQUIRED for photorealistic photos, product shots, portraits, and complex illustrations—do not invent base64. After the tool returns, include the markdown image in your reply.",
+      input_schema: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "Detailed image description" },
+          size: {
+            type: "string",
+            description: "1024x1024 (default), 1792x1024 landscape, or 1024x1792 portrait",
+          },
+        },
+        required: ["prompt"],
+      },
+    });
+  }
 
   const cowork = flags.workMode === "cowork" || flags.coworkDevice === true;
   const googleToken =

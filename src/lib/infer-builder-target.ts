@@ -63,7 +63,10 @@ function classifyPromptIntent(text: string): SmileBuilderTarget {
     /\b(an?\s+application|a\s+website|web\s*app|landing\s*page|next\.?js|react\s+app|dashboard|saas|mobile\s+app|deploy\s+my\s+app|modern\s+(site|page|ui|website))\b/i.test(
       t,
     ) ||
-    /\b(write|generate|show|design)\b.*\b(code|html|react|typescript|javascript|script|ui|website|page)\b/i.test(t);
+    /\b(intricate|complex|detailed|advanced|sophisticated|interactive|animated|custom|production[\s-]?quality|full[\s-]?site|multi[\s-]?file|agency)\b.*\b(website|site|page|ui|landing)\b/i.test(
+      t,
+    ) ||
+    /\b(write|generate|show|design)\b.*\b(code|html|react|typescript|javascript|script|ui|website|page|site)\b/i.test(t);
   if (application) return "application";
 
   return "general";

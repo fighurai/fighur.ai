@@ -90,6 +90,12 @@ function collectOpenCodeFence(text: string): ChatBuildFile | null {
 }
 
 function pickPrimary(files: ChatBuildFile[]): ChatBuildFile {
+  const indexHtml = files.find(
+    (f) =>
+      (f.language === "html" || f.language === "htm") &&
+      /(^|\/)index\.html?$/i.test(f.path),
+  );
+  if (indexHtml) return indexHtml;
   const html = files.find((f) => f.language === "html" || f.language === "htm");
   if (html) return html;
   const code = files.find((f) => CODE_LANGUAGES.has(f.language));

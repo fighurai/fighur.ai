@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { activeBuildFile } from "@/lib/build-artifact";
+import { extractCanvasSections, type CanvasSection } from "@/lib/canvas-sections";
 import type { ChatBuildArtifact } from "@/lib/chat-types";
 import {
   composePreviewDocument,
@@ -25,6 +26,9 @@ type BuildCanvasProps = {
   onTabChange: (tab: BuildPanelTab) => void;
   selectedPath: string | null;
   onSelectPath: (path: string) => void;
+  selectedSectionId: string | null;
+  onSelectSection: (sectionId: string | null) => void;
+  onEditSection: (section: CanvasSection) => void;
   onClose: () => void;
   variant: "sidebar" | "sheet";
 };
@@ -41,6 +45,9 @@ export function BuildCanvas({
   onTabChange,
   selectedPath,
   onSelectPath,
+  selectedSectionId,
+  onSelectSection,
+  onEditSection,
   onClose,
   variant,
 }: BuildCanvasProps) {
@@ -63,6 +70,10 @@ export function BuildCanvas({
   const canPreviewReact = !canPreviewImage && preview.mode === "react" && Boolean(preview.doc);
   const canPreviewInteractive = canPreviewHtml || canPreviewReact;
   const buildFileList = artifact?.files ?? [];
+  const canvasSections = useMemo(() => {
+    if (!canPreviewHtml || !activeFile?.code) return [];
+    return extractCanvasSections(activeFile.code);
+  }, [canPreviewHtml, activeFile?.code]);
 
   const refreshPreview = useCallback(() => setPreviewKey((k) => k + 1), []);
 
@@ -85,7 +96,7 @@ export function BuildCanvas({
       <div className="flex items-center justify-between border-b border-white/[0.08] px-3 py-2">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">Canvas</p>
-          <p className="text-[0.65rem] text-[var(--text-faint)]">Live preview · Code · Export</p>
+          <p className="text-[0.65rem] text-[var(--text-faint)]">Engineered preview · Multi-file · Export</p>
         </div>
         <div className="flex items-center gap-1">
           {canPreviewInteractive ? (
@@ -212,6 +223,46 @@ export function BuildCanvas({
                   React preview — single-file components with Tailwind supported.
                 </p>
               ) : null}
+              {canvasSections.length > 0 ? (
+                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-2">
+                  <p className="mb-2 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--text-faint)]">
+                    Edit section
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {canvasSections.map((section) => {
+                      const active = selectedSectionId === section.id;
+                      return (
+                        <button
+                          key={section.id}
+                          type="button"
+                          onClick={() => onSelectSection(active ? null : section.id)}
+                          onDoubleClick={() => onEditSection(section)}
+                          className={`rounded-full px-2.5 py-1 text-[0.65rem] ${
+                            active
+                              ? "bg-[var(--accent)]/25 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/40"
+                              : "bg-white/[0.06] text-[var(--text-muted)] hover:bg-white/[0.1]"
+                          }`}
+                          title={`Double-click to edit ${section.label}`}
+                        >
+                          {section.label}
+                        </button>
+                      );
+                    })}
+                    {selectedSectionId ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const section = canvasSections.find((s) => s.id === selectedSectionId);
+                          if (section) onEditSection(section);
+                        }}
+                        className="rounded-full bg-[var(--accent)] px-2.5 py-1 text-[0.65rem] font-semibold text-[var(--accent-foreground)]"
+                      >
+                        Edit in chat →
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               <div className="flex flex-1 justify-center">
                 <div
                   className="h-full min-h-[24rem] w-full transition-[max-width] duration-200"
@@ -234,30 +285,35 @@ export function BuildCanvas({
           ) : (
             <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
               {artifact
-                ? "Preview supports HTML websites, React components, and images. Ask for a modern ```html page or ```tsx component."
-                : "Canvas opens when you build a website, UI, or image. Describe what you want to create."}
+                ? "Preview bundles index.html + styles.css + main.js. Ask for an intricate multi-file site."
+                : "Canvas opens for engineered websites. Describe layout, motion, and sections you want."}
             </div>
           )
-        ) : artifact && activeFile ? (
+        ) : tab === "code" && artifact && activeFile ? (
           <div className="flex min-h-0 flex-1 flex-col gap-2">
             {buildFileList.length > 1 ? (
-              <div className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-2">
-                {buildFileList.map((f) => (
-                  <button
-                    key={f.path}
-                    type="button"
-                    onClick={() => onSelectPath(f.path)}
-                    className={`max-w-full truncate rounded-lg px-2 py-1 text-[0.65rem] ${
-                      (selectedPath ?? activeFile.path) === f.path
-                        ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
-                        : "text-[var(--text-muted)] hover:bg-white/[0.06]"
-                    }`}
-                    title={f.path}
-                  >
-                    {f.path}
-                  </button>
-                ))}
-              </div>
+              <>
+                <p className="text-[0.65rem] text-[var(--text-muted)]">
+                  {buildFileList.length} project files — preview bundles HTML + CSS + JS.
+                </p>
+                <div className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-2">
+                  {buildFileList.map((f) => (
+                    <button
+                      key={f.path}
+                      type="button"
+                      onClick={() => onSelectPath(f.path)}
+                      className={`max-w-full truncate rounded-lg px-2 py-1 text-[0.65rem] ${
+                        (selectedPath ?? activeFile.path) === f.path
+                          ? "bg-[var(--accent)]/20 text-[var(--text-primary)]"
+                          : "text-[var(--text-muted)] hover:bg-white/[0.06]"
+                      }`}
+                      title={f.path}
+                    >
+                      {f.path}
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : null}
             <pre className="min-h-[20rem] flex-1 overflow-auto rounded-xl border border-white/[0.08] bg-black/30 p-3 text-[0.72rem] leading-relaxed text-[var(--text-primary)]">
               <code>{activeFile.code}</code>
@@ -265,7 +321,7 @@ export function BuildCanvas({
           </div>
         ) : (
           <div className="rounded-xl border border-white/[0.08] bg-black/20 p-4 text-sm text-[var(--text-muted)]">
-            No code yet. Ask for a modern website, app UI, or React component.
+            No code yet. Ask for an intricate multi-file website (HTML + CSS + JS) or React component.
           </div>
         )}
       </div>
