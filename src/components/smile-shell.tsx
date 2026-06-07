@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
-import { SITE_ICON, SITE_TITLE } from "@/lib/site-brand";
+import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,9 +28,11 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
             <Image
               src={SITE_ICON}
               alt=""
-              width={28}
-              height={28}
-              className="h-7 w-7 object-contain"
+              width={SITE_ICON_DISPLAY_PX}
+              height={SITE_ICON_DISPLAY_PX}
+              sizes={`${SITE_ICON_DISPLAY_PX}px`}
+              quality={95}
+              className="h-11 w-11 rounded-md object-contain"
               priority
             />
           </Link>

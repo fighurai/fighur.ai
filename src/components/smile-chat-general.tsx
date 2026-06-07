@@ -61,7 +61,7 @@ import {
   MAX_IMAGE_UPLOAD_BYTES,
   prepareImageAttachmentDataUrl,
 } from "@/lib/image-attachment";
-import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON } from "@/lib/site-brand";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON, SITE_ICON_DISPLAY_PX } from "@/lib/site-brand";
 import {
   downloadImageUrl,
   extractAllImagePreviewUrls,
@@ -258,9 +258,11 @@ function StreamingSmiley() {
       <Image
         src={SITE_ICON}
         alt=""
-        width={28}
-        height={28}
-        className="stream-smiley-icon h-7 w-7 object-contain"
+        width={SITE_ICON_DISPLAY_PX}
+        height={SITE_ICON_DISPLAY_PX}
+        sizes={`${SITE_ICON_DISPLAY_PX}px`}
+        quality={95}
+        className="stream-smiley-icon h-11 w-11 rounded-md object-contain"
         priority
       />
       <span className="text-xs text-[var(--text-faint)]">FIGHURAI is typing…</span>
