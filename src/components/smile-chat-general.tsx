@@ -61,8 +61,7 @@ import {
   MAX_IMAGE_UPLOAD_BYTES,
   prepareImageAttachmentDataUrl,
 } from "@/lib/image-attachment";
-import { SiteLogo } from "@/components/site-logo";
-import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON, SITE_ICON_DISPLAY_PX } from "@/lib/site-brand";
 import {
   downloadImageUrl,
   extractAllImagePreviewUrls,
@@ -256,7 +255,16 @@ const assistantMarkdownComponents: Components = {
 function StreamingSmiley() {
   return (
     <div className="stream-smiley mb-3 flex items-center gap-2" aria-hidden>
-      <SiteLogo className="stream-smiley-icon" />
+      <Image
+        src={SITE_ICON}
+        alt=""
+        width={SITE_ICON_DISPLAY_PX}
+        height={SITE_ICON_DISPLAY_PX}
+        sizes={`${SITE_ICON_DISPLAY_PX}px`}
+        quality={95}
+        className="stream-smiley-icon h-11 w-11 object-contain"
+        priority
+      />
       <span className="text-xs text-[var(--text-faint)]">FIGHURAI is typing…</span>
     </div>
   );

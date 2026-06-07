@@ -1,11 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
-import { SiteLogo } from "@/components/site-logo";
-import { SITE_TITLE } from "@/lib/site-brand";
+import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,7 +25,16 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
               }
             }}
           >
-            <SiteLogo />
+            <Image
+              src={SITE_ICON}
+              alt=""
+              width={SITE_ICON_DISPLAY_PX}
+              height={SITE_ICON_DISPLAY_PX}
+              sizes={`${SITE_ICON_DISPLAY_PX}px`}
+              quality={95}
+              className="h-11 w-11 object-contain"
+              priority
+            />
           </Link>
           <HeaderControls />
         </div>
