@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-import { fetchUsageSummary, hydrateServerSession, readSession } from "@/lib/auth-storage";
+import { fetchUsageSummary, hydrateServerSession, clearSession } from "@/lib/auth-storage";
 
 function UpgradeContent() {
   const router = useRouter();
@@ -15,8 +15,8 @@ function UpgradeContent() {
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
-    void hydrateServerSession().then(() => {
-      setSignedIn(Boolean(readSession()?.userId));
+    void hydrateServerSession().then((ok) => {
+      setSignedIn(ok);
     });
   }, []);
 
@@ -39,6 +39,12 @@ function UpgradeContent() {
         return;
       }
       if (!res.ok || !data.url) {
+        if (res.status === 401) {
+          clearSession();
+          setSignedIn(false);
+          setError("Your session expired. Sign in again, then return here to upgrade.");
+          return;
+        }
         if (res.status === 503) {
           const dev = await fetch("/api/billing/upgrade", {
             method: "POST",

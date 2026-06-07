@@ -170,7 +170,7 @@ export async function hydrateServerSession(): Promise<boolean> {
         email: data.email,
         name: data.name,
         roles: Array.isArray((data as { roles?: unknown }).roles)
-          ? ((data as { roles: string[] }).roles)
+          ? (data as { roles: string[] }).roles
           : undefined,
         environmentId:
           typeof (data as { environmentId?: unknown }).environmentId === "string"
@@ -181,6 +181,7 @@ export async function hydrateServerSession(): Promise<boolean> {
       return true;
     }
   }
+  clearSession();
   return false;
 }
 

@@ -117,11 +117,14 @@ def main() -> int:
         "NEXT_PUBLIC_SITE_URL": "https://fighur.ai",
         "SMILE_OAUTH_BASE_URL": "https://fighur.ai",
     }
-    if not os.environ.get("SMILE_APP_SECRET"):
-        extras["SMILE_APP_SECRET"] = secrets.token_urlsafe(32)
-        print("generated SMILE_APP_SECRET (Vercel only)")
-
     existing = {ev["key"]: ev for ev in list_env(token) if ev.get("key")}
+
+    if not os.environ.get("SMILE_APP_SECRET"):
+        if "SMILE_APP_SECRET" in existing:
+            print("keep existing SMILE_APP_SECRET on Vercel (do not rotate)")
+        else:
+            extras["SMILE_APP_SECRET"] = secrets.token_urlsafe(32)
+            print("created SMILE_APP_SECRET on Vercel")
 
     for key in ENV_KEYS:
         value = extras.get(key) or os.environ.get(key, "").strip()
