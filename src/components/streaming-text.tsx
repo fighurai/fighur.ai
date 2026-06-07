@@ -1,10 +1,8 @@
 "use client";
 
-import Markdown from "react-markdown";
-import type { Components } from "react-markdown";
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 
-import { stabilizeStreamingMarkdown } from "@/lib/streaming-markdown";
+import { streamingNarration } from "@/lib/streaming-markdown";
 
 export type StreamingTextHandle = {
   reset: () => void;
@@ -16,30 +14,35 @@ export type StreamingTextHandle = {
 type StreamingTextProps = {
   className?: string;
   showCursor?: boolean;
-  markdownComponents?: Components;
+  onUpdate?: () => void;
 };
 
 /**
- * Live markdown stream — accumulates tokens and re-renders at most once per frame
- * so headings/bold/lists format during the reply (not raw # or **).
+ * Imperative streaming surface — appends only new narration text per chunk so the
+ * browser paints incrementally without re-rendering markdown on every token.
  */
 export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>(
-  function StreamingText(
-    { className = "", showCursor = true, markdownComponents },
-    ref,
-  ) {
+  function StreamingText({ className = "", showCursor = true, onUpdate }, ref) {
+    const rootRef = useRef<HTMLParagraphElement>(null);
     const bufferRef = useRef("");
-    const rafRef = useRef<number | null>(null);
-    const [display, setDisplay] = useState("");
+    const displayedRef = useRef("");
 
-    const flush = () => {
-      rafRef.current = null;
-      setDisplay(stabilizeStreamingMarkdown(bufferRef.current));
-    };
+    const applyNarration = (narration: string) => {
+      const el = rootRef.current;
+      if (!el) return;
 
-    const scheduleFlush = () => {
-      if (rafRef.current !== null) return;
-      rafRef.current = requestAnimationFrame(flush);
+      const prev = displayedRef.current;
+      if (narration === prev) return;
+
+      if (prev.length > 0 && narration.startsWith(prev)) {
+        const delta = narration.slice(prev.length);
+        if (delta) el.appendChild(document.createTextNode(delta));
+      } else {
+        el.textContent = narration;
+      }
+
+      displayedRef.current = narration;
+      onUpdate?.();
     };
 
     useImperativeHandle(
@@ -47,39 +50,31 @@ export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>
       () => ({
         reset() {
           bufferRef.current = "";
-          if (rafRef.current !== null) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
-          }
-          setDisplay("");
+          displayedRef.current = "";
+          const el = rootRef.current;
+          if (el) el.textContent = "";
         },
         push(chunk: string) {
           if (!chunk) return;
           bufferRef.current += chunk;
-          scheduleFlush();
+          applyNarration(streamingNarration(bufferRef.current));
         },
         replaceAll(text: string) {
           bufferRef.current = text;
-          scheduleFlush();
+          applyNarration(streamingNarration(text));
         },
         getLength() {
           return bufferRef.current.length;
         },
       }),
-      [],
+      [onUpdate],
     );
 
     return (
-      <div className={`stream-live-md w-full min-w-0 ${className}`.trim()}>
-        {display ? (
-          <div className="studio-md stream-md-partial w-full min-w-0 max-w-full">
-            <Markdown components={markdownComponents}>{display}</Markdown>
-          </div>
-        ) : null}
-        {showCursor && display ? (
-          <span className="stream-cursor-inline" aria-hidden />
-        ) : null}
-      </div>
+      <p
+        ref={rootRef}
+        className={`stream-plain m-0 w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)] ${showCursor ? "stream-cursor" : ""} ${className}`.trim()}
+      />
     );
   },
 );

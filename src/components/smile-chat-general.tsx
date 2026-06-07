@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
-import type { ChangeEvent, MouseEvent } from "react";
+import type { ChangeEvent, DragEvent, MouseEvent } from "react";
 import type { Components } from "react-markdown";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
@@ -57,11 +56,12 @@ import {
   canvasEditPrefill,
 } from "@/lib/client-canvas-context";
 import {
-  isImageUpload,
-  MAX_IMAGE_UPLOAD_BYTES,
-  prepareImageAttachmentDataUrl,
-} from "@/lib/image-attachment";
-import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON, SITE_ICON_DISPLAY_PX } from "@/lib/site-brand";
+  droppedPathHint,
+  filesFromDataTransfer,
+  processFileForChatAttachment,
+} from "@/lib/chat-attachments";
+import { videoPreviewDataUrl } from "@/lib/video-attachment";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import {
   downloadImageUrl,
   extractAllImagePreviewUrls,
@@ -100,12 +100,11 @@ type PromptAttachment = {
   name: string;
   mimeType: string;
   size: number;
-  kind: "text" | "image" | "binary";
+  kind: "text" | "image" | "video" | "binary";
   content: string;
 };
 
 const MAX_ATTACHMENTS = 6;
-const MAX_ATTACHMENT_BYTES = MAX_IMAGE_UPLOAD_BYTES;
 
 function id() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -252,34 +251,18 @@ const assistantMarkdownComponents: Components = {
   ),
 };
 
-function StreamingSmiley() {
-  return (
-    <div className="stream-smiley mb-3 flex items-center gap-2" aria-hidden>
-      <Image
-        src={SITE_ICON}
-        alt=""
-        width={SITE_ICON_DISPLAY_PX}
-        height={SITE_ICON_DISPLAY_PX}
-        sizes={`${SITE_ICON_DISPLAY_PX}px`}
-        quality={95}
-        className="stream-smiley-icon h-11 w-11 object-contain"
-        priority
-      />
-      <span className="text-xs text-[var(--text-faint)]">FIGHURAI is typing…</span>
-    </div>
-  );
-}
-
 const AssistantMessageBody = memo(function AssistantMessageBody({
   content,
   isStreaming,
   imageFallback,
   streamTextRef,
+  onStreamUpdate,
 }: {
   content: string;
   isStreaming: boolean;
   imageFallback?: string | null;
   streamTextRef?: RefObject<StreamingTextHandle | null>;
+  onStreamUpdate?: () => void;
 }) {
   const displayContent = useMemo(() => {
     const narration = stripCodeFences(content);
@@ -291,14 +274,13 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   if (isStreaming) {
     return (
       <div className="stream-live" aria-live="polite" aria-atomic="false">
-        <StreamingSmiley />
-        <StreamingText ref={streamTextRef} markdownComponents={assistantMarkdownComponents} />
+        <StreamingText ref={streamTextRef} onUpdate={onStreamUpdate} />
       </div>
     );
   }
   if (!displayContent.trim()) return null;
   return (
-    <div className="message-body-complete studio-md w-full min-w-0 max-w-full">
+    <div className="studio-md w-full min-w-0 max-w-full">
       <Markdown components={assistantMarkdownComponents}>{displayContent}</Markdown>
     </div>
   );
@@ -332,6 +314,9 @@ export function SmileChatGeneral() {
   const [selectedCanvasSectionId, setSelectedCanvasSectionId] = useState<string | null>(null);
   const [latestBuildArtifact, setLatestBuildArtifact] = useState<BuildArtifact | null>(null);
   const [attachments, setAttachments] = useState<PromptAttachment[]>([]);
+  const [attachingFiles, setAttachingFiles] = useState(false);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const dragDepthRef = useRef(0);
   const [session, setSession] = useState<SmileSession | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -634,67 +619,105 @@ export function SmileChatGeneral() {
     setAttachments((prev) => prev.filter((a) => a.id !== idToRemove));
   }, []);
 
-  const onPickFiles = useCallback(
-    async (ev: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(ev.target.files ?? []);
+  const addFilesFromList = useCallback(
+    async (files: File[]) => {
       if (files.length === 0) return;
 
       const remaining = Math.max(0, MAX_ATTACHMENTS - attachments.length);
       if (remaining <= 0) {
         setError(`You can attach up to ${MAX_ATTACHMENTS} files per prompt.`);
-        ev.target.value = "";
         return;
       }
 
       const picked = files.slice(0, remaining);
       const next: PromptAttachment[] = [];
+      setAttachingFiles(true);
 
-      for (const file of picked) {
-        if (file.size > MAX_ATTACHMENT_BYTES) {
-          setError(`"${file.name}" is too large. Max size is ${humanFileSize(MAX_ATTACHMENT_BYTES)}.`);
-          continue;
-        }
-
-        try {
-          let kind: PromptAttachment["kind"] = "binary";
-          let content = "";
-          if (isImageUpload(file)) {
-            kind = "image";
-            content = await prepareImageAttachmentDataUrl(file);
-          } else if (
-            file.type.startsWith("text/") ||
-            /\.(txt|md|json|csv|html|css|js|ts|tsx|jsx|xml|yml|yaml)$/i.test(file.name)
-          ) {
-            kind = "text";
-            content = await file.text();
+      try {
+        for (const file of picked) {
+          try {
+            const processed = await processFileForChatAttachment(file);
+            next.push({
+              id: id(),
+              ...processed,
+            });
+          } catch (e) {
+            const detail = e instanceof Error ? e.message : "Unknown error";
+            setError(`Could not attach "${file.name}": ${detail}`);
           }
-
-          next.push({
-            id: id(),
-            name: file.name,
-            mimeType:
-              kind === "image" && content.startsWith("data:image/jpeg")
-                ? "image/jpeg"
-                : file.type || "application/octet-stream",
-            size: file.size,
-            kind,
-            content,
-          });
-        } catch (e) {
-          const detail = e instanceof Error ? e.message : "Unknown error";
-          setError(`Could not attach "${file.name}": ${detail}`);
         }
-      }
 
-      if (next.length > 0) {
-        setAttachments((prev) => [...prev, ...next]);
-        setError(null);
+        if (next.length > 0) {
+          setAttachments((prev) => [...prev, ...next]);
+          setError(null);
+        }
+      } finally {
+        setAttachingFiles(false);
       }
-
-      ev.target.value = "";
     },
     [attachments.length],
   );
+
+  const onPickFiles = useCallback(
+    async (ev: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(ev.target.files ?? []);
+      ev.target.value = "";
+      await addFilesFromList(files);
+    },
+    [addFilesFromList],
+  );
+
+  const onComposerDragEnter = useCallback((ev: DragEvent) => {
+    ev.preventDefault();
+    dragDepthRef.current += 1;
+    if (filesFromDataTransfer(ev.dataTransfer).length > 0 || ev.dataTransfer?.types.includes("Files")) {
+      setIsDraggingFiles(true);
+    }
+  }, []);
+
+  const onComposerDragOver = useCallback((ev: DragEvent) => {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const onComposerDragLeave = useCallback((ev: DragEvent) => {
+    ev.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDraggingFiles(false);
+  }, []);
+
+  const onComposerDrop = useCallback(
+    async (ev: DragEvent) => {
+      ev.preventDefault();
+      dragDepthRef.current = 0;
+      setIsDraggingFiles(false);
+      if (pending || translatingSpeech || attachingFiles) return;
+
+      const files = filesFromDataTransfer(ev.dataTransfer);
+      if (files.length > 0) {
+        await addFilesFromList(files);
+        return;
+      }
+
+      const pathHint = droppedPathHint(ev.dataTransfer);
+      if (pathHint) {
+        setError(
+          "That drop was a file path, not the file itself. Drag the file from Finder/Files onto the prompt box, or use Attach.",
+        );
+      }
+    },
+    [addFilesFromList, pending, translatingSpeech, attachingFiles],
+  );
+
+  const followStreamScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 96;
+    if (nearBottom) {
+      el.scrollTop = scrollHeight;
+    }
+  }, []);
 
   const send = useCallback(async () => {
     const trimmed = input.trim();
@@ -851,12 +874,14 @@ export function SmileChatGeneral() {
           if (!chunk) continue;
           fullText += chunk;
           streamTextRef.current?.push(chunk);
+          followStreamScroll();
           checkArtifacts(fullText);
         }
         const tail = decoder.decode();
         if (tail) {
           fullText += tail;
           streamTextRef.current?.push(tail);
+          followStreamScroll();
           checkArtifacts(fullText);
         }
         streamFinished = true;
@@ -867,10 +892,14 @@ export function SmileChatGeneral() {
       if (streamFinished) {
         applyBuildArtifact(fullText, true);
         const finalContent = finalizeAssistantContent(fullText);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
-        );
-        setStreamingMessageId(null);
+        flushSync(() => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
+          );
+          setStreamingMessageId(null);
+        });
+        streamTextRef.current?.reset();
+        followStreamScroll();
         void fetchUsageSummary().then(setUsage);
 
         if (connected.services.deviceFiles.connected && session?.userId) {
@@ -921,6 +950,7 @@ export function SmileChatGeneral() {
     latestBuildArtifact,
     selectedBuildFilePath,
     selectedCanvasSectionId,
+    followStreamScroll,
   ]);
 
   const toggleListen = useCallback(() => {
@@ -1075,7 +1105,27 @@ export function SmileChatGeneral() {
 
   const composerPanel = (
     <>
-      <div className="composer-float box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-white/[0.14] bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl">
+      <div
+        className={`composer-float relative box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl ${
+          isDraggingFiles
+            ? "border-[var(--accent)]/50 ring-2 ring-[var(--accent)]/25"
+            : "border-white/[0.14]"
+        }`}
+        onDragEnter={onComposerDragEnter}
+        onDragOver={onComposerDragOver}
+        onDragLeave={onComposerDragLeave}
+        onDrop={(ev) => void onComposerDrop(ev)}
+      >
+        {isDraggingFiles ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-[var(--accent)]/10 backdrop-blur-[1px] sm:rounded-2xl"
+            aria-hidden
+          >
+            <p className="rounded-full border border-[var(--accent)]/35 bg-[var(--bg-deep)]/85 px-4 py-2 text-sm font-medium text-[var(--accent)]">
+              Drop files to attach
+            </p>
+          </div>
+        ) : null}
         <form
           className="box-border flex w-full min-w-0 max-w-full flex-col"
           onSubmit={(e) => {
@@ -1086,10 +1136,19 @@ export function SmileChatGeneral() {
           {translatingSpeech ? (
             <p className="px-3 py-2 text-xs text-[var(--accent)]">Refining your speech into clean text…</p>
           ) : null}
+          {attachingFiles ? (
+            <p className="px-3 py-2 text-xs text-[var(--accent)]">Processing attachment…</p>
+          ) : null}
           <textarea
             id="smile-chat-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onPaste={(e) => {
+              const files = Array.from(e.clipboardData?.files ?? []);
+              if (files.length === 0) return;
+              e.preventDefault();
+              void addFilesFromList(files);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -1099,7 +1158,7 @@ export function SmileChatGeneral() {
             placeholder={PROMPT_PLACEHOLDER}
             rows={showEmpty ? 3 : 2}
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
-            disabled={busy}
+            disabled={busy || attachingFiles}
           />
           <input
             ref={fileInputRef}
@@ -1107,23 +1166,31 @@ export function SmileChatGeneral() {
             multiple
             onChange={onPickFiles}
             className="hidden"
-            accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.md,.csv,.json"
+            accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
           />
           {attachments.length > 0 ? (
             <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
-              {attachments.map((a) => (
+              {attachments.map((a) => {
+                const preview =
+                  a.kind === "image" && a.content.startsWith("data:image")
+                    ? a.content
+                    : a.kind === "video"
+                      ? videoPreviewDataUrl(a.content)
+                      : null;
+                return (
                 <span
                   key={a.id}
                   className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1 text-[0.7rem] text-[var(--text-muted)]"
                 >
-                  {a.kind === "image" && a.content.startsWith("data:image") ? (
+                  {preview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={a.content}
+                      src={preview}
                       alt=""
                       className="h-8 w-8 rounded-md object-cover ring-1 ring-white/10"
                     />
                   ) : null}
+                  {a.kind === "video" ? "Video: " : null}
                   {a.name} ({humanFileSize(a.size)})
                   <button
                     type="button"
@@ -1134,7 +1201,8 @@ export function SmileChatGeneral() {
                     ×
                   </button>
                 </span>
-              ))}
+                );
+              })}
             </div>
           ) : null}
           <div className="flex min-w-0 flex-col gap-2 border-t border-white/[0.06] px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -1150,7 +1218,7 @@ export function SmileChatGeneral() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={busy}
+                disabled={busy || attachingFiles}
                 className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40"
               >
                 Attach
@@ -1459,9 +1527,7 @@ export function SmileChatGeneral() {
                       className={`relative min-w-0 rounded-2xl px-4 pt-2.5 pb-3 text-sm leading-relaxed sm:px-5 ${
                         m.role === "user"
                           ? "ml-auto w-fit max-w-[88%] bg-[var(--accent)]/12 text-[var(--text-primary)] ring-1 ring-[var(--accent)]/20"
-                          : isStreaming
-                            ? "w-full max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
-                            : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
+                          : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
                       }`}
                     >
                       {canCopy ? (
@@ -1481,6 +1547,7 @@ export function SmileChatGeneral() {
                             isStreaming={isStreaming}
                             imageFallback={imageFallback}
                             streamTextRef={isStreaming ? streamTextRef : undefined}
+                            onStreamUpdate={isStreaming ? followStreamScroll : undefined}
                           />
                         </div>
                       ) : (

@@ -245,7 +245,7 @@ body {
 }
 
 .message-body-complete {
-  animation: message-body-in 0.12s ease-out;
+  animation: message-body-in 0.06s ease-out;
 }
 
 .studio-md {

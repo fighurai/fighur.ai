@@ -51,9 +51,34 @@ type RequestAttachment = {
   name: string;
   mimeType: string;
   size: number;
-  kind: "text" | "image" | "binary";
+  kind: "text" | "image" | "video" | "binary";
   content: string;
 };
+
+type VideoFrameSample = {
+  label: string;
+  dataUrl: string;
+};
+
+type VideoAttachmentPayload = {
+  durationSec: number;
+  frames: VideoFrameSample[];
+};
+
+function parseVideoAttachmentContent(raw: string): VideoAttachmentPayload | null {
+  try {
+    const parsed = JSON.parse(raw) as VideoAttachmentPayload;
+    if (!parsed || typeof parsed.durationSec !== "number" || !Array.isArray(parsed.frames)) {
+      return null;
+    }
+    if (!parsed.frames.every((f) => f && typeof f.label === "string" && typeof f.dataUrl === "string")) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 const MAX_TEXT_ATTACHMENT_CHARS_PER_FILE = 8_000;
 const MAX_TEXT_ATTACHMENT_TOTAL_CHARS = 16_000;
@@ -356,13 +381,14 @@ export async function POST(request: Request) {
           typeof (item as { size?: unknown }).size === "number" &&
           ((item as { kind?: unknown }).kind === "text" ||
             (item as { kind?: unknown }).kind === "image" ||
+            (item as { kind?: unknown }).kind === "video" ||
             (item as { kind?: unknown }).kind === "binary") &&
           typeof (item as { content?: unknown }).content === "string",
       )
     : [];
 
   const lastUserText = lastUserMessageText(messages);
-  const hasImageAttachment = attachments.some((a) => a.kind === "image");
+  const hasImageAttachment = attachments.some((a) => a.kind === "image" || a.kind === "video");
   const brochureRedesign = isBrochureRedesignRequest(lastUserText, hasImageAttachment);
 
   const requestedId = typeof b.model === "string" ? b.model : undefined;
@@ -411,9 +437,20 @@ export async function POST(request: Request) {
             `### Binary attachment ${idx + 1}: ${a.name}\nType: ${a.mimeType}\nSize: ${a.size} bytes\nThe model cannot directly parse this binary payload here.`,
         )
         .join("\n\n");
-      const imageAttachments = attachments
-        .filter((a) => a.kind === "image")
-        .slice(0, MAX_IMAGE_ATTACHMENTS);
+      const imageAttachments = attachments.filter((a) => a.kind === "image").slice(0, MAX_IMAGE_ATTACHMENTS);
+      const videoAttachments = attachments.filter((a) => a.kind === "video").slice(0, 1);
+      const videoFrames = videoAttachments.flatMap((video) => {
+        const payload = parseVideoAttachmentContent(video.content);
+        if (!payload) return [];
+        return payload.frames.slice(0, 5).map((frame) => ({
+          name: `${video.name} @ ${frame.label}`,
+          content: frame.dataUrl,
+        }));
+      });
+      const visionImages = [
+        ...imageAttachments.map((img) => ({ name: img.name, content: img.content })),
+        ...videoFrames,
+      ].slice(0, 6);
 
       const originalContent =
         typeof messages[lastUserMessageIndex].content === "string"
@@ -429,8 +466,18 @@ export async function POST(request: Request) {
 Use attached files as source of truth. If a value is unreadable or missing, say "unreadable" or "missing" instead of guessing.
 `;
 
+      const videoHint =
+        videoAttachments.length > 0
+          ? `
+
+## Attached video — frame review
+The user attached a video (${videoAttachments.map((v) => v.name).join(", ")}). Still frames from the clip are attached below.
+- Describe motion, pacing, on-screen text, and issues you can infer from the sampled frames.
+- If something happens between frames, say what you can and cannot verify from the samples.`
+          : "";
+
       const visionHint =
-        imageAttachments.length > 0
+        visionImages.length > 0
           ? brochureRedesign
             ? `
 
@@ -439,13 +486,13 @@ The image below is the **original brochure**. Follow the BROCHURE REDESIGN rules
             : `
 
 ## Attached image(s) — vision
-The user attached ${imageAttachments.length} image(s). **Look at the image carefully** before answering.
+The user attached ${visionImages.length} visual sample(s). **Look at each image carefully** before answering.
 - For screenshots/UI: describe what you see and offer specific fixes.
-- Never say you cannot see the image when it is attached below.`
+- Never say you cannot see the image when it is attached below.${videoHint}`
           : "";
 
-      if (imageAttachments.length > 0) {
-        const imageBlocks = imageAttachments
+      if (visionImages.length > 0) {
+        const imageBlocks = visionImages
           .map((img) => parseDataUrl(img.content))
           .filter((x): x is { mediaType: string; data: string } => Boolean(x));
 
