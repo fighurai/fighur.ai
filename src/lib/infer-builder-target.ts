@@ -34,7 +34,8 @@ export function promptRequestsBuildWorkspace(text: string): boolean {
   const intent = classifyPromptIntent(text);
   if (intent !== "general") return true;
   if (/```[\s\S]+```/.test(text)) return true;
-  if (/\b(edit|modify|change|update|redesign|create|generate|draw|make)\b.*\b(image|photo|picture|logo|icon|banner|graphic|svg)\b/i.test(text)) {
+  if (/\b(brochure|flyer|leaflet|pamphlet|poster|handout)\b/i.test(text)) return true;
+  if (/\b(edit|modify|change|update|redesign|create|generate|draw|make|improve|better|enhance|polish)\b.*\b(image|photo|picture|logo|icon|banner|graphic|svg|brochure|flyer|design|layout|this|it)\b/i.test(text)) {
     return true;
   }
   return false;
@@ -64,6 +65,9 @@ function classifyPromptIntent(text: string): SmileBuilderTarget {
       t,
     ) ||
     /\b(intricate|complex|detailed|advanced|sophisticated|interactive|animated|custom|production[\s-]?quality|full[\s-]?site|multi[\s-]?file|agency)\b.*\b(website|site|page|ui|landing)\b/i.test(
+      t,
+    ) ||
+    /\b(make|improve|better|redesign|polish|enhance|upgrade|refine)\b.*\b(brochure|flyer|leaflet|pamphlet|poster|handout|this|design|layout)\b/i.test(
       t,
     ) ||
     /\b(write|generate|show|design)\b.*\b(code|html|react|typescript|javascript|script|ui|website|page|site)\b/i.test(t);

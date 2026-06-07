@@ -16,6 +16,10 @@ import { openAIStreamToTextStream } from "@/lib/openai-stream";
 import { inferSmileBuilderTargetFromPrompt, lastUserMessageText } from "@/lib/infer-builder-target";
 import { isIntricateWebBuild, isWebBuildRequest } from "@/lib/build-output-context";
 import {
+  buildBrochureRedesignContext,
+  isBrochureRedesignRequest,
+} from "@/lib/brochure-redesign-context";
+import {
   getLiveOAuthIntegrationFlags,
   mergeIntegrationFlags,
 } from "@/lib/oauth-connection-cookies";
@@ -357,6 +361,10 @@ export async function POST(request: Request) {
       )
     : [];
 
+  const lastUserText = lastUserMessageText(messages);
+  const hasImageAttachment = attachments.some((a) => a.kind === "image");
+  const brochureRedesign = isBrochureRedesignRequest(lastUserText, hasImageAttachment);
+
   const requestedId = typeof b.model === "string" ? b.model : undefined;
 
   const prep = await prepareChatRequest(request);
@@ -423,11 +431,15 @@ Use attached files as source of truth. If a value is unreadable or missing, say 
 
       const visionHint =
         imageAttachments.length > 0
-          ? `
+          ? brochureRedesign
+            ? `
+
+## Attached brochure (source of truth)
+The image below is the **original brochure**. Follow the BROCHURE REDESIGN rules in the system prompt: same business, same sections, same copy and rates—only polish the design.`
+            : `
 
 ## Attached image(s) — vision
 The user attached ${imageAttachments.length} image(s). **Look at the image carefully** before answering.
-- For brochures, flyers, menus, slides: read all visible text and layout; suggest concrete design/copy improvements or produce an improved version in Canvas (\`index.html\` + \`styles.css\`).
 - For screenshots/UI: describe what you see and offer specific fixes.
 - Never say you cannot see the image when it is attached below.`
           : "";
@@ -511,7 +523,6 @@ The user attached ${imageAttachments.length} image(s). **Look at the image caref
     effectiveBuilderTarget = "workflow";
   }
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
-  const lastUserText = lastUserMessageText(messages);
   const clientHint = parseClientLocationPayload(b.clientLocation);
   const userLocation = await resolveUserLocation(request, clientHint);
   const agentCtx: AgentToolContext = {
@@ -525,10 +536,17 @@ The user attached ${imageAttachments.length} image(s). **Look at the image caref
     agentToolsAvailable &&
     option.provider === "anthropic" &&
     needsAgentToolLoop(integrationFlags ?? {}, lastUserText, deviceManifest);
+  if (brochureRedesign && effectiveBuilderTarget === "general") {
+    effectiveBuilderTarget = "application";
+  }
   let system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession, {
     agentToolsEnabled: runtimeAgentTools,
   });
-  system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
+  if (!brochureRedesign) {
+    system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
+  } else {
+    system += buildBrochureRedesignContext();
+  }
   const canvasContext = parseCanvasContextPayload(b.canvasContext);
   system += buildCanvasEditSystemContext(canvasContext);
   system += userLocationSystemContext(userLocation);

@@ -170,7 +170,7 @@ body {
   border-radius: 999px;
 }
 
-/* Live assistant stream — no autoscroll; smiley pulses while typing */
+/* Live assistant stream — brand icon pulses while typing */
 .stream-live {
   width: 100%;
   min-width: 0;

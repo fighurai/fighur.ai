@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces, Geist_Mono } from "next/font/google";
 
 import { SmileShell } from "@/components/smile-shell";
-import { SITE_DESCRIPTION, SITE_ICON, SITE_OG_IMAGE, SITE_TITLE } from "@/lib/site-brand";
+import { SITE_DESCRIPTION, SITE_FAVICON, SITE_OG_IMAGE, SITE_TITLE } from "@/lib/site-brand";
 import { getSiteUrl } from "@/lib/site-url";
 
 import "./globals.css";
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   metadataBase: new URL(siteUrl),
   icons: {
-    icon: [{ url: SITE_ICON, type: "image/png", sizes: "128x128" }],
+    icon: [{ url: SITE_FAVICON, type: "image/png", sizes: "128x128" }],
     apple: [{ url: "/apple-icon.png", type: "image/png" }],
     shortcut: "/favicon.ico",
   },
