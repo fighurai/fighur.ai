@@ -5,7 +5,7 @@ import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { hashPassword, validatePasswordStrength } from "@/lib/password-auth";
 import { clientIp, userAgent } from "@/lib/request-context";
-import { ensureUser, readUserByEmail, readUserProfile } from "@/lib/user-data-store";
+import { ensureUser, readUserByEmail, readUserProfile, ensureComplimentaryEntitlements } from "@/lib/user-data-store";
 
 export async function POST(request: Request) {
   const secret = getAppSealingSecret();
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       emailVerified: false,
     });
 
-    const created = await readUserProfile(userId);
+    const created = (await ensureComplimentaryEntitlements(userId, email)) ?? (await readUserProfile(userId));
     const res = NextResponse.json(
       sessionJsonBody({
         userId,

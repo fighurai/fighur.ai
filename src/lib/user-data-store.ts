@@ -65,8 +65,56 @@ export function normalizePlan(raw: unknown): UserPlan {
 }
 
 function planFromEmail(email: string): UserPlan {
+  if (isComplimentaryProEmail(email)) return "pro";
   const list = process.env.SMILE_PRO_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
   return list.includes(email.trim().toLowerCase()) ? "pro" : "free";
+}
+
+/** Built-in owner/admin accounts — Pro without Stripe. */
+export function isComplimentaryProEmail(emailRaw: string): boolean {
+  const email = emailRaw.trim().toLowerCase();
+  if (email === "hello@fighurai.com") return true;
+  const list = process.env.SMILE_PRO_EMAILS?.split(",").map((e) => e.trim().toLowerCase()) ?? [];
+  return list.includes(email);
+}
+
+export function complimentaryRolesForEmail(emailRaw: string): Role[] | null {
+  if (emailRaw.trim().toLowerCase() === "hello@fighurai.com") return ["admin", "user"];
+  return null;
+}
+
+/** Persist Pro/admin entitlements for complimentary accounts (e.g. on sign-in). */
+export async function ensureComplimentaryEntitlements(
+  userId: string,
+  emailRaw: string,
+): Promise<UserProfile | null> {
+  const profile = await readUserProfile(userId);
+  if (!profile) return null;
+
+  const email = emailRaw.trim().toLowerCase();
+  const wantPro = isComplimentaryProEmail(email);
+  const wantRoles = complimentaryRolesForEmail(email);
+  let changed = false;
+
+  const updated: UserProfile = { ...profile };
+  if (wantPro && updated.plan !== "pro") {
+    updated.plan = "pro";
+    changed = true;
+  }
+  if (wantRoles) {
+    const roles = normalizeRoles(wantRoles);
+    const current = normalizeRoles(updated.roles);
+    if (current.join(",") !== roles.join(",")) {
+      updated.roles = roles;
+      changed = true;
+    }
+  }
+
+  if (!changed) return profile;
+
+  updated.updatedAt = new Date().toISOString();
+  await writeUserFile(userId, "profile.json", JSON.stringify(updated, null, 0));
+  return updated;
 }
 
 export function getPlanForEmail(email: string): UserPlan {
@@ -237,6 +285,7 @@ export async function repairUserProfileForSession(session: {
   await writeGlobalUserFile(indexRel, JSON.stringify({ userId: session.userId }, null, 0));
 
   const now = new Date().toISOString();
+  const adminRoles = complimentaryRolesForEmail(email);
   const profile: UserProfile = existing ?? {
     userId: session.userId,
     email,
@@ -244,7 +293,7 @@ export async function repairUserProfileForSession(session: {
     createdAt: now,
     updatedAt: now,
     environmentId: session.userId,
-    roles: normalizeRoles(["user"]),
+    roles: normalizeRoles(adminRoles ?? ["user"]),
     authProvider: "email",
     plan: planFromEmail(email),
   };

@@ -5,7 +5,7 @@ import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { readVerifiedSession } from "@/lib/session-cookie";
-import { ensureUser, readUserProfile, repairUserProfileForSession } from "@/lib/user-data-store";
+import { ensureUser, readUserProfile, repairUserProfileForSession, ensureComplimentaryEntitlements } from "@/lib/user-data-store";
 import { usesBlobUserStorage } from "@/lib/user-file-storage";
 import { normalizeRoles } from "@/lib/rbac";
 
@@ -30,6 +30,7 @@ export async function GET(request: Request) {
   if (usesBlobUserStorage()) {
     await repairUserProfileForSession(session);
   }
+  await ensureComplimentaryEntitlements(session.userId, session.email);
   const profile = await readUserProfile(session.userId);
   const res = NextResponse.json({
     ok: true,

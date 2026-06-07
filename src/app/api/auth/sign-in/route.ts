@@ -5,7 +5,7 @@ import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { verifyPassword } from "@/lib/password-auth";
 import { clientIp, userAgent } from "@/lib/request-context";
-import { readUserByEmail } from "@/lib/user-data-store";
+import { readUserByEmail, ensureComplimentaryEntitlements } from "@/lib/user-data-store";
 import { normalizeRoles } from "@/lib/rbac";
 
 export async function POST(request: Request) {
@@ -58,20 +58,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
+  const entitled = (await ensureComplimentaryEntitlements(profile.userId, profile.email)) ?? profile;
+
   const res = NextResponse.json(
     sessionJsonBody({
-      userId: profile.userId,
-      email: profile.email,
-      name: profile.name,
-      roles: normalizeRoles(profile.roles),
-      environmentId: profile.environmentId,
-      plan: profile.plan,
+      userId: entitled.userId,
+      email: entitled.email,
+      name: entitled.name,
+      roles: normalizeRoles(entitled.roles),
+      environmentId: entitled.environmentId,
+      plan: entitled.plan,
     }),
   );
   const withCookie = await attachSessionCookie(res, {
-    userId: profile.userId,
-    email: profile.email,
-    name: profile.name,
+    userId: entitled.userId,
+    email: entitled.email,
+    name: entitled.name,
   });
   if (!withCookie) {
     return NextResponse.json({ error: "Could not create session." }, { status: 500 });
