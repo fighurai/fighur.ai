@@ -223,6 +223,10 @@ body {
   animation: smiley-pulse 1.15s ease-in-out infinite;
 }
 
+.site-logo {
+  flex-shrink: 0;
+}
+
 @keyframes smiley-pulse {
   0%,
   100% {
