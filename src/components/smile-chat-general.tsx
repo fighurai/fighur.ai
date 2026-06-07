@@ -262,7 +262,7 @@ function StreamingSmiley() {
         height={SITE_ICON_DISPLAY_PX}
         sizes={`${SITE_ICON_DISPLAY_PX}px`}
         quality={95}
-        className="stream-smiley-icon h-11 w-11 rounded-md object-contain"
+        className="stream-smiley-icon h-11 w-11 object-contain"
         priority
       />
       <span className="text-xs text-[var(--text-faint)]">FIGHURAI is typing…</span>

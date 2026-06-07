@@ -2,8 +2,8 @@
 export const SITE_TITLE = "FIGHURAI";
 export const SITE_DESCRIPTION =
   "Build apps, agents, and workflows with AI — your general assistant on fighur.ai.";
-/** Header / in-app logo — black backdrop so colored dots stay crisp at larger sizes. */
-export const SITE_ICON = "/images/fighur-logo-mark-256.png";
+/** Header / in-app logo — transparent background, high-res for crisp dots at 44px. */
+export const SITE_ICON = "/images/fighur-icon-256.png";
 export const SITE_ICON_DISPLAY_PX = 44;
 /** Browser tab / favicon — dot figure on neon backdrop, cropped to a circle. */
 export const SITE_FAVICON = "/images/fighur-favicon-circle-128.png";
