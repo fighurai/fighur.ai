@@ -15,6 +15,7 @@ Code pushes to `main` deploy via Vercel. **API keys are not stored in git.** The
 | `OPENAI_API_KEY` | Yes (if you use OpenAI) |
 | `OPENROUTER_API_KEY` | Optional |
 | `GROQ_API_KEY` | Optional |
+| `NVIDIA_API_KEY` | Optional (NVIDIA NIM / Spark models) |
 | `SMILE_APP_SECRET` | Yes for sign-in / OAuth (16+ random characters) |
 | `GOOGLE_CLIENT_ID` | Yes for Google SSO + Gmail connect |
 | `GOOGLE_CLIENT_SECRET` | Yes for Google SSO + Gmail connect |
