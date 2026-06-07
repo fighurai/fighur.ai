@@ -170,10 +170,76 @@ body {
   border-radius: 999px;
 }
 
-/* Live assistant stream — brand icon pulses while typing */
+/* Live assistant stream — loading dots while reply generates */
 .stream-live {
   width: 100%;
   min-width: 0;
+}
+
+.stream-loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.75rem;
+}
+
+.stream-loading-fab {
+  pointer-events: none;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--bg-elevated) 95%, transparent);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+}
+
+.stream-loading-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: stream-dot-hue 2.4s linear infinite;
+}
+
+.stream-loading-dot:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.stream-loading-dot:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+@keyframes stream-dot-hue {
+  0% {
+    background: hsl(168, 72%, 52%);
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+  25% {
+    background: hsl(220, 78%, 62%);
+    opacity: 0.95;
+    transform: scale(1.05);
+  }
+  50% {
+    background: hsl(280, 72%, 66%);
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+  75% {
+    background: hsl(330, 72%, 60%);
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    background: hsl(168, 72%, 52%);
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
 }
 
 .stream-plain {
@@ -237,15 +303,17 @@ body {
 
 @keyframes message-body-in {
   from {
-    opacity: 0.72;
+    opacity: 0;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
 .message-body-complete {
-  animation: message-body-in 0.06s ease-out;
+  animation: message-body-in 0.22s ease-out;
 }
 
 .studio-md {

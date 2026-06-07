@@ -67,6 +67,7 @@ import {
   extractAllImagePreviewUrls,
   resolveImagePreviewUrl,
 } from "@/lib/workspace-download";
+import { StreamLoadingDots } from "@/components/stream-loading-dots";
 import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
 import {
   deriveTitle,
@@ -257,12 +258,14 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   imageFallback,
   streamTextRef,
   onStreamUpdate,
+  onStreamFirstOutput,
 }: {
   content: string;
   isStreaming: boolean;
   imageFallback?: string | null;
   streamTextRef?: RefObject<StreamingTextHandle | null>;
   onStreamUpdate?: () => void;
+  onStreamFirstOutput?: () => void;
 }) {
   const displayContent = useMemo(() => {
     const narration = stripCodeFences(content);
@@ -274,13 +277,17 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
   if (isStreaming) {
     return (
       <div className="stream-live" aria-live="polite" aria-atomic="false">
-        <StreamingText ref={streamTextRef} onUpdate={onStreamUpdate} />
+        <StreamingText
+          ref={streamTextRef}
+          onUpdate={onStreamUpdate}
+          onFirstOutput={onStreamFirstOutput}
+        />
       </div>
     );
   }
   if (!displayContent.trim()) return null;
   return (
-    <div className="studio-md w-full min-w-0 max-w-full">
+    <div className="message-body-complete studio-md w-full min-w-0 max-w-full">
       <Markdown components={assistantMarkdownComponents}>{displayContent}</Markdown>
     </div>
   );
@@ -299,6 +306,7 @@ export function SmileChatGeneral() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamOutputStarted, setStreamOutputStarted] = useState(false);
   const streamTextRef = useRef<StreamingTextHandle>(null);
   const [translatingSpeech, setTranslatingSpeech] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -519,6 +527,7 @@ export function SmileChatGeneral() {
     setPending(false);
     setTranslatingSpeech(false);
     streamTextRef.current?.reset();
+    setStreamOutputStarted(false);
     setStreamingMessageId(null);
   }, []);
 
@@ -719,6 +728,10 @@ export function SmileChatGeneral() {
     }
   }, []);
 
+  const markStreamOutputStarted = useCallback(() => {
+    setStreamOutputStarted(true);
+  }, []);
+
   const send = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || pending || translatingSpeech || sendInFlightRef.current) return;
@@ -852,6 +865,7 @@ export function SmileChatGeneral() {
 
       flushSync(() => {
         setStreamingMessageId(assistantId);
+        setStreamOutputStarted(false);
       });
       streamTextRef.current?.reset();
 
@@ -899,6 +913,7 @@ export function SmileChatGeneral() {
           setStreamingMessageId(null);
         });
         streamTextRef.current?.reset();
+        setStreamOutputStarted(false);
         followStreamScroll();
         void fetchUsageSummary().then(setUsage);
 
@@ -934,6 +949,7 @@ export function SmileChatGeneral() {
     } finally {
       clearTimeout(reqTid);
       setPending(false);
+      setStreamOutputStarted(false);
       setStreamingMessageId(null);
       abortRef.current = null;
       sendInFlightRef.current = false;
@@ -951,6 +967,7 @@ export function SmileChatGeneral() {
     selectedBuildFilePath,
     selectedCanvasSectionId,
     followStreamScroll,
+    markStreamOutputStarted,
   ]);
 
   const toggleListen = useCallback(() => {
@@ -992,6 +1009,7 @@ export function SmileChatGeneral() {
 
   const showEmpty = messages.length === 0;
   const busy = pending || translatingSpeech;
+  const showStreamWaitingDots = Boolean(pending && streamingMessageId && !streamOutputStarted);
 
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     const el = listRef.current;
@@ -1069,7 +1087,11 @@ export function SmileChatGeneral() {
       el.removeEventListener("scroll", updateScrollToBottom);
       ro.disconnect();
     };
-  }, [showEmpty, messages, pending, composerInset, updateScrollToBottom]);
+  }, [showEmpty, messages, pending, streamOutputStarted, composerInset, updateScrollToBottom]);
+
+  useEffect(() => {
+    if (!showEmpty && streamOutputStarted) updateScrollToBottom();
+  }, [showEmpty, streamOutputStarted, updateScrollToBottom]);
   const lastAssistantMessageId = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "assistant") return messages[i].id;
@@ -1548,6 +1570,7 @@ export function SmileChatGeneral() {
                             imageFallback={imageFallback}
                             streamTextRef={isStreaming ? streamTextRef : undefined}
                             onStreamUpdate={isStreaming ? followStreamScroll : undefined}
+                            onStreamFirstOutput={isStreaming ? markStreamOutputStarted : undefined}
                           />
                         </div>
                       ) : (
@@ -1562,12 +1585,18 @@ export function SmileChatGeneral() {
             </div>
           )}
 
-          {!showEmpty && showScrollToBottom ? (
+          {!showEmpty && (showStreamWaitingDots || showScrollToBottom) ? (
+            <div
+              className="absolute left-1/2 z-30 -translate-x-1/2"
+              style={{ bottom: composerInset > 0 ? composerInset + 10 : 160 }}
+            >
+              {showStreamWaitingDots ? (
+                <StreamLoadingDots variant="fab" />
+              ) : (
             <button
               type="button"
               onClick={() => scrollChatToBottom()}
-              className="scroll-to-bottom-btn absolute left-1/2 z-30 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-white/[0.14] bg-[var(--bg-elevated)]/95 text-[var(--accent)] shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:border-[var(--accent)]/40 hover:bg-[var(--bg-elevated)] active:scale-95"
-              style={{ bottom: composerInset > 0 ? composerInset + 10 : 160 }}
+              className="scroll-to-bottom-btn flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.14] bg-[var(--bg-elevated)]/95 text-[var(--accent)] shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:border-[var(--accent)]/40 hover:bg-[var(--bg-elevated)] active:scale-95"
               aria-label="Scroll to latest messages"
             >
               <svg
@@ -1584,6 +1613,8 @@ export function SmileChatGeneral() {
                 <path d="M12 5v14M6 13l6 6 6-6" />
               </svg>
             </button>
+              )}
+            </div>
           ) : null}
         </div>
 

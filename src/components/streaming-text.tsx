@@ -15,21 +15,24 @@ type StreamingTextProps = {
   className?: string;
   showCursor?: boolean;
   onUpdate?: () => void;
+  onFirstOutput?: () => void;
 };
 
-/**
- * Imperative streaming surface — appends only new narration text per chunk so the
- * browser paints incrementally without re-rendering markdown on every token.
- */
 export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>(
-  function StreamingText({ className = "", showCursor = true, onUpdate }, ref) {
+  function StreamingText({ className = "", showCursor = true, onUpdate, onFirstOutput }, ref) {
     const rootRef = useRef<HTMLParagraphElement>(null);
     const bufferRef = useRef("");
     const displayedRef = useRef("");
+    const notifiedRef = useRef(false);
 
     const applyNarration = (narration: string) => {
       const el = rootRef.current;
       if (!el) return;
+
+      if (narration && !notifiedRef.current) {
+        notifiedRef.current = true;
+        onFirstOutput?.();
+      }
 
       const prev = displayedRef.current;
       if (narration === prev) return;
@@ -51,6 +54,7 @@ export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>
         reset() {
           bufferRef.current = "";
           displayedRef.current = "";
+          notifiedRef.current = false;
           const el = rootRef.current;
           if (el) el.textContent = "";
         },
@@ -67,7 +71,7 @@ export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>
           return bufferRef.current.length;
         },
       }),
-      [onUpdate],
+      [onFirstOutput, onUpdate],
     );
 
     return (
