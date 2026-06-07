@@ -4,6 +4,7 @@ import { appendAudit } from "@/lib/audit-log";
 import { sessionJsonBody } from "@/lib/auth-session";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { readVerifiedSession } from "@/lib/session-cookie";
+import { stripeCheckoutConfigured } from "@/lib/stripe-billing";
 import { readUserProfile, setUserPlan } from "@/lib/user-data-store";
 import { normalizeRoles } from "@/lib/rbac";
 
@@ -32,6 +33,17 @@ export async function POST(request: Request) {
       plan: "pro",
       message: "You already have Pro access to every model.",
     });
+  }
+
+  if (stripeCheckoutConfigured()) {
+    return NextResponse.json(
+      {
+        error: "Use Stripe checkout to upgrade.",
+        code: "USE_STRIPE_CHECKOUT",
+        checkoutPath: "/api/billing/checkout",
+      },
+      { status: 400 },
+    );
   }
 
   if (!devUpgradeEnabled()) {

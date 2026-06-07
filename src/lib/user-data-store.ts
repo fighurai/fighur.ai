@@ -89,6 +89,8 @@ export type UserProfile = {
   emailVerified?: boolean;
   /** free = unlimited Claude; pro = all models */
   plan: UserPlan;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
 };
 
 async function ensureDirSecure(dir: string): Promise<void> {
@@ -296,6 +298,9 @@ export async function readUserProfile(userId: string): Promise<UserProfile | nul
       ssoSubjects: p.ssoSubjects,
       emailVerified: p.emailVerified,
       plan: normalizePlan(p.plan),
+      stripeCustomerId: typeof p.stripeCustomerId === "string" ? p.stripeCustomerId : undefined,
+      stripeSubscriptionId:
+        typeof p.stripeSubscriptionId === "string" ? p.stripeSubscriptionId : undefined,
     };
   } catch {
     return null;
@@ -310,6 +315,30 @@ export async function setUserPlan(userId: string, plan: UserPlan): Promise<boole
     plan: normalizePlan(plan),
     updatedAt: new Date().toISOString(),
   };
+  await writeUserFile(userId, "profile.json", JSON.stringify(updated, null, 0));
+  return true;
+}
+
+export async function updateUserStripeBilling(
+  userId: string,
+  patch: {
+    plan?: UserPlan;
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string | null;
+  },
+): Promise<boolean> {
+  const profile = await readUserProfile(userId);
+  if (!profile) return false;
+  const updated: UserProfile = {
+    ...profile,
+    updatedAt: new Date().toISOString(),
+  };
+  if (patch.plan !== undefined) updated.plan = normalizePlan(patch.plan);
+  if (patch.stripeCustomerId !== undefined) updated.stripeCustomerId = patch.stripeCustomerId;
+  if (patch.stripeSubscriptionId === null) delete updated.stripeSubscriptionId;
+  else if (patch.stripeSubscriptionId !== undefined) {
+    updated.stripeSubscriptionId = patch.stripeSubscriptionId;
+  }
   await writeUserFile(userId, "profile.json", JSON.stringify(updated, null, 0));
   return true;
 }

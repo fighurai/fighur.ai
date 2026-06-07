@@ -26,6 +26,10 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_PRICE_ID: ${{ secrets.STRIPE_PRICE_ID }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           SMILE_APP_SECRET: ${{ secrets.SMILE_APP_SECRET }}
           SMILE_OAUTH_COOKIE_SECRET: ${{ secrets.SMILE_OAUTH_COOKIE_SECRET }}
           SMILE_DEFAULT_CHAT_MODEL: ${{ secrets.SMILE_DEFAULT_CHAT_MODEL }}
