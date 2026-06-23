@@ -8,8 +8,8 @@ const KEY = "smile-ai-theme";
 
 const defaultPrefs: ThemePrefs = {
   enabled: false,
-  bg: "#EEFF00",
-  fg: "#1432F5",
+  bg: "#08090d",
+  fg: "#f4f4f5",
 };
 
 export function readTheme(): ThemePrefs {
