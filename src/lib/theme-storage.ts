@@ -4,12 +4,16 @@ export type ThemePrefs = {
   fg: string;
 };
 
+/** Starting values in the Colors panel (custom theme only — site default stays dark). */
+export const CUSTOM_COLOR_PRESET_BG = "#EEFF00";
+export const CUSTOM_COLOR_PRESET_FG = "#1432F5";
+
 const KEY = "smile-ai-theme";
 
 const defaultPrefs: ThemePrefs = {
   enabled: false,
-  bg: "#08090d",
-  fg: "#f4f4f5",
+  bg: CUSTOM_COLOR_PRESET_BG,
+  fg: CUSTOM_COLOR_PRESET_FG,
 };
 
 export function readTheme(): ThemePrefs {
@@ -18,10 +22,16 @@ export function readTheme(): ThemePrefs {
     const raw = localStorage.getItem(KEY);
     if (!raw) return defaultPrefs;
     const v = JSON.parse(raw) as Partial<ThemePrefs>;
+    let bg = typeof v.bg === "string" ? v.bg : defaultPrefs.bg;
+    let fg = typeof v.fg === "string" ? v.fg : defaultPrefs.fg;
+    if (!v.enabled && bg.toLowerCase() === "#08090d" && fg.toLowerCase() === "#f4f4f5") {
+      bg = CUSTOM_COLOR_PRESET_BG;
+      fg = CUSTOM_COLOR_PRESET_FG;
+    }
     return {
       enabled: Boolean(v.enabled),
-      bg: typeof v.bg === "string" ? v.bg : defaultPrefs.bg,
-      fg: typeof v.fg === "string" ? v.fg : defaultPrefs.fg,
+      bg,
+      fg,
     };
   } catch {
     return defaultPrefs;

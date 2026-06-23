@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import {
   applyThemeVars,
+  CUSTOM_COLOR_PRESET_BG,
+  CUSTOM_COLOR_PRESET_FG,
   readTheme,
   writeTheme,
   type ThemePrefs,
@@ -15,8 +17,8 @@ export function ThemeControls() {
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState<ThemePrefs>({
     enabled: false,
-    bg: "#08090d",
-    fg: "#f4f4f5",
+    bg: CUSTOM_COLOR_PRESET_BG,
+    fg: CUSTOM_COLOR_PRESET_FG,
   });
 
   useEffect(() => {
@@ -101,12 +103,12 @@ export function ThemeControls() {
             onClick={() => {
               persist({
                 enabled: false,
-                bg: "#08090d",
-                fg: "#f4f4f5",
+                bg: CUSTOM_COLOR_PRESET_BG,
+                fg: CUSTOM_COLOR_PRESET_FG,
               });
             }}
           >
-            Reset to default
+            Turn off custom colors
           </button>
         </div>
       ) : null}
