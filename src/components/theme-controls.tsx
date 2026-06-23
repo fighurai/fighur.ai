@@ -15,8 +15,8 @@ export function ThemeControls() {
   const [open, setOpen] = useState(false);
   const [prefs, setPrefs] = useState<ThemePrefs>({
     enabled: false,
-    bg: "#08090d",
-    fg: "#f4f4f5",
+    bg: "#EEFF00",
+    fg: "#1432F5",
   });
 
   useEffect(() => {
@@ -101,8 +101,8 @@ export function ThemeControls() {
             onClick={() => {
               persist({
                 enabled: false,
-                bg: "#08090d",
-                fg: "#f4f4f5",
+                bg: "#EEFF00",
+                fg: "#1432F5",
               });
             }}
           >

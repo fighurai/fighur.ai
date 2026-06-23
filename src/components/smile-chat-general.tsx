@@ -1128,10 +1128,10 @@ export function SmileChatGeneral() {
   const composerPanel = (
     <>
       <div
-        className={`composer-float relative box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl ${
+        className={`composer-float relative box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-[var(--bg-elevated)] p-1 sm:rounded-2xl ${
           isDraggingFiles
             ? "border-[var(--accent)]/50 ring-2 ring-[var(--accent)]/25"
-            : "border-white/[0.14]"
+            : "border-[var(--border-subtle)]"
         }`}
         onDragEnter={onComposerDragEnter}
         onDragOver={onComposerDragOver}

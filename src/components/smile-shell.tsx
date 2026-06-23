@@ -12,7 +12,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--bg-deep)]">
-      <header className="fixed inset-x-0 top-0 z-[100] border-b border-white/[0.06] bg-[var(--bg-deep)]/95 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-[100] border-b border-[var(--border-faint)] bg-[var(--bg-deep)]/95 backdrop-blur-xl">
         <div className="flex h-[3.25rem] w-full items-center justify-between px-2 sm:px-3">
           <Link
             href="/"
