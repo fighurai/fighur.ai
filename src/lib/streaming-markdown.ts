@@ -6,7 +6,8 @@
 export function streamingNarration(raw: string): string {
   if (!raw) return "";
 
-  let text = raw.replace(/```device-ops[\s\S]*?```/gi, "");
+  let text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  text = text.replace(/```device-ops[\s\S]*?```/gi, "");
   text = text.replace(/```[^\n`]*\r?\n[\s\S]*?```/g, "");
 
   const fenceCount = (text.match(/```/g) || []).length;
@@ -25,13 +26,17 @@ export function streamingNarration(raw: string): string {
  */
 export function softenMarkdownForStream(raw: string): string {
   if (!raw) return raw;
-  let text = raw;
+  let text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-  // Completed heading lines → plain title (Markdown will restyle on finalize)
-  text = text.replace(/^(#{1,6})[ \t]+(.+)$/gm, "$2");
+  // ATX headings (with or without space): "### Title", "###Title", "  ## "
+  // Strip 1–6 leading hashes on each line so hashes never paint mid-stream.
+  text = text.replace(/^[ \t]*#{1,6}[ \t]*/gm, "");
 
-  // Incomplete trailing heading (only hashes / hashes + partial whitespace)
-  text = text.replace(/(?:^|\n)(#{1,6})[ \t]*$/u, (m) => (m.startsWith("\n") ? "\n" : ""));
+  // Closing ATX hashes: "Title ###" left after opener strip
+  text = text.replace(/[ \t]+#+[ \t]*$/gm, "");
+
+  // Incomplete trailing bare hashes if any survived (e.g. odd token splits)
+  text = text.replace(/(?:^|\n)[ \t]*#{1,6}[ \t]*$/g, (m) => (m.startsWith("\n") ? "\n" : ""));
 
   // Unclosed bold at the very end — hide the dangling marker chunk
   if ((text.match(/\*\*/g) || []).length % 2 === 1) {

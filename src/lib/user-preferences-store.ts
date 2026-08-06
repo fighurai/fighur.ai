@@ -10,19 +10,43 @@ import {
 const FILE = "preferences.json";
 const MAX_INSTRUCTIONS = 8_000;
 
+export type DeepResearchPrefs = {
+  /** Prefer deep-research skill and multi-source synthesis in chat. */
+  enabled: boolean;
+  /** Ask the model to include citations / source links. */
+  citeSources: boolean;
+  /** Default effort for research-heavy prompts. */
+  effort: "auto" | "low" | "high";
+};
+
 export type UserPreferences = {
   workMode: WorkMode;
-  /** Always-on custom instructions (Abacus Customize AI) */
+  /**
+   * Legacy combined instructions. Kept for backward compatibility;
+   * new UI splits into behavior + response (Abacus-style).
+   */
   customInstructions: string;
+  /** How the model approaches problems (Abacus Behavior Instructions). */
+  behaviorInstructions: string;
+  /** Tone / format / persona of answers (Abacus Response Instructions). */
+  responseInstructions: string;
+  deepResearch: DeepResearchPrefs;
   /** Optional workspace layout (desktop columns) */
   layout?: LayoutPrefs;
   updatedAt: string;
 };
 
+function defaultDeepResearch(): DeepResearchPrefs {
+  return { enabled: false, citeSources: true, effort: "auto" };
+}
+
 function defaultPreferences(): UserPreferences {
   return {
     workMode: "chat",
     customInstructions: "",
+    behaviorInstructions: "",
+    responseInstructions: "",
+    deepResearch: defaultDeepResearch(),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -32,15 +56,36 @@ function normalizeInstructions(raw: unknown): string {
   return raw.trim().slice(0, MAX_INSTRUCTIONS);
 }
 
+function normalizeDeepResearch(raw: unknown): DeepResearchPrefs {
+  const d = defaultDeepResearch();
+  if (!raw || typeof raw !== "object") return d;
+  const o = raw as Partial<DeepResearchPrefs>;
+  return {
+    enabled: Boolean(o.enabled),
+    citeSources: o.citeSources !== false,
+    effort: o.effort === "low" || o.effort === "high" || o.effort === "auto" ? o.effort : "auto",
+  };
+}
+
 export async function readUserPreferences(userId: string): Promise<UserPreferences> {
   if (!isSafeUserId(userId)) return defaultPreferences();
   const raw = await readUserFile(userId, FILE);
   if (!raw) return defaultPreferences();
   try {
     const parsed = JSON.parse(raw) as Partial<UserPreferences>;
+    const customInstructions = normalizeInstructions(parsed.customInstructions);
+    let behaviorInstructions = normalizeInstructions(parsed.behaviorInstructions);
+    let responseInstructions = normalizeInstructions(parsed.responseInstructions);
+    // Migrate legacy single field into behavior if split fields are empty.
+    if (!behaviorInstructions && !responseInstructions && customInstructions) {
+      behaviorInstructions = customInstructions;
+    }
     return {
       workMode: normalizeWorkMode(parsed.workMode),
-      customInstructions: normalizeInstructions(parsed.customInstructions),
+      customInstructions,
+      behaviorInstructions,
+      responseInstructions,
+      deepResearch: normalizeDeepResearch(parsed.deepResearch),
       layout: parsed.layout ? normalizeLayoutPrefs(parsed.layout) : undefined,
       updatedAt:
         typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
@@ -56,12 +101,29 @@ export async function writeUserPreferences(
 ): Promise<UserPreferences> {
   if (!isSafeUserId(userId)) throw new Error("Invalid user");
   const existing = await readUserPreferences(userId);
+  const behaviorInstructions =
+    prefs.behaviorInstructions !== undefined
+      ? normalizeInstructions(prefs.behaviorInstructions)
+      : existing.behaviorInstructions;
+  const responseInstructions =
+    prefs.responseInstructions !== undefined
+      ? normalizeInstructions(prefs.responseInstructions)
+      : existing.responseInstructions;
+  const customInstructions =
+    prefs.customInstructions !== undefined
+      ? normalizeInstructions(prefs.customInstructions)
+      : // Keep legacy field mirrored from the split fields for older readers.
+        [behaviorInstructions, responseInstructions].filter(Boolean).join("\n\n");
+
   const next: UserPreferences = {
     workMode: prefs.workMode !== undefined ? normalizeWorkMode(prefs.workMode) : existing.workMode,
-    customInstructions:
-      prefs.customInstructions !== undefined
-        ? normalizeInstructions(prefs.customInstructions)
-        : existing.customInstructions,
+    customInstructions,
+    behaviorInstructions,
+    responseInstructions,
+    deepResearch:
+      prefs.deepResearch !== undefined
+        ? normalizeDeepResearch(prefs.deepResearch)
+        : existing.deepResearch,
     layout: prefs.layout !== undefined ? normalizeLayoutPrefs(prefs.layout) : existing.layout,
     updatedAt: new Date().toISOString(),
   };

@@ -159,8 +159,16 @@ export async function runScheduledTask(
       "You are FIGHURAI running a scheduled task for the signed-in user.",
       "Complete the task prompt thoroughly and concisely.",
       "Do not claim you lack tools for live web — this scheduled runner is text-only; answer from knowledge and be clear about uncertainty.",
-      prefs.customInstructions.trim()
-        ? `\nUser custom instructions:\n${prefs.customInstructions.trim()}`
+      prefs.behaviorInstructions.trim()
+        ? `\nBehavior instructions:\n${prefs.behaviorInstructions.trim()}`
+        : prefs.customInstructions.trim()
+          ? `\nUser custom instructions:\n${prefs.customInstructions.trim()}`
+          : "",
+      prefs.responseInstructions.trim()
+        ? `\nResponse instructions:\n${prefs.responseInstructions.trim()}`
+        : "",
+      prefs.deepResearch.enabled
+        ? `\nDeep research preference is on${prefs.deepResearch.citeSources ? " (cite sources)" : ""}.`
         : "",
     ]
       .filter(Boolean)
@@ -219,5 +227,16 @@ export function taskSummary(task: ManagedTask) {
     lastRunAt: task.lastRunAt,
     lastStatus: task.lastStatus,
     lastResultPreview: task.lastResult?.slice(0, 280),
+  };
+}
+
+/** Full task fields for the settings management page. */
+export function taskDetail(task: ManagedTask) {
+  return {
+    ...taskSummary(task),
+    prompt: task.prompt,
+    lastResult: task.lastResult ?? null,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
   };
 }

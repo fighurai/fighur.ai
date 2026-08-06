@@ -37,13 +37,9 @@ export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>
       const prev = displayedRef.current;
       if (narration === prev) return;
 
-      if (prev.length > 0 && narration.startsWith(prev)) {
-        const delta = narration.slice(prev.length);
-        if (delta) el.appendChild(document.createTextNode(delta));
-      } else {
-        el.textContent = narration;
-      }
-
+      // Always replace — softener rewrites earlier tokens (e.g. strips ###),
+      // so append-by-delta can leave hash markers on screen.
+      el.textContent = narration;
       displayedRef.current = narration;
       onUpdate?.();
     };

@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { readVerifiedSession } from "@/lib/session-cookie";
 import { normalizeLayoutPrefs } from "@/lib/layout-storage";
 import { normalizeWorkMode } from "@/lib/work-mode";
-import { readUserPreferences, writeUserPreferences } from "@/lib/user-preferences-store";
+import {
+  readUserPreferences,
+  writeUserPreferences,
+  type DeepResearchPrefs,
+} from "@/lib/user-preferences-store";
 
 export async function GET(request: Request) {
   const session = await readVerifiedSession(request);
@@ -20,7 +24,14 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
 
-  let body: { workMode?: unknown; customInstructions?: unknown; layout?: unknown };
+  let body: {
+    workMode?: unknown;
+    customInstructions?: unknown;
+    behaviorInstructions?: unknown;
+    responseInstructions?: unknown;
+    deepResearch?: unknown;
+    layout?: unknown;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -31,6 +42,15 @@ export async function PUT(request: Request) {
   if (body.workMode !== undefined) patch.workMode = normalizeWorkMode(body.workMode);
   if (typeof body.customInstructions === "string") {
     patch.customInstructions = body.customInstructions;
+  }
+  if (typeof body.behaviorInstructions === "string") {
+    patch.behaviorInstructions = body.behaviorInstructions;
+  }
+  if (typeof body.responseInstructions === "string") {
+    patch.responseInstructions = body.responseInstructions;
+  }
+  if (body.deepResearch !== undefined && body.deepResearch !== null && typeof body.deepResearch === "object") {
+    patch.deepResearch = body.deepResearch as DeepResearchPrefs;
   }
   if (body.layout !== undefined && body.layout !== null && typeof body.layout === "object") {
     patch.layout = normalizeLayoutPrefs(body.layout as Parameters<typeof normalizeLayoutPrefs>[0]);

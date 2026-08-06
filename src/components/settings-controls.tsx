@@ -209,9 +209,18 @@ export function SettingsControls() {
       const res = await fetch("/api/user/preferences", { cache: "no-store" });
       if (!res.ok) return;
       const data = (await res.json()) as {
-        preferences?: { customInstructions?: string };
+        preferences?: {
+          customInstructions?: string;
+          behaviorInstructions?: string;
+          responseInstructions?: string;
+        };
       };
-      setInstructions(data.preferences?.customInstructions ?? "");
+      const p = data.preferences;
+      setInstructions(
+        p?.behaviorInstructions ||
+          p?.customInstructions ||
+          "",
+      );
     } catch {
       /* ignore */
     }
@@ -327,7 +336,10 @@ export function SettingsControls() {
       const res = await fetch("/api/user/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customInstructions: instructions }),
+        body: JSON.stringify({
+          customInstructions: instructions,
+          behaviorInstructions: instructions,
+        }),
       });
       if (!res.ok) {
         setInstructionsMsg("Could not save.");
@@ -690,10 +702,21 @@ export function SettingsControls() {
           className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] flex w-[min(28rem,calc(100vw-1.5rem))] max-h-[min(42rem,82vh)] flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[var(--bg-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
         >
           <div className="border-b border-white/[0.08] px-4 pt-3 pb-0">
-            <p className="text-xs font-semibold text-[var(--text-primary)]">Settings</p>
-            <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">
-              Customize · Skills · Connectors · Apps · Tasks · MCP
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-primary)]">Settings</p>
+                <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">
+                  Quick controls · full page for Tasks, Agents, Deep Research
+                </p>
+              </div>
+              <Link
+                href="/settings"
+                className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-1 text-[0.65rem] font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
+                onClick={() => setOpen(false)}
+              >
+                Open full settings
+              </Link>
+            </div>
             <div
               className="mt-3 flex gap-0.5 overflow-x-auto pb-2"
               role="tablist"
@@ -726,8 +749,17 @@ export function SettingsControls() {
               <div>
                 <p className="text-xs font-semibold text-[var(--text-primary)]">Customize AI</p>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Standing instructions applied to every chat (like Abacus Customize & Add Skills →
-                  custom instructions). Skills auto-activate when relevant.
+                  Standing instructions applied to every chat. For Abacus-style{" "}
+                  <strong>Behavior</strong> vs <strong>Response</strong> instructions, agents, and
+                  deep research, use{" "}
+                  <Link
+                    href="/settings?tab=customize"
+                    className="text-[var(--accent)] underline-offset-2 hover:underline"
+                    onClick={() => setOpen(false)}
+                  >
+                    full Settings
+                  </Link>
+                  .
                 </p>
 
                 <label className="mt-4 block text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
@@ -1170,114 +1202,47 @@ export function SettingsControls() {
               <div>
                 <p className="text-xs font-semibold text-[var(--text-primary)]">Scheduled Tasks</p>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Abacus-style recurring prompts. Cron runs every 15 minutes on Vercel when{" "}
-                  <code className="text-[0.65rem]">CRON_SECRET</code> is set. Results appear under
-                  each task.
+                  Tasks moved to the full Settings page so you can edit prompts, run now, and inspect
+                  full results — plus create custom Agents and Deep Research prefs.
                 </p>
-                {!readSession()?.userId ? (
-                  <p className="mt-3 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
-                    <Link href="/sign-in" className="font-medium underline-offset-2 hover:underline">
-                      Sign in
-                    </Link>{" "}
-                    to create tasks.
-                  </p>
-                ) : null}
-                {tasksEphemeral ? (
-                  <p className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-[0.65rem] text-amber-100/95">
-                    Storage looks ephemeral on this host — enable Blob (
-                    <code className="text-[0.6rem]">BLOB_READ_WRITE_TOKEN</code>) so tasks survive
-                    deploys.
-                  </p>
-                ) : null}
-                {tasksError ? (
-                  <p className="mt-2 text-[0.65rem] text-red-300/90">{tasksError}</p>
-                ) : null}
-
-                {readSession()?.userId ? (
-                  <div className="mt-3 space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-                    <input
-                      value={taskName}
-                      onChange={(e) => setTaskName(e.target.value)}
-                      placeholder="Task name"
-                      className="w-full rounded-lg border border-white/[0.1] bg-black/30 px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]/40 focus:outline-none"
-                    />
-                    <textarea
-                      value={taskPrompt}
-                      onChange={(e) => setTaskPrompt(e.target.value)}
-                      placeholder="Prompt to run on schedule…"
-                      rows={3}
-                      className="w-full resize-y rounded-lg border border-white/[0.1] bg-black/30 px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]/40 focus:outline-none"
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <select
-                        value={taskSchedule}
-                        onChange={(e) =>
-                          setTaskSchedule(e.target.value as "hourly" | "daily" | "weekly")
-                        }
-                        className="rounded-full border border-white/[0.1] bg-black/30 px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)]"
+                <div className="mt-4 flex flex-col gap-2">
+                  <Link
+                    href="/settings?tab=tasks"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2.5 text-center text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
+                  >
+                    Manage Tasks →
+                  </Link>
+                  <Link
+                    href="/settings?tab=agents"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-center text-xs font-medium text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                  >
+                    Build Agents →
+                  </Link>
+                  <Link
+                    href="/settings?tab=research"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-center text-xs font-medium text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                  >
+                    Deep Research →
+                  </Link>
+                </div>
+                {tasks.length > 0 ? (
+                  <ul className="mt-4 space-y-1.5">
+                    {tasks.slice(0, 3).map((task) => (
+                      <li
+                        key={task.id}
+                        className="rounded-lg border border-white/[0.06] px-2.5 py-1.5 text-[0.65rem] text-[var(--text-muted)]"
                       >
-                        <option value="hourly">Hourly</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                      </select>
-                      <button
-                        type="button"
-                        disabled={taskBusy || !taskName.trim() || !taskPrompt.trim()}
-                        onClick={() => void createTask()}
-                        className="rounded-full bg-[var(--accent)]/20 px-3 py-1 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 disabled:opacity-50"
-                      >
-                        Create task
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <ul className="mt-3 space-y-2">
-                  {tasks.map((task) => (
-                    <li
-                      key={task.id}
-                      className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-[var(--text-primary)]">
-                            {task.name}
-                          </p>
-                          <p className="mt-0.5 text-[0.6rem] text-[var(--text-faint)]">
-                            {task.schedule} · {task.enabled ? "on" : "off"} · next{" "}
-                            {new Date(task.nextRunAt).toLocaleString()}
-                          </p>
-                          {task.lastStatus ? (
-                            <p className="mt-1 text-[0.65rem] text-[var(--text-muted)]">
-                              Last: {task.lastStatus}
-                              {task.lastResultPreview ? ` — ${task.lastResultPreview}` : ""}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => void toggleTask(task.id, !task.enabled)}
-                            className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
-                          >
-                            {task.enabled ? "Disable" : "Enable"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteTask(task.id)}
-                            className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                {tasks.length === 0 && readSession()?.userId ? (
-                  <p className="mt-3 text-[0.7rem] text-[var(--text-faint)]">
-                    No tasks yet. Create one above or ask FIGHURAI to schedule a recurring prompt.
-                  </p>
+                        <span className="font-medium text-[var(--text-primary)]">{task.name}</span>
+                        <span className="text-[var(--text-faint)]">
+                          {" "}
+                          · {task.schedule} · {task.enabled ? "on" : "off"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
               </div>
             ) : null}

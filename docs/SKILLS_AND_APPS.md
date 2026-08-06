@@ -4,18 +4,21 @@ FigHur mirrors Abacus-style **Skills** and an **App Management** registry.
 
 ## Settings panel (Abacus-aligned)
 
-Open **Settings** in the header. Tabs map to Abacus surfaces:
+- **Header Settings** — quick Customize, Skills, Connectors, Apps, MCP (Tasks tab links out)
+- **Full page** `/settings` — Behavior & Response instructions, Tasks (edit/run/results), Agents CRUD, Deep Research prefs
 
-| FigHur tab | Abacus equivalent |
-|------------|-------------------|
-| **Customize** | Customize & Add Skills → custom instructions + work mode |
-| **Skills** | Customize & Add Skills → Agent tab (toggles, import, export) |
-| **Connectors** | Profile → First Party Connectors |
+| FigHur | Abacus equivalent |
+|--------|-------------------|
+| **Customize** (behavior + response) | Behavior Instructions + Response Instructions |
+| **Agents** (`/settings?tab=agents`) | AI Engineer / custom agents |
+| **Tasks** (`/settings?tab=tasks`) | Abacus AI Agent Tasks |
+| **Deep Research** | Deep Research + live web |
+| **Skills** | Customize & Add Skills |
+| **Connectors** | First Party Connectors |
 | **Apps** | Apps Management Console |
-| **Tasks** | Scheduled / recurring agent prompts |
-| **MCP** | Settings → Connectors → MCP — remote HTTP/SSE tools run in chat |
+| **MCP** | MCP Server Configuration |
 
-Model picker includes **Auto (RouteLLM)** — rules-based routing to coding / research / creative / quick / chat models within the user’s plan.
+Model picker includes **Auto (RouteLLM)** — rules-based routing within the user’s plan.
 
 ## Skills
 

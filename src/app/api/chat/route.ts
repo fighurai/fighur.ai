@@ -46,6 +46,7 @@ import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import { resolveMcpConfig } from "@/lib/mcp/config-store";
 import { formatMcpSystemContext } from "@/lib/mcp/tools";
 import { isStdioMcpServer } from "@/lib/mcp/types";
+import { formatAgentSystemContext, getActiveManagedAgent } from "@/lib/agents/store";
 import {
   buildSmileSystemPrompt,
   type ChatIntegrationFlags,
@@ -613,7 +614,14 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
     ? b.skillAllowlist.filter((x): x is string => typeof x === "string")
     : null;
   const allSkills = await resolveUserSkills(verified?.userId ?? null);
-  const matchedSkills = matchSkills(allSkills, lastUserText, skillAllowlist);
+  const activeAgent = verified?.userId ? await getActiveManagedAgent(verified.userId) : null;
+  const effectiveSkillAllowlist =
+    skillAllowlist && skillAllowlist.length > 0
+      ? skillAllowlist
+      : activeAgent?.skillAllowlist?.length
+        ? activeAgent.skillAllowlist
+        : null;
+  const matchedSkills = matchSkills(allSkills, lastUserText, effectiveSkillAllowlist);
 
   // Always attach the tool loop when the provider can call tools — Abacus-style.
   // Keyword gating previously left most chats without web_search and told the model
@@ -627,13 +635,43 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
   });
   if (verified?.userId) {
     const prefs = await readUserPreferences(verified.userId);
-    if (prefs.customInstructions.trim()) {
+    if (prefs.behaviorInstructions.trim()) {
+      system += `
+
+## Behavior instructions (user)
+Directives for how you approach problems and which methods to use:
+${prefs.behaviorInstructions.trim()}`;
+    }
+    if (prefs.responseInstructions.trim()) {
+      system += `
+
+## Response instructions (user)
+Control tone, persona, length, and structure of your replies:
+${prefs.responseInstructions.trim()}`;
+    } else if (prefs.customInstructions.trim() && !prefs.behaviorInstructions.trim()) {
       system += `
 
 ## Custom instructions (user)
 Follow these standing instructions for all conversations unless they conflict with safety rules:
 ${prefs.customInstructions.trim()}`;
     }
+    if (prefs.deepResearch.enabled) {
+      system += `
+
+## Deep research (user preference)
+Prefer thorough multi-source research with live web tools when the question needs current or cited facts.${
+        prefs.deepResearch.citeSources
+          ? " Include clear source links or citations in the answer."
+          : ""
+      }${
+        prefs.deepResearch.effort === "high"
+          ? " Favor depth over speed."
+          : prefs.deepResearch.effort === "low"
+            ? " Keep research focused and concise."
+            : ""
+      }`;
+    }
+    system += formatAgentSystemContext(activeAgent);
   }
   system += formatSkillsCatalogContext(allSkills);
   system += formatSkillsSystemContext(matchedSkills);
