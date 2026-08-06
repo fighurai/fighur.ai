@@ -67,6 +67,6 @@ Static HTML/CSS/JS (and common assets) are served from the app registry. Custom 
 
 - Settings → **Tasks**: create hourly / daily / weekly prompts; enable/disable; view last result.
 - `GET/POST /api/tasks` — session-authed CRUD.
-- `GET|POST /api/cron/tasks` — Vercel Cron (every 15m via `vercel.json`); requires `Authorization: Bearer $CRON_SECRET` in production.
+- `GET|POST /api/cron/tasks` — Vercel Cron (daily via `vercel.json` on Hobby; Pro can use `*/15 * * * *`); requires `Authorization: Bearer $CRON_SECRET` in production.
 - Durable schedules need Blob (`BLOB_READ_WRITE_TOKEN`) — `/tmp` alone will not survive deploys.
 - Agent tools: `create_task`, `list_tasks`, `delete_task`. Runs are text-only (no tool loop).
