@@ -19,15 +19,20 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
 
-  let body: { workMode?: unknown };
+  let body: { workMode?: unknown; customInstructions?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const prefs = await writeUserPreferences(session.userId, {
-    workMode: normalizeWorkMode(body.workMode),
-  });
+  const patch: { workMode?: ReturnType<typeof normalizeWorkMode>; customInstructions?: string } =
+    {};
+  if (body.workMode !== undefined) patch.workMode = normalizeWorkMode(body.workMode);
+  if (typeof body.customInstructions === "string") {
+    patch.customInstructions = body.customInstructions;
+  }
+
+  const prefs = await writeUserPreferences(session.userId, patch);
   return NextResponse.json({ preferences: prefs });
 }

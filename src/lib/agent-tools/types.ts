@@ -8,6 +8,8 @@ export type AgentToolContext = {
   flags: Partial<ChatIntegrationFlags>;
   deviceManifest: DeviceManifest | null;
   userLocation: UserLocationHint | null;
+  /** Signed-in user id for skills/apps persistence */
+  userId?: string | null;
 };
 
 export type AgentToolDefinition = {

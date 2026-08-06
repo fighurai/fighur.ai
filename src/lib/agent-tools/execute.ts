@@ -11,8 +11,11 @@ import {
   generateImage,
   imageResultToMarkdown,
 } from "@/lib/integrations/image-generation-api";
+import { runSandboxedCode } from "@/lib/integrations/code-exec";
+import { generateArtifact } from "@/lib/integrations/generate-artifact";
 import { fetchWeather, fetchWeatherAtCoordinates } from "@/lib/integrations/weather-api";
 import { searchWeb } from "@/lib/integrations/web-search-api";
+import { createManagedApp } from "@/lib/apps/store";
 import { formatUserLocationLabel } from "@/lib/client-location";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
@@ -78,6 +81,104 @@ export async function executeAgentTool(
         const res = await searchWeb(query, max);
         if (!res.ok) return { content: res.error, isError: true };
         return { content: JSON.stringify(res, null, 2) };
+      }
+      case "run_code": {
+        const code = typeof input.code === "string" ? input.code : "";
+        const language = typeof input.language === "string" ? input.language : "javascript";
+        const res = await runSandboxedCode(code, language);
+        if (!res.ok) return { content: res.error, isError: true };
+        return { content: JSON.stringify(res, null, 2) };
+      }
+      case "generate_artifact": {
+        const res = generateArtifact({
+          title: typeof input.title === "string" ? input.title : undefined,
+          format: typeof input.format === "string" ? input.format : "markdown",
+          content: typeof input.content === "string" ? input.content : "",
+          filename: typeof input.filename === "string" ? input.filename : undefined,
+        });
+        if (!res.ok) return { content: res.error, isError: true };
+        return {
+          content: JSON.stringify(
+            {
+              ok: true,
+              filename: res.filename,
+              mimeType: res.mimeType,
+              format: res.format,
+              markdownDownload: res.markdownDownload,
+              preview: res.content.slice(0, 4_000),
+              instruction:
+                "Include the markdownDownload link in your reply so the user can download the file.",
+            },
+            null,
+            2,
+          ),
+        };
+      }
+      case "save_app": {
+        if (!ctx.userId) {
+          return {
+            content: "User must be signed in to save apps to App Management.",
+            isError: true,
+          };
+        }
+        const name = typeof input.name === "string" ? input.name.trim() : "";
+        if (!name) return { content: "name is required", isError: true };
+        let files: Array<{ path: string; content: string }> = [];
+        if (Array.isArray(input.files)) {
+          files = input.files
+            .filter(
+              (f): f is { path: string; content: string } =>
+                Boolean(f) &&
+                typeof f === "object" &&
+                typeof (f as { path?: unknown }).path === "string" &&
+                typeof (f as { content?: unknown }).content === "string",
+            )
+            .map((f) => ({ path: f.path, content: f.content }));
+        } else if (typeof input.files_json === "string") {
+          try {
+            const parsed = JSON.parse(input.files_json) as unknown;
+            if (Array.isArray(parsed)) {
+              files = parsed
+                .filter(
+                  (f): f is { path: string; content: string } =>
+                    Boolean(f) &&
+                    typeof f === "object" &&
+                    typeof (f as { path?: unknown }).path === "string" &&
+                    typeof (f as { content?: unknown }).content === "string",
+                )
+                .map((f) => ({ path: f.path, content: f.content }));
+            }
+          } catch {
+            return { content: "files_json is not valid JSON", isError: true };
+          }
+        }
+        if (files.length === 0) {
+          return {
+            content:
+              "Provide files: [{path, content}, ...] or files_json. Include the Canvas project files.",
+            isError: true,
+          };
+        }
+        const app = await createManagedApp(ctx.userId, {
+          name,
+          description: typeof input.description === "string" ? input.description : undefined,
+          files,
+        });
+        return {
+          content: JSON.stringify(
+            {
+              ok: true,
+              appId: app.id,
+              slug: app.slug,
+              status: app.status,
+              fileCount: app.files.length,
+              message:
+                "App saved to App Management. Live hosting/custom domains are not enabled yet—tell the user the app is stored and ready for future deploy.",
+            },
+            null,
+            2,
+          ),
+        };
       }
       case "generate_image": {
         const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";

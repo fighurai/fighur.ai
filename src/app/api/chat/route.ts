@@ -31,8 +31,9 @@ import {
 import { readVerifiedSession } from "@/lib/session-cookie";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
 import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
-import { needsAgentToolLoop } from "@/lib/agent-tools/needs-tool-loop";
+import { needsAgentToolLoop, providerSupportsToolLoop } from "@/lib/agent-tools/needs-tool-loop";
 import { streamAnthropicWithTools } from "@/lib/agent-loop";
+import { streamOpenAIWithTools } from "@/lib/openai-agent-loop";
 import { buildOutputSystemContext } from "@/lib/build-output-context";
 import { buildCanvasEditSystemContext } from "@/lib/canvas-edit-context";
 import { parseCanvasContextPayload } from "@/lib/client-canvas-context";
@@ -46,6 +47,13 @@ import {
   type ChatIntegrationFlags,
   type SmileBuilderTarget,
 } from "@/lib/smile-system-prompt";
+import { resolveUserSkills } from "@/lib/skills/registry";
+import {
+  formatSkillsCatalogContext,
+  formatSkillsSystemContext,
+  matchSkills,
+} from "@/lib/skills/match";
+import { readUserPreferences } from "@/lib/user-preferences-store";
 
 type RequestAttachment = {
   name: string;
@@ -348,6 +356,8 @@ export async function POST(request: Request) {
     userSession?: unknown;
     clientLocation?: unknown;
     canvasContext?: unknown;
+    /** Optional conversation-level skill allowlist (Abacus-style wrench preselect) */
+    skillAllowlist?: unknown;
   };
 
   const rawMessages = b.messages;
@@ -577,18 +587,41 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
     flags: integrationFlags ?? {},
     deviceManifest,
     userLocation,
+    userId: verified?.userId ?? null,
   };
   const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
+  const toolsSupported = providerSupportsToolLoop(option.provider);
+
+  const skillAllowlist = Array.isArray(b.skillAllowlist)
+    ? b.skillAllowlist.filter((x): x is string => typeof x === "string")
+    : null;
+  const allSkills = await resolveUserSkills(verified?.userId ?? null);
+  const matchedSkills = matchSkills(allSkills, lastUserText, skillAllowlist);
+
   const runtimeAgentTools =
     agentToolsAvailable &&
-    option.provider === "anthropic" &&
-    needsAgentToolLoop(integrationFlags ?? {}, lastUserText, deviceManifest);
+    toolsSupported &&
+    (needsAgentToolLoop(integrationFlags ?? {}, lastUserText, deviceManifest) ||
+      matchedSkills.length > 0);
+
   if (brochureRedesign && effectiveBuilderTarget === "general") {
     effectiveBuilderTarget = "application";
   }
   let system = buildSmileSystemPrompt(effectiveBuilderTarget, integrationFlags, userSession, {
     agentToolsEnabled: runtimeAgentTools,
   });
+  if (verified?.userId) {
+    const prefs = await readUserPreferences(verified.userId);
+    if (prefs.customInstructions.trim()) {
+      system += `
+
+## Custom instructions (user)
+Follow these standing instructions for all conversations unless they conflict with safety rules:
+${prefs.customInstructions.trim()}`;
+    }
+  }
+  system += formatSkillsCatalogContext(allSkills);
+  system += formatSkillsSystemContext(matchedSkills);
   if (!brochureRedesign) {
     system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
   } else {
@@ -665,6 +698,20 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
           ),
         );
       case "openai":
+        if (runtimeAgentTools) {
+          return finish(
+            await streamOpenAIWithTools({
+              url: "https://api.openai.com/v1/chat/completions",
+              apiKey: key,
+              model: option.apiModel,
+              system,
+              messages: budgetedMessages,
+              ctx: agentCtx,
+              signal: request.signal,
+              maxTokens: outputMaxTokens,
+            }),
+          );
+        }
         return finish(
           await streamOpenAICompatible(
             "https://api.openai.com/v1/chat/completions",
@@ -677,6 +724,20 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
           ),
         );
       case "groq":
+        if (runtimeAgentTools) {
+          return finish(
+            await streamOpenAIWithTools({
+              url: "https://api.groq.com/openai/v1/chat/completions",
+              apiKey: key,
+              model: option.apiModel,
+              system,
+              messages: budgetedMessages,
+              ctx: agentCtx,
+              signal: request.signal,
+              maxTokens: outputMaxTokens,
+            }),
+          );
+        }
         return finish(
           await streamOpenAICompatible(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -689,6 +750,24 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
           ),
         );
       case "openrouter":
+        if (runtimeAgentTools) {
+          return finish(
+            await streamOpenAIWithTools({
+              url: "https://openrouter.ai/api/v1/chat/completions",
+              apiKey: key,
+              model: option.apiModel,
+              system,
+              messages: budgetedMessages,
+              ctx: agentCtx,
+              signal: request.signal,
+              maxTokens: outputMaxTokens,
+              extraHeaders: {
+                "HTTP-Referer": process.env.OPENROUTER_REFERER?.trim() || "http://localhost:3010",
+                "X-Title": "FIGHURAI",
+              },
+            }),
+          );
+        }
         return finish(
           await streamOpenAICompatible(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -704,6 +783,20 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
           ),
         );
       case "nvidia":
+        if (runtimeAgentTools) {
+          return finish(
+            await streamOpenAIWithTools({
+              url: "https://integrate.api.nvidia.com/v1/chat/completions",
+              apiKey: key,
+              model: option.apiModel,
+              system,
+              messages: budgetedMessages,
+              ctx: agentCtx,
+              signal: request.signal,
+              maxTokens: outputMaxTokens,
+            }),
+          );
+        }
         return finish(
           await streamOpenAICompatible(
             "https://integrate.api.nvidia.com/v1/chat/completions",

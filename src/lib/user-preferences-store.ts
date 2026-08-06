@@ -3,14 +3,26 @@ import { isSafeUserId } from "@/lib/user-data-store";
 import { readUserFile, writeUserFile } from "@/lib/user-file-storage";
 
 const FILE = "preferences.json";
+const MAX_INSTRUCTIONS = 8_000;
 
 export type UserPreferences = {
   workMode: WorkMode;
+  /** Always-on custom instructions (Abacus Customize AI) */
+  customInstructions: string;
   updatedAt: string;
 };
 
 function defaultPreferences(): UserPreferences {
-  return { workMode: "chat", updatedAt: new Date().toISOString() };
+  return {
+    workMode: "chat",
+    customInstructions: "",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeInstructions(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw.trim().slice(0, MAX_INSTRUCTIONS);
 }
 
 export async function readUserPreferences(userId: string): Promise<UserPreferences> {
@@ -21,6 +33,7 @@ export async function readUserPreferences(userId: string): Promise<UserPreferenc
     const parsed = JSON.parse(raw) as Partial<UserPreferences>;
     return {
       workMode: normalizeWorkMode(parsed.workMode),
+      customInstructions: normalizeInstructions(parsed.customInstructions),
       updatedAt:
         typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
     };
@@ -37,6 +50,10 @@ export async function writeUserPreferences(
   const existing = await readUserPreferences(userId);
   const next: UserPreferences = {
     workMode: prefs.workMode !== undefined ? normalizeWorkMode(prefs.workMode) : existing.workMode,
+    customInstructions:
+      prefs.customInstructions !== undefined
+        ? normalizeInstructions(prefs.customInstructions)
+        : existing.customInstructions,
     updatedAt: new Date().toISOString(),
   };
   await writeUserFile(userId, FILE, JSON.stringify(next));

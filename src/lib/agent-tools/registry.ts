@@ -51,6 +51,65 @@ export async function availableAgentTools(
     },
   });
 
+  tools.push({
+    name: "run_code",
+    description:
+      "Execute JavaScript in a sandboxed VM for calculations, data transforms, and small algorithms. Use for math, parsing JSON/CSV snippets, and verifying logic. No network, no filesystem, no require/process.",
+    input_schema: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "JavaScript source to run" },
+        language: {
+          type: "string",
+          description: "javascript (default). Only JS is supported on this host.",
+        },
+      },
+      required: ["code"],
+    },
+  });
+
+  tools.push({
+    name: "generate_artifact",
+    description:
+      "Create a downloadable text artifact (markdown, CSV, JSON, HTML, or txt). Use for memos, spreadsheets, exports, and structured documents. Include the returned markdownDownload link in your reply.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short title used for filename" },
+        format: {
+          type: "string",
+          description: "markdown | csv | json | html | txt",
+        },
+        content: { type: "string", description: "Full file contents" },
+        filename: { type: "string", description: "Optional filename override" },
+      },
+      required: ["format", "content"],
+    },
+  });
+
+  tools.push({
+    name: "save_app",
+    description:
+      "Save a multi-file app into the user's App Management registry (draft/ready). Use after building a site/app in Canvas when the user wants it saved for later deploy. Provide files as path+content. Does not publish a live URL yet—returns an app id and slug.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "App name" },
+        description: { type: "string", description: "Short description" },
+        files: {
+          type: "array",
+          description:
+            'Array of {"path":"index.html","content":"..."}. Max 40 files.',
+        },
+        files_json: {
+          type: "string",
+          description: "Alternative: JSON string of the files array",
+        },
+      },
+      required: ["name"],
+    },
+  });
+
   if (isImageGenerationAvailable()) {
     tools.push({
       name: "generate_image",

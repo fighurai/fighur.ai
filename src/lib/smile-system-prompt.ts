@@ -105,14 +105,18 @@ You do not have live web or weather tools in this session. Say you cannot verify
   }
   return `
 
-## Live data (internet & weather)
+## Live data & agent tools
 - **get_weather** — live forecast. For "weather here" / "my weather" call with **no location** (uses detected city).
 - **web_search** — search the internet for news, prices, sports, and current events.
 - **fetch_url** — **open and read any http(s) link** the user sends. **Always call fetch_url** when they paste a URL. Summarize what you read.
+- **run_code** — sandboxed JavaScript for calculations and data transforms (no network/filesystem).
+- **generate_artifact** — create downloadable markdown/CSV/JSON/HTML/txt; include the returned download link.
+- **save_app** — save a multi-file Canvas project into App Management (signed-in users). Does not publish a live URL yet.
 - **generate_image** — DALL·E 3 photo/art generation when configured. Call for photorealistic images; include returned markdown in your reply.
 - You have **full internet access** via these tools. **Forbidden:** "I don't have internet access", "I don't have direct internet access", "I can't browse that link", "I cannot open websites", "I cannot browse the website you've linked".
 - When **Linked page content** appears below in this system prompt, the server already fetched it — answer from that text; do not refuse.
-- Cite sources (title + URL) from tool results.`;
+- Cite sources (title + URL) from tool results.
+- Never claim scheduled tasks, cloud sandboxes, browser automation, or live deploys unless a tool result proves it.`;
 }
 
 function integrationsContext(
@@ -127,7 +131,7 @@ function integrationsContext(
 No mail/calendar/device connectors are active this session.
 
 **Live tools (enabled this session)**
-- **get_weather**, **web_search**, and **fetch_url** are always available—use them for weather, search, and links.`;
+- **get_weather**, **web_search**, **fetch_url**, **run_code**, and **generate_artifact** are available—use them when needed.`;
   }
   const active: string[] = [];
   const mode = flags.workMode ?? (flags.coworkDevice ? "cowork" : "chat");
@@ -155,10 +159,11 @@ No mail/calendar/device connectors are active this session.
 
   const toolRules = agentToolsEnabled
     ? `**Live tools (enabled this session)**
-- **get_weather**, **web_search**, and **fetch_url** are always available—use them for weather, search, and links.
+- **get_weather**, **web_search**, **fetch_url**, **run_code**, and **generate_artifact** are available.
+- **save_app** saves multi-file projects to App Management when the user is signed in.
 - Gmail, Calendar, Outlook: read-only on the server (no send/delete) when connected.
 - Device: \`list_device_files\` / \`read_device_file\` to inspect; **\`propose_device_file_ops\`** to organize (Apply button in the app). Mail/calendar tools are read-only—do not cite them as a reason you cannot move files.
-- **Call tools** when the user asks about weather, news, inbox, schedule, or files—do not guess.${coworkDeviceOrganize}
+- **Call tools** when the user asks about weather, news, inbox, schedule, files, calculations, exports, or saving apps—do not guess.${coworkDeviceOrganize}
 - For Codex mode, use fenced code blocks with paths: \`\`\`typescript src/path.ts\` for multi-file builds.`
     : `**Capability rules**
 - OAuth may be connected but tools are unavailable on this model path—do not claim live mail/calendar reads.
