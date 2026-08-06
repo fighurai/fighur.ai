@@ -4,6 +4,7 @@ import type { AgentToolContext, AgentToolDefinition } from "@/lib/agent-tools/ty
 import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
 import { formatDeviceOpsFence } from "@/lib/device-ops-parse";
 import { openAIStreamToTextStream } from "@/lib/openai-stream";
+import { formatFriendlyUpstreamError } from "@/lib/upstream-errors";
 
 const MAX_TOOL_ROUNDS = 8;
 
@@ -136,7 +137,7 @@ export async function streamOpenAIWithTools(opts: {
             if (!res.ok) {
               const errText = await res.text().catch(() => "");
               controller.enqueue(
-                encoder.encode(`\n\n_Upstream ${res.status}: ${errText.slice(0, 500)}_`),
+                encoder.encode(`\n\n${formatFriendlyUpstreamError(res.status, errText)}\n`),
               );
               return;
             }
@@ -205,7 +206,9 @@ export async function streamOpenAIWithTools(opts: {
               conversation.push({
                 role: "tool",
                 tool_call_id: tc.id,
-                content: result.content,
+                content: result.isError
+                  ? `ERROR: ${result.content}\nDo not retry the same failing tool with the same args. Prefer alternate approaches (e.g. use source image URLs when cloning a site).`
+                  : result.content,
               });
             }
           }

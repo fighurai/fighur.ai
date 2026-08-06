@@ -460,8 +460,13 @@ export async function executeAgentTool(
         const sizeRaw = typeof input.size === "string" ? input.size.trim() : "";
         const size =
           sizeRaw === "1792x1024" || sizeRaw === "1024x1792" ? sizeRaw : "1024x1024";
-        const res = await generateImage(prompt, { size });
-        if (!res.ok) return { content: res.error, isError: true };
+        const res = await generateImage(prompt, { size, quality: "hd" });
+        if (!res.ok) {
+          return {
+            content: `ERROR: ${res.error}. If cloning a website, use the source site's absolute image URLs instead of generate_image.`,
+            isError: true,
+          };
+        }
         const md = imageResultToMarkdown(res, prompt.slice(0, 80) || "Generated image");
         return {
           content: JSON.stringify(

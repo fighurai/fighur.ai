@@ -48,7 +48,7 @@ export async function generateImage(
       prompt: trimmed.slice(0, 4000),
       n: 1,
       size: options?.size ?? "1024x1024",
-      quality: options?.quality ?? "standard",
+      quality: options?.quality ?? "hd",
       response_format: "b64_json",
     }),
     cache: "no-store",
@@ -57,7 +57,11 @@ export async function generateImage(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
-    return { ok: false, error: `Image API failed (${res.status}): ${errText.slice(0, 400)}` };
+    const { formatFriendlyUpstreamError } = await import("@/lib/upstream-errors");
+    return {
+      ok: false,
+      error: formatFriendlyUpstreamError(res.status, errText),
+    };
   }
 
   const data = (await res.json()) as {

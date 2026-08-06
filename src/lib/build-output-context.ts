@@ -22,10 +22,12 @@ export function isWebBuildRequest(userText: string): boolean {
 export function buildOutputSystemContext(
   target: SmileBuilderTarget,
   userText: string,
+  opts?: { siteClone?: boolean },
 ): string {
   const parts: string[] = [];
   const wantsUi = target === "application" && UI_BUILD_PATTERN.test(userText);
-  const intricate = wantsUi && (INTRICATE_PATTERN.test(userText) || wantsUi);
+  const siteClone = Boolean(opts?.siteClone);
+  const intricate = wantsUi && (INTRICATE_PATTERN.test(userText) || (!siteClone && wantsUi));
 
   if (wantsUi) {
     parts.push(`## Canvas — engineered website (Cursor / Codex quality bar)
@@ -67,7 +69,13 @@ Optional: \`\`\`javascript components/nav.js\`, extra CSS modules, SVG assets in
 - Ship placeholder lorem without structure—use realistic copy for the niche`);
   }
 
-  if (intricate && wantsUi) {
+  if (siteClone && wantsUi) {
+    parts.push(`## Site clone overrides
+- **Prefer real absolute \`https://\` image URLs** from the clone asset list over CSS gradients, SVG smileys, or generate_image.
+- Include \`<base href="https://source-origin/">\` matching the source site origin.
+- Match real issue titles / nav / CTAs from fetched page content.
+- Do **not** call generate_image for logo/covers that already have source URLs.`);
+  } else if (intricate && wantsUi) {
     parts.push(`## Intricate build — extra depth
 This request needs **agency-level** detail:
 - Add micro-interactions (button press, card lift, staggered fade-in)
@@ -77,7 +85,7 @@ This request needs **agency-level** detail:
 - Ensure preview works: all assets inline or linked via project files Canvas can bundle`);
   }
 
-  if (IMAGE_BUILD_PATTERN.test(userText)) {
+  if (IMAGE_BUILD_PATTERN.test(userText) && !siteClone) {
     parts.push(`## Canvas — visuals
 - Logos/icons/diagrams: production \`\`\`svg blocks
 - Photo-realistic: call **generate_image**, embed returned markdown

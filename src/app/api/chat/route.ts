@@ -42,6 +42,8 @@ import { parseDeviceManifest } from "@/lib/device-manifest";
 import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-user-location";
 import { buildPrefetchedUrlContext, extractLinkedUrls } from "@/lib/integrations/fetch-url";
 import { buildLiveWebContext } from "@/lib/integrations/live-web-context";
+import { buildSiteCloneContext, isSiteCloneRequest } from "@/lib/site-clone-context";
+import { formatFriendlyUpstreamError } from "@/lib/upstream-errors";
 import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import { resolveMcpConfig } from "@/lib/mcp/config-store";
 import { formatMcpSystemContext } from "@/lib/mcp/tools";
@@ -282,7 +284,7 @@ async function streamOpenAICompatible(
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
     return NextResponse.json(
-      { error: `Upstream ${res.status}: ${errText.slice(0, 800)}` },
+      { error: formatFriendlyUpstreamError(res.status, errText) },
       { status: 502 },
     );
   }
@@ -700,7 +702,9 @@ Prefer thorough multi-source research with live web tools when the question need
     system += formatMcpSystemContext(mcpToolDefs, skippedStdio);
   }
   if (!brochureRedesign) {
-    system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
+    system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText, {
+      siteClone: isSiteCloneRequest(lastUserText),
+    });
   } else {
     system += buildBrochureRedesignContext();
   }
@@ -709,7 +713,9 @@ Prefer thorough multi-source research with live web tools when the question need
   system += userLocationSystemContext(userLocation);
 
   const linkedUrls = extractLinkedUrls(lastUserText);
-  if (linkedUrls.length) {
+  if (isSiteCloneRequest(lastUserText)) {
+    system += await buildSiteCloneContext(lastUserText);
+  } else if (linkedUrls.length) {
     system += await buildPrefetchedUrlContext(linkedUrls);
   }
   // Server-side web grounding — search + optional page fetch before the model answers.

@@ -57,12 +57,29 @@ function ensureTailwindCdn(html: string): string {
 
 function ensureModernFonts(html: string): string {
   if (/fonts\.googleapis\.com/i.test(html)) return html;
+  // Brand clones often bring their own type — don't force Inter over IBM Plex / custom stacks.
+  if (/<base\s+href=/i.test(html)) return html;
+  if (/data-fighur-clone=["']true["']/i.test(html)) return html;
   return injectIntoHead(
     html,
     `<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">`,
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">`,
   );
+}
+
+/** Ensure remote images in srcDoc previews load more reliably. */
+function hardenExternalImages(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (_full, attrs: string) => {
+    let next = attrs;
+    if (!/\breferrerpolicy=/i.test(next)) {
+      next += ` referrerpolicy="no-referrer"`;
+    }
+    if (!/\bloading=/i.test(next) && /src=["']https?:/i.test(next)) {
+      next += ` loading="lazy"`;
+    }
+    return `<img${next}>`;
+  });
 }
 
 function ensureBaseStyles(html: string): string {
@@ -272,6 +289,7 @@ ${html}
   html = ensureModernFonts(html);
   html = ensureBaseStyles(html);
   html = ensureTailwindCdn(html);
+  html = hardenExternalImages(html);
   return html;
 }
 
