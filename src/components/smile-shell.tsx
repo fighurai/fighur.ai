@@ -17,7 +17,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
           <Link
             href="/"
             aria-label={`${SITE_TITLE} home`}
-            className="shrink-0 rounded-lg transition hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
             onClick={(e) => {
               if (pathname === "/") {
                 e.preventDefault();
@@ -31,12 +31,15 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
               width={SITE_ICON_DISPLAY_PX}
               height={SITE_ICON_DISPLAY_PX}
               sizes={`${SITE_ICON_DISPLAY_PX}px`}
-              quality={95}
+              quality={100}
               unoptimized
               className="object-contain"
-              style={{ width: SITE_ICON_DISPLAY_PX, height: SITE_ICON_DISPLAY_PX, background: "transparent" }}
+              style={{ width: SITE_ICON_DISPLAY_PX, height: SITE_ICON_DISPLAY_PX }}
               priority
             />
+            <span className="font-display text-[0.95rem] font-semibold tracking-[0.04em] text-white sm:text-base">
+              {SITE_TITLE}
+            </span>
           </Link>
           <HeaderControls />
         </div>
