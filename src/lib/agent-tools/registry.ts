@@ -27,7 +27,7 @@ export async function availableAgentTools(
   tools.push({
     name: "web_search",
     description:
-      "Search the public internet for current news, facts, prices, and events. Use for time-sensitive questions.",
+      "Search the live public internet. REQUIRED for current events, news, prices, sports, recent facts, and any question that needs up-to-date information. Do not say you lack internet access—call this tool.",
     input_schema: {
       type: "object",
       properties: {
@@ -41,7 +41,7 @@ export async function availableAgentTools(
   tools.push({
     name: "fetch_url",
     description:
-      "Read and summarize a public web page from a URL the user shared or asked about. REQUIRED when the user posts a link—never say you cannot open linked websites.",
+      "Read a public web page from a URL. REQUIRED when the user posts a link or when web_search returns a source you need to read in full. Never say you cannot open websites.",
     input_schema: {
       type: "object",
       properties: {

@@ -101,22 +101,33 @@ function liveDataContext(agentToolsEnabled?: boolean): string {
     return `
 
 ## Live data
-You do not have live web or weather tools in this session. Say you cannot verify current events or weather without browsing—do not invent live facts.`;
+Tool calling is unavailable for this model/session, but the server may still inject a **Live web context** block below with fresh search results. When that block is present, treat it as verified live data and answer from it (cite URLs). Only say you cannot verify live facts if that block is missing or empty.`;
   }
   return `
 
-## Live data & agent tools
-- **get_weather** — live forecast. For "weather here" / "my weather" call with **no location** (uses detected city).
-- **web_search** — search the internet for news, prices, sports, and current events.
-- **fetch_url** — **open and read any http(s) link** the user sends. **Always call fetch_url** when they paste a URL. Summarize what you read.
-- **run_code** — sandboxed JavaScript for calculations and data transforms (no network/filesystem).
-- **generate_artifact** — create downloadable markdown/CSV/JSON/HTML/txt; include the returned download link.
-- **save_app** — save a multi-file Canvas project into App Management (signed-in users). Does not publish a live URL yet.
-- **generate_image** — DALL·E 3 photo/art generation when configured. Call for photorealistic images; include returned markdown in your reply.
-- You have **full internet access** via these tools. **Forbidden:** "I don't have internet access", "I don't have direct internet access", "I can't browse that link", "I cannot open websites", "I cannot browse the website you've linked".
-- When **Linked page content** appears below in this system prompt, the server already fetched it — answer from that text; do not refuse.
-- Cite sources (title + URL) from tool results.
-- Never claim scheduled tasks, cloud sandboxes, browser automation, or live deploys unless a tool result proves it.`;
+## Live data & agent tools (YOU HAVE INTERNET)
+You are connected to the live web through tools. This is not a offline-only chat model.
+
+**Required tool use**
+- Current events, news, prices, sports scores, "what happened", "latest", "today", people/companies online → call **web_search** first, then **fetch_url** on the best sources.
+- User pastes a link → call **fetch_url** (or use Linked page content below if already prefetched).
+- Weather / "weather here" → **get_weather**.
+- Never answer time-sensitive questions from memory alone when tools are available.
+
+**Tools**
+- **get_weather** — live forecast. Empty location = detected city.
+- **web_search** — public internet search. Always available.
+- **fetch_url** — open and read any http(s) URL.
+- **run_code** — sandboxed JavaScript (no network/filesystem).
+- **generate_artifact** — downloadable markdown/CSV/JSON/HTML/txt.
+- **save_app** — save multi-file Canvas projects (signed-in).
+- **generate_image** — DALL·E 3 when configured.
+
+**Forbidden phrases** (tools exist — do not say these):
+"I don't have internet access", "I can't browse", "I cannot open websites", "I don't have access to real-time data", "I cannot search the web", "as an AI I can't access the internet".
+
+Cite sources (title + URL) from tool results. Never invent URLs.
+Never claim scheduled tasks, cloud sandboxes, browser automation, or live deploys unless a tool result proves it.`;
 }
 
 function integrationsContext(

@@ -31,7 +31,7 @@ import {
 import { readVerifiedSession } from "@/lib/session-cookie";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
 import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
-import { needsAgentToolLoop, providerSupportsToolLoop } from "@/lib/agent-tools/needs-tool-loop";
+import { providerSupportsToolLoop } from "@/lib/agent-tools/needs-tool-loop";
 import { streamAnthropicWithTools } from "@/lib/agent-loop";
 import { streamOpenAIWithTools } from "@/lib/openai-agent-loop";
 import { buildOutputSystemContext } from "@/lib/build-output-context";
@@ -41,6 +41,7 @@ import { parseClientLocationPayload } from "@/lib/client-location";
 import { parseDeviceManifest } from "@/lib/device-manifest";
 import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-user-location";
 import { buildPrefetchedUrlContext, extractLinkedUrls } from "@/lib/integrations/fetch-url";
+import { buildLiveWebContext } from "@/lib/integrations/live-web-context";
 import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import {
   buildSmileSystemPrompt,
@@ -598,11 +599,10 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
   const allSkills = await resolveUserSkills(verified?.userId ?? null);
   const matchedSkills = matchSkills(allSkills, lastUserText, skillAllowlist);
 
-  const runtimeAgentTools =
-    agentToolsAvailable &&
-    toolsSupported &&
-    (needsAgentToolLoop(integrationFlags ?? {}, lastUserText, deviceManifest) ||
-      matchedSkills.length > 0);
+  // Always attach the tool loop when the provider can call tools — Abacus-style.
+  // Keyword gating previously left most chats without web_search and told the model
+  // it had no internet, so it refused to browse.
+  const runtimeAgentTools = agentToolsAvailable && toolsSupported;
 
   if (brochureRedesign && effectiveBuilderTarget === "general") {
     effectiveBuilderTarget = "application";
@@ -635,6 +635,8 @@ ${prefs.customInstructions.trim()}`;
   if (linkedUrls.length) {
     system += await buildPrefetchedUrlContext(linkedUrls);
   }
+  // Server-side web grounding — search + optional page fetch before the model answers.
+  system += await buildLiveWebContext(lastUserText);
   if (!runtimeAgentTools) {
     system += await buildIntegrationSnapshot(request, integrationFlags);
   }
