@@ -9,7 +9,7 @@ import {
   type ChatModelOption,
   type ChatProvider,
 } from "@/lib/chat-models";
-import { resolveChatModelForAccess } from "@/lib/plan-access";
+import { resolveChatModelForAccessDetailed } from "@/lib/plan-access";
 import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import { normalizeRoles } from "@/lib/rbac";
 import { openAIStreamToTextStream } from "@/lib/openai-stream";
@@ -421,7 +421,8 @@ export async function POST(request: Request) {
   const plan = ctx.session
     ? await resolveUserPlan(ctx.session.userId, ctx.session)
     : ("free" as const);
-  const option = resolveChatModelForAccess(requestedId, plan, roles);
+  const resolved = resolveChatModelForAccessDetailed(requestedId, plan, roles, lastUserText);
+  const option = resolved?.option ?? null;
   if (!option) {
     return NextResponse.json({ error: noChatProvidersMessage() }, { status: 503 });
   }
@@ -693,8 +694,15 @@ ${prefs.customInstructions.trim()}`;
     userAgent: ctx.userAgent,
   };
 
-  const finish = (res: Response) =>
-    applyAnonCookie(wrapStreamWithUsageAccounting(res, usageOpts), ctx.anonCookieToSet);
+  const finish = (res: Response) => {
+    const headers = new Headers(res.headers);
+    headers.set("X-FigHur-Model", option.id);
+    if (resolved?.requestedAuto && resolved.routedBucket) {
+      headers.set("X-FigHur-Route", resolved.routedBucket);
+    }
+    const withMeta = new Response(res.body, { status: res.status, headers });
+    return applyAnonCookie(wrapStreamWithUsageAccounting(withMeta, usageOpts), ctx.anonCookieToSet);
+  };
 
   const outputMaxTokens = resolveOutputMaxTokens(effectiveBuilderTarget, lastUserText);
 

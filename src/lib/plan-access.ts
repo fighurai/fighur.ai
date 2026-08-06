@@ -4,7 +4,8 @@ import {
   resolveChatModelOption,
   type ChatModelOption,
 } from "@/lib/chat-models";
-import { hasPermission, normalizeRoles, type Role } from "@/lib/rbac";
+import { hasPermission, type Role } from "@/lib/rbac";
+import { isAutoModelId, resolveAutoChatModel } from "@/lib/route-llm";
 import { DEFAULT_CHAT_MODEL_ID } from "@/lib/site-brand";
 import type { UserPlan } from "@/lib/user-data-store";
 
@@ -26,24 +27,58 @@ export function allowedModelIdsForPlan(plan: UserPlan, roles: Role[]): string[] 
   return [FREE_TIER_MODEL_ID];
 }
 
+export type ResolvedChatModel = {
+  option: ChatModelOption;
+  /** Present when RouteLLM auto routing chose the model. */
+  routedBucket?: string;
+  requestedAuto?: boolean;
+};
+
 /**
- * Resolves the model for this request; free-tier users are pinned to Claude.
+ * Resolves the model for this request.
+ * - Explicit catalog id: Pro can force any configured model; free stays pinned to Claude.
+ * - `auto`: rules-based RouteLLM pick within the plan allowlist.
  */
 export function resolveChatModelForAccess(
   requestedId: string | undefined,
   plan: UserPlan,
   roles: Role[],
+  userText = "",
 ): ChatModelOption | null {
+  return resolveChatModelForAccessDetailed(requestedId, plan, roles, userText)?.option ?? null;
+}
+
+export function resolveChatModelForAccessDetailed(
+  requestedId: string | undefined,
+  plan: UserPlan,
+  roles: Role[],
+  userText = "",
+): ResolvedChatModel | null {
+  const allowed = allowedModelIdsForPlan(plan, roles);
+
+  if (isAutoModelId(requestedId)) {
+    const routed = resolveAutoChatModel(userText, allowed);
+    if (!routed) return null;
+    return {
+      option: routed.option,
+      routedBucket: routed.bucket,
+      requestedAuto: true,
+    };
+  }
+
   if (hasAllModelsAccess(plan, roles)) {
-    return resolveChatModelOption(requestedId);
+    const option = resolveChatModelOption(requestedId);
+    return option ? { option } : null;
   }
 
   const claude = getChatModelById(FREE_TIER_MODEL_ID);
   if (claude) {
-    return resolveChatModelOption(FREE_TIER_MODEL_ID);
+    const option = resolveChatModelOption(FREE_TIER_MODEL_ID);
+    return option ? { option } : null;
   }
 
-  return resolveChatModelOption(requestedId);
+  const option = resolveChatModelOption(requestedId);
+  return option ? { option } : null;
 }
 
 export function clientPlanLabel(plan: ClientPlan): string {

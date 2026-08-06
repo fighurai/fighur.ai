@@ -15,6 +15,8 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 | **Tasks** | Scheduled / recurring agent prompts |
 | **MCP** | Settings → Connectors → MCP — remote HTTP/SSE tools run in chat |
 
+Model picker includes **Auto (RouteLLM)** — rules-based routing to coding / research / creative / quick / chat models within the user’s plan.
+
 ## Skills
 
 - Built-ins live in `src/lib/skills/builtins.ts` (SKILL.md format).
