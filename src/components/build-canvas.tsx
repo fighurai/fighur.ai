@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { activeBuildFile } from "@/lib/build-artifact";
 import { extractCanvasSections, type CanvasSection } from "@/lib/canvas-sections";
@@ -31,6 +31,11 @@ type BuildCanvasProps = {
   onEditSection: (section: CanvasSection) => void;
   onClose: () => void;
   variant: "sidebar" | "sheet";
+  /** Desktop rail side — controls border and resize handle edge. */
+  side?: "left" | "right";
+  onResizeWidth?: (widthPx: number) => void;
+  /** Flex order within the desktop workspace row. */
+  columnOrder?: number;
 };
 
 const DEVICE_LABELS: Record<PreviewDevice, string> = {
@@ -50,10 +55,14 @@ export function BuildCanvas({
   onEditSection,
   onClose,
   variant,
+  side = "right",
+  onResizeWidth,
+  columnOrder,
 }: BuildCanvasProps) {
   const [device, setDevice] = useState<PreviewDevice>("desktop");
   const [previewKey, setPreviewKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const [resizing, setResizing] = useState(false);
 
   const previewImageUrl = useMemo(() => resolveImagePreviewUrl(artifact), [artifact]);
   const activeFile = useMemo(
@@ -83,7 +92,9 @@ export function BuildCanvas({
 
   const shellClass =
     variant === "sidebar"
-      ? "hidden w-[min(44rem,46vw)] shrink-0 border-l border-white/[0.08] bg-[var(--bg-elevated)]/80 backdrop-blur-md md:flex md:flex-col"
+      ? `hidden shrink-0 bg-[var(--bg-elevated)]/80 backdrop-blur-md md:flex md:flex-col ${
+          side === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
+        }`
       : "fixed inset-x-0 bottom-0 top-20 z-[95] border-t border-white/[0.08] bg-[var(--bg-elevated)]/95 backdrop-blur-md md:hidden flex flex-col";
 
   const bodyClass =
@@ -91,8 +102,45 @@ export function BuildCanvas({
       ? "min-h-0 flex-1 overflow-auto p-3"
       : "min-h-0 flex-1 overflow-auto p-3";
 
+  const startResize = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (variant !== "sidebar" || !onResizeWidth || fullscreen) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = e.currentTarget.parentElement?.getBoundingClientRect().width ?? 480;
+    setResizing(true);
+    const onMove = (ev: PointerEvent) => {
+      const delta = side === "right" ? startX - ev.clientX : ev.clientX - startX;
+      onResizeWidth(startW + delta);
+    };
+    const onUp = () => {
+      setResizing(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
   return (
-    <aside className={`${shellClass} ${fullscreen ? "!fixed !inset-0 !z-[200] !w-full !max-w-none" : ""}`}>
+    <aside
+      className={`relative ${shellClass} ${fullscreen ? "!fixed !inset-0 !z-[200] !w-full !max-w-none" : ""} ${resizing ? "select-none" : ""}`}
+      style={
+        variant === "sidebar" && !fullscreen
+          ? { width: "var(--canvas-w)", maxWidth: "100%", order: columnOrder }
+          : undefined
+      }
+    >
+      {variant === "sidebar" && onResizeWidth && !fullscreen ? (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize canvas"
+          onPointerDown={startResize}
+          className={`absolute top-0 z-10 hidden h-full w-1.5 cursor-col-resize touch-none md:block ${
+            side === "right" ? "left-0" : "right-0"
+          } ${resizing ? "bg-[var(--accent)]/40" : "bg-transparent hover:bg-[var(--accent)]/25"}`}
+        />
+      ) : null}
       <div className="flex items-center justify-between border-b border-white/[0.08] px-3 py-2">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">Canvas</p>
@@ -277,7 +325,7 @@ export function BuildCanvas({
                     title="Canvas preview"
                     sandbox="allow-scripts allow-forms allow-modals allow-popups"
                     srcDoc={preview.doc}
-                    className="h-full min-h-[24rem] w-full rounded-xl border border-white/[0.12] bg-white shadow-2xl shadow-black/30"
+                    className={`h-full min-h-[24rem] w-full rounded-xl border border-white/[0.12] bg-white shadow-2xl shadow-black/30 ${resizing ? "pointer-events-none" : ""}`}
                   />
                 </div>
               </div>

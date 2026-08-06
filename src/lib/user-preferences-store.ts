@@ -1,6 +1,11 @@
 import { normalizeWorkMode, type WorkMode } from "@/lib/work-mode";
 import { isSafeUserId } from "@/lib/user-data-store";
 import { readUserFile, writeUserFile } from "@/lib/user-file-storage";
+import {
+  defaultLayoutPrefs,
+  normalizeLayoutPrefs,
+  type LayoutPrefs,
+} from "@/lib/layout-storage";
 
 const FILE = "preferences.json";
 const MAX_INSTRUCTIONS = 8_000;
@@ -9,6 +14,8 @@ export type UserPreferences = {
   workMode: WorkMode;
   /** Always-on custom instructions (Abacus Customize AI) */
   customInstructions: string;
+  /** Optional workspace layout (desktop columns) */
+  layout?: LayoutPrefs;
   updatedAt: string;
 };
 
@@ -34,6 +41,7 @@ export async function readUserPreferences(userId: string): Promise<UserPreferenc
     return {
       workMode: normalizeWorkMode(parsed.workMode),
       customInstructions: normalizeInstructions(parsed.customInstructions),
+      layout: parsed.layout ? normalizeLayoutPrefs(parsed.layout) : undefined,
       updatedAt:
         typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
     };
@@ -54,8 +62,12 @@ export async function writeUserPreferences(
       prefs.customInstructions !== undefined
         ? normalizeInstructions(prefs.customInstructions)
         : existing.customInstructions,
+    layout: prefs.layout !== undefined ? normalizeLayoutPrefs(prefs.layout) : existing.layout,
     updatedAt: new Date().toISOString(),
   };
+  if (next.layout && JSON.stringify(next.layout) === JSON.stringify(defaultLayoutPrefs())) {
+    delete next.layout;
+  }
   await writeUserFile(userId, FILE, JSON.stringify(next));
   return next;
 }

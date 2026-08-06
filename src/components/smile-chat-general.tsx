@@ -11,6 +11,22 @@ import { flushSync } from "react-dom";
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
 import {
+  applyLayoutCssVars,
+  composerDockInsets,
+  defaultLayoutPrefs,
+  LAYOUT_CHANGE_EVENT,
+  layoutColumnOrders,
+  MAX_CANVAS_WIDTH_PX,
+  MIN_CANVAS_WIDTH_PX,
+  MIN_SIDEBAR_WIDTH_PX,
+  MAX_SIDEBAR_WIDTH_PX,
+  normalizeLayoutPrefs,
+  persistLayout,
+  readLayout,
+  type LayoutPrefs,
+} from "@/lib/layout-storage";
+import { syncLayoutToServer } from "@/lib/layout-sync";
+import {
   clearSessionAndServer,
   fetchUsageSummary,
   hydrateServerSession,
@@ -315,8 +331,12 @@ export function SmileChatGeneral() {
   const [hydrated, setHydrated] = useState(false);
   const [models, setModels] = useState<ChatModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
+  const [routedModelHint, setRoutedModelHint] = useState<string | null>(null);
   const [chatReady, setChatReady] = useState<boolean | null>(null);
   const [buildSidebarOpen, setBuildSidebarOpen] = useState(false);
+  const [layoutPrefs, setLayoutPrefs] = useState<LayoutPrefs>(() => defaultLayoutPrefs());
+  const layoutPrefsRef = useRef(layoutPrefs);
+  layoutPrefsRef.current = layoutPrefs;
   const [buildPanelTab, setBuildPanelTab] = useState<BuildPanelTab>("preview");
   const [selectedBuildFilePath, setSelectedBuildFilePath] = useState<string | null>(null);
   const [selectedCanvasSectionId, setSelectedCanvasSectionId] = useState<string | null>(null);
@@ -353,6 +373,82 @@ export function SmileChatGeneral() {
     messagesRef.current = messages;
   }, [messages]);
 
+  const resolveCanvasOpen = useCallback((hasArtifact: boolean) => {
+    const p = layoutPrefsRef.current;
+    if (p.rememberCanvasOpen) return p.canvasOpenPreferred;
+    return hasArtifact;
+  }, []);
+
+  const setCanvasOpen = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+    setBuildSidebarOpen((prev) => {
+      const next = typeof open === "function" ? open(prev) : open;
+      const p = layoutPrefsRef.current;
+      if (p.rememberCanvasOpen && p.canvasOpenPreferred !== next) {
+        const saved = persistLayout({ ...p, canvasOpenPreferred: next });
+        setLayoutPrefs(saved);
+        syncLayoutToServer(saved);
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const p = readLayout();
+    applyLayoutCssVars(p);
+    setLayoutPrefs(p);
+    if (p.rememberCanvasOpen) setBuildSidebarOpen(p.canvasOpenPreferred);
+    const onLayout = (e: Event) => {
+      const detail = (e as CustomEvent<LayoutPrefs>).detail;
+      if (detail) {
+        setLayoutPrefs(detail);
+        applyLayoutCssVars(detail);
+      }
+    };
+    window.addEventListener(LAYOUT_CHANGE_EVENT, onLayout);
+    return () => window.removeEventListener(LAYOUT_CHANGE_EVENT, onLayout);
+  }, []);
+
+  useEffect(() => {
+    const userId = session?.userId;
+    if (!userId) return;
+    let cancelled = false;
+    void fetch("/api/user/preferences", { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { preferences?: { layout?: LayoutPrefs } };
+        if (!data.preferences?.layout || cancelled) return;
+        const saved = persistLayout(normalizeLayoutPrefs(data.preferences.layout));
+        setLayoutPrefs(saved);
+        if (saved.rememberCanvasOpen) setBuildSidebarOpen(saved.canvasOpenPreferred);
+      })
+      .catch(() => {
+        /* ignore */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.userId]);
+
+  const columnOrders = useMemo(() => layoutColumnOrders(layoutPrefs), [layoutPrefs]);
+  const dockInsets = useMemo(
+    () => composerDockInsets(layoutPrefs, { canvasOpen: buildSidebarOpen }),
+    [layoutPrefs, buildSidebarOpen],
+  );
+
+  const onResizeCanvasWidth = useCallback((widthPx: number) => {
+    const clamped = Math.min(MAX_CANVAS_WIDTH_PX, Math.max(MIN_CANVAS_WIDTH_PX, Math.round(widthPx)));
+    const saved = persistLayout({ ...layoutPrefsRef.current, canvasWidthPx: clamped });
+    setLayoutPrefs(saved);
+    syncLayoutToServer(saved);
+  }, []);
+
+  const onResizeSidebarWidth = useCallback((widthPx: number) => {
+    const clamped = Math.min(MAX_SIDEBAR_WIDTH_PX, Math.max(MIN_SIDEBAR_WIDTH_PX, Math.round(widthPx)));
+    const saved = persistLayout({ ...layoutPrefsRef.current, sidebarWidthPx: clamped });
+    setLayoutPrefs(saved);
+    syncLayoutToServer(saved);
+  }, []);
+
   const applyConversationList = useCallback((list: SavedConversation[], storageUser: string) => {
     setConversations(list);
     const last = loadLastActiveId("assistant", storageUser);
@@ -364,7 +460,7 @@ export function SmileChatGeneral() {
       setActiveId(last);
       setMessages(sanitizeAssistantMessages(c.messages));
       setLatestBuildArtifact(fallbackArtifact);
-      setBuildSidebarOpen(Boolean(fallbackArtifact));
+      setBuildSidebarOpen(resolveCanvasOpen(Boolean(fallbackArtifact)));
     } else if (list.length > 0) {
       const c = list[0];
       const fallbackArtifact =
@@ -373,15 +469,15 @@ export function SmileChatGeneral() {
       setActiveId(c.id);
       setMessages(sanitizeAssistantMessages(c.messages));
       setLatestBuildArtifact(fallbackArtifact);
-      setBuildSidebarOpen(Boolean(fallbackArtifact));
+      setBuildSidebarOpen(resolveCanvasOpen(Boolean(fallbackArtifact)));
       saveLastActiveId(c.id, "assistant", storageUser);
     } else {
       setActiveId(null);
       setMessages([]);
       setLatestBuildArtifact(null);
-      setBuildSidebarOpen(false);
+      setBuildSidebarOpen(resolveCanvasOpen(false));
     }
-  }, []);
+  }, [resolveCanvasOpen]);
 
   const loadAccountChats = useCallback(
     async (userId?: string | null) => {
@@ -488,8 +584,9 @@ export function SmileChatGeneral() {
   useEffect(() => {
     if (availableModels.length === 0) return;
     if (availableModels.some((m) => m.id === selectedModel)) return;
+    const auto = availableModels.find((m) => m.id === "auto");
     const claude = availableModels.find((m) => m.id === DEFAULT_CHAT_MODEL_ID);
-    setSelectedModel(claude?.id ?? availableModels[0].id);
+    setSelectedModel(auto?.id ?? claude?.id ?? availableModels[0].id);
   }, [availableModels, selectedModel]);
 
   useEffect(() => {
@@ -539,11 +636,11 @@ export function SmileChatGeneral() {
     setError(null);
     setLatestBuildArtifact(null);
     setSelectedCanvasSectionId(null);
-    setBuildSidebarOpen(false);
+    setCanvasOpen(false);
     setAttachments([]);
     saveLastActiveId(null, "assistant", conversationStorageUserId(session?.userId));
     setMobileSidebarOpen(false);
-  }, [stopAll, session?.userId]);
+  }, [stopAll, session?.userId, setCanvasOpen]);
 
   useEffect(() => {
     const onHome = () => newChat();
@@ -562,11 +659,11 @@ export function SmileChatGeneral() {
       setInput("");
       setError(null);
       setLatestBuildArtifact(fallbackArtifact);
-      setBuildSidebarOpen(Boolean(fallbackArtifact));
+      setBuildSidebarOpen(resolveCanvasOpen(Boolean(fallbackArtifact)));
       saveLastActiveId(c.id, "assistant", conversationStorageUserId(session?.userId));
       setMobileSidebarOpen(false);
     },
-    [stopAll, session?.userId],
+    [stopAll, session?.userId, resolveCanvasOpen],
   );
 
   const deleteConversation = useCallback(
@@ -581,12 +678,12 @@ export function SmileChatGeneral() {
         if (next.length > 0) selectConversation(next[0]);
         else {
           setLatestBuildArtifact(null);
-          setBuildSidebarOpen(false);
+          setCanvasOpen(false);
           newChat();
         }
       }
     },
-    [conversations, activeId, selectConversation, newChat],
+    [conversations, activeId, selectConversation, newChat, setCanvasOpen, session?.userId],
   );
 
   const streamPromptify = useCallback(async (raw: string) => {
@@ -778,7 +875,7 @@ export function SmileChatGeneral() {
     });
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
     if (isBuildRequest) {
-      setBuildSidebarOpen(true);
+      setCanvasOpen(true);
       setBuildPanelTab("preview");
     }
 
@@ -789,7 +886,7 @@ export function SmileChatGeneral() {
       if (!artifact) return;
       setLatestBuildArtifact(artifact);
       setSelectedBuildFilePath(artifact.primaryPath ?? artifact.files?.[0]?.path ?? null);
-      setBuildSidebarOpen(true);
+      setCanvasOpen(true);
       setBuildPanelTab("preview");
     };
 
@@ -868,6 +965,18 @@ export function SmileChatGeneral() {
           return;
         }
         throw new Error(errJson.error || `Request failed (${res.status})`);
+      }
+
+      const routedId = res.headers.get("X-FigHur-Model");
+      const routeBucket = res.headers.get("X-FigHur-Route");
+      if (selectedModel === "auto" && routedId) {
+        const label =
+          models.find((m) => m.id === routedId)?.label ?? routedId.replace(/^[^:]+:/, "");
+        setRoutedModelHint(
+          routeBucket ? `Routed · ${label} (${routeBucket})` : `Routed · ${label}`,
+        );
+      } else {
+        setRoutedModelHint(null);
       }
 
       const reader = res.body?.getReader();
@@ -979,6 +1088,7 @@ export function SmileChatGeneral() {
     selectedCanvasSectionId,
     followStreamScroll,
     markStreamOutputStarted,
+    setCanvasOpen,
   ]);
 
   const toggleListen = useCallback(() => {
@@ -1080,6 +1190,10 @@ export function SmileChatGeneral() {
     listening,
     translatingSpeech,
     messages.length,
+    buildSidebarOpen,
+    layoutPrefs,
+    dockInsets.left,
+    dockInsets.right,
   ]);
 
   useEffect(() => {
@@ -1116,13 +1230,13 @@ export function SmileChatGeneral() {
 
   const handleEditCanvasSection = useCallback((section: CanvasSection) => {
     setSelectedCanvasSectionId(section.id);
-    setBuildSidebarOpen(true);
+    setCanvasOpen(true);
     setBuildPanelTab("preview");
     setInput(canvasEditPrefill(section));
     window.setTimeout(() => {
       document.getElementById("smile-chat-input")?.focus();
     }, 0);
-  }, []);
+  }, [setCanvasOpen]);
 
   const copyMessage = useCallback(async (messageId: string, content: string) => {
     const ok = await copyTextToClipboard(content);
@@ -1259,7 +1373,7 @@ export function SmileChatGeneral() {
               {!showEmpty ? (
                 <button
                   type="button"
-                  onClick={() => setBuildSidebarOpen((v) => !v)}
+                  onClick={() => setCanvasOpen((v) => !v)}
                   className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40"
                 >
                   <span className="sm:hidden">Space</span>
@@ -1278,10 +1392,14 @@ export function SmileChatGeneral() {
               ) : (
                 <select
                   value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedModel(e.target.value);
+                    setRoutedModelHint(null);
+                  }}
                   disabled={busy || availableModels.length === 0}
                   className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
                   aria-label="Select model"
+                  title={routedModelHint ?? undefined}
                 >
                   {availableModels.length === 0 ? (
                     <option value="">No models</option>
@@ -1294,12 +1412,17 @@ export function SmileChatGeneral() {
                   )}
                 </select>
               )}
+              {routedModelHint && selectedModel === "auto" ? (
+                <span className="hidden max-w-[10rem] truncate text-[0.65rem] text-[var(--text-faint)] sm:inline">
+                  {routedModelHint}
+                </span>
+              ) : null}
               <div className="flex shrink-0 items-center gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
                     type="button"
                     onClick={() => {
-                      setBuildSidebarOpen(true);
+                      setCanvasOpen(true);
                       setBuildPanelTab("preview");
                     }}
                     className="rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
@@ -1453,9 +1576,43 @@ export function SmileChatGeneral() {
     <div
       className={`flex flex-1 flex-col md:flex-row ${showEmpty ? "min-h-[calc(100dvh-3.25rem)]" : "min-h-0"}`}
     >
-      <aside className="hidden min-h-0 w-56 shrink-0 flex-col border-r border-white/[0.06] bg-[var(--bg-elevated)]/90 md:flex">
-        {sidebarContent}
-      </aside>
+      {layoutPrefs.sidebarVisible ? (
+        <aside
+          className={`relative hidden min-h-0 shrink-0 flex-col bg-[var(--bg-elevated)]/90 md:flex ${
+            layoutPrefs.sidebarSide === "right" ? "border-l border-white/[0.06]" : "border-r border-white/[0.06]"
+          }`}
+          style={{
+            width: "var(--chat-sidebar-w)",
+            order: columnOrders.sidebar,
+          }}
+        >
+          {sidebarContent}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            className={`absolute top-0 z-10 hidden h-full w-1.5 cursor-col-resize touch-none md:block ${
+              layoutPrefs.sidebarSide === "right" ? "left-0" : "right-0"
+            }`}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startW = layoutPrefsRef.current.sidebarWidthPx;
+              const side = layoutPrefsRef.current.sidebarSide;
+              const onMove = (ev: PointerEvent) => {
+                const delta = side === "left" ? ev.clientX - startX : startX - ev.clientX;
+                onResizeSidebarWidth(startW + delta);
+              };
+              const onUp = () => {
+                window.removeEventListener("pointermove", onMove);
+                window.removeEventListener("pointerup", onUp);
+              };
+              window.addEventListener("pointermove", onMove);
+              window.addEventListener("pointerup", onUp);
+            }}
+          />
+        </aside>
+      ) : null}
 
       {mobileSidebarOpen ? (
         <div
@@ -1478,6 +1635,7 @@ export function SmileChatGeneral() {
 
       <div
         className={`flex min-h-0 flex-1 flex-col ${showEmpty ? "" : "h-[calc(100dvh-3.25rem)] max-h-[calc(100dvh-3.25rem)] overflow-hidden"}`}
+        style={{ order: columnOrders.main }}
       >
         <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
           <button
@@ -1632,7 +1790,8 @@ export function SmileChatGeneral() {
         {!showEmpty ? (
           <div
             ref={composerDockRef}
-            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 md:left-56 ${buildSidebarOpen ? "md:right-[min(44rem,46vw)]" : ""}`}
+            className="composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 max-md:!left-0 max-md:!right-0"
+            style={{ left: dockInsets.left, right: dockInsets.right }}
           >
             <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
               <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1 md:hidden">
@@ -1684,6 +1843,9 @@ export function SmileChatGeneral() {
       {buildSidebarOpen ? (
         <BuildCanvas
           variant="sidebar"
+          side={layoutPrefs.canvasSide}
+          columnOrder={columnOrders.canvas}
+          onResizeWidth={onResizeCanvasWidth}
           artifact={latestBuildArtifact}
           tab={buildPanelTab}
           onTabChange={setBuildPanelTab}
@@ -1692,7 +1854,7 @@ export function SmileChatGeneral() {
           selectedSectionId={selectedCanvasSectionId}
           onSelectSection={setSelectedCanvasSectionId}
           onEditSection={handleEditCanvasSection}
-          onClose={() => setBuildSidebarOpen(false)}
+          onClose={() => setCanvasOpen(false)}
         />
       ) : null}
       {buildSidebarOpen ? (
@@ -1706,7 +1868,7 @@ export function SmileChatGeneral() {
           selectedSectionId={selectedCanvasSectionId}
           onSelectSection={setSelectedCanvasSectionId}
           onEditSection={handleEditCanvasSection}
-          onClose={() => setBuildSidebarOpen(false)}
+          onClose={() => setCanvasOpen(false)}
         />
       ) : null}
 

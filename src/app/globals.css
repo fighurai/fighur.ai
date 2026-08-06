@@ -11,6 +11,9 @@
   --accent-secondary: #818cf8;
   --accent-foreground: #042f2e;
   --accent-glow: rgba(45, 212, 191, 0.35);
+  /* Workspace layout — defaults match pre-customization shell */
+  --chat-sidebar-w: 14rem;
+  --canvas-w: min(44rem, 46vw);
 }
 
 @theme inline {
