@@ -46,7 +46,11 @@ import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
 import { resolveMcpConfig } from "@/lib/mcp/config-store";
 import { formatMcpSystemContext } from "@/lib/mcp/tools";
 import { isStdioMcpServer } from "@/lib/mcp/types";
-import { formatAgentSystemContext, getActiveManagedAgent } from "@/lib/agents/store";
+import {
+  formatAgentSystemContext,
+  getActiveManagedAgent,
+  getManagedAgent,
+} from "@/lib/agents/store";
 import {
   buildSmileSystemPrompt,
   type ChatIntegrationFlags,
@@ -365,6 +369,8 @@ export async function POST(request: Request) {
     canvasContext?: unknown;
     /** Optional conversation-level skill allowlist (Abacus-style wrench preselect) */
     skillAllowlist?: unknown;
+    /** Override which custom agent to use for this turn */
+    agentId?: unknown;
     /** Browser-local MCP config (used when server store empty / anonymous) */
     mcpConfig?: unknown;
   };
@@ -614,13 +620,20 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
     ? b.skillAllowlist.filter((x): x is string => typeof x === "string")
     : null;
   const allSkills = await resolveUserSkills(verified?.userId ?? null);
-  const activeAgent = verified?.userId ? await getActiveManagedAgent(verified.userId) : null;
+  const requestedAgentId = typeof b.agentId === "string" ? b.agentId.trim() : "";
+  let activeAgent = verified?.userId ? await getActiveManagedAgent(verified.userId) : null;
+  if (verified?.userId && requestedAgentId) {
+    const requested = await getManagedAgent(verified.userId, requestedAgentId);
+    if (requested?.enabled) activeAgent = requested;
+  }
   const effectiveSkillAllowlist =
     skillAllowlist && skillAllowlist.length > 0
       ? skillAllowlist
       : activeAgent?.skillAllowlist?.length
         ? activeAgent.skillAllowlist
-        : null;
+        : activeAgent?.deepResearch
+          ? ["deep-research"]
+          : null;
   const matchedSkills = matchSkills(allSkills, lastUserText, effectiveSkillAllowlist);
 
   // Always attach the tool loop when the provider can call tools — Abacus-style.

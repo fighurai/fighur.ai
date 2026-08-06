@@ -1,33 +1,16 @@
 import { randomUUID } from "crypto";
 
+import type { AgentEffort, ManagedAgent } from "@/lib/agents/types";
 import { isSafeUserId } from "@/lib/user-data-store";
 import { readUserFile, writeUserFile } from "@/lib/user-file-storage";
+
+export type { AgentEffort, ManagedAgent } from "@/lib/agents/types";
 
 const FILE = "agents.json";
 const MAX_AGENTS = 20;
 const MAX_NAME = 80;
 const MAX_DESC = 400;
 const MAX_INSTRUCTIONS = 6_000;
-
-export type AgentEffort = "auto" | "low" | "high";
-
-export type ManagedAgent = {
-  id: string;
-  name: string;
-  description: string;
-  /** How the agent approaches problems (Abacus Behavior Instructions). */
-  behaviorInstructions: string;
-  /** Tone / format / persona (Abacus Response Instructions). */
-  responseInstructions: string;
-  /** Prefer deep-research skill + multi-source synthesis. */
-  deepResearch: boolean;
-  effort: AgentEffort;
-  /** Optional skill name allowlist; empty = auto-match. */
-  skillAllowlist: string[];
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
 
 type AgentStore = {
   agents: ManagedAgent[];
@@ -217,20 +200,26 @@ export async function setActiveManagedAgent(
 export function formatAgentSystemContext(agent: ManagedAgent | null | undefined): string {
   if (!agent || !agent.enabled) return "";
   const parts = [
-    `## Active custom agent: ${agent.name}`,
-    agent.description ? `Role: ${agent.description}` : "",
+    `## You are the custom agent: ${agent.name}`,
+    "For this conversation you MUST embody this agent. Do not break character unless the user explicitly asks to switch agents.",
+    agent.description ? `**Role / mission:** ${agent.description}` : "",
     agent.behaviorInstructions
-      ? `### Behavior instructions\n${agent.behaviorInstructions}`
+      ? `### Behavior instructions (how you work)\n${agent.behaviorInstructions}`
       : "",
     agent.responseInstructions
-      ? `### Response instructions\n${agent.responseInstructions}`
+      ? `### Response instructions (how you reply)\n${agent.responseInstructions}`
       : "",
     agent.deepResearch
-      ? "Deep research mode: prefer multi-source live web research, cite sources, and structure findings clearly."
+      ? "### Deep research\nYou MUST use live web_search / fetch_url for factual or time-sensitive questions. Prefer multi-source synthesis with clear citations."
       : "",
-    agent.effort !== "auto"
-      ? `Effort preference: ${agent.effort} (favor ${agent.effort === "high" ? "thorough multi-step reasoning" : "fast concise answers"}).`
+    agent.effort === "high"
+      ? "### Effort\nHigh effort: take multi-step approaches, use tools when helpful, and deliver thorough structured answers."
+      : agent.effort === "low"
+        ? "### Effort\nLow effort: answer quickly and concisely; minimize tool use unless necessary."
+        : "",
+    agent.skillAllowlist.length
+      ? `Preferred skills (lean on these when relevant): ${agent.skillAllowlist.join(", ")}.`
       : "",
   ].filter(Boolean);
-  return parts.length > 1 ? `\n\n${parts.join("\n\n")}` : "";
+  return `\n\n${parts.join("\n\n")}`;
 }

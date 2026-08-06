@@ -177,6 +177,95 @@ export async function availableAgentTools(
     },
   });
 
+  tools.push({
+    name: "create_agent",
+    description:
+      "Create a custom FIGHURAI agent the user can talk to (like Abacus AI Engineer). Sets behavior + response instructions, optional deep research and effort. After creating, the agent becomes active for chat unless set_active_agent is used later. User must be signed in.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Short agent name" },
+        description: { type: "string", description: "Role / mission summary" },
+        behavior_instructions: {
+          type: "string",
+          description: "How the agent approaches problems and which methods to use",
+        },
+        response_instructions: {
+          type: "string",
+          description: "Tone, persona, length, and structure of replies",
+        },
+        deep_research: {
+          type: "boolean",
+          description: "Prefer multi-source live web research with citations",
+        },
+        effort: {
+          type: "string",
+          description: "auto | low | high",
+        },
+        activate: {
+          type: "boolean",
+          description: "Make this agent active in chat (default true)",
+        },
+      },
+      required: ["name"],
+    },
+  });
+
+  tools.push({
+    name: "list_agents",
+    description: "List the signed-in user's custom agents and which one is active in chat.",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  });
+
+  tools.push({
+    name: "set_active_agent",
+    description:
+      "Switch which custom agent is active for subsequent chat turns. Pass agent_id from list_agents/create_agent, or null/empty for default FIGHURAI.",
+    input_schema: {
+      type: "object",
+      properties: {
+        agent_id: {
+          type: "string",
+          description: "Agent id, or empty string to clear (default assistant)",
+        },
+      },
+    },
+  });
+
+  tools.push({
+    name: "update_agent",
+    description: "Update an existing custom agent's name, instructions, deep research, or effort.",
+    input_schema: {
+      type: "object",
+      properties: {
+        agent_id: { type: "string", description: "Agent id" },
+        name: { type: "string" },
+        description: { type: "string" },
+        behavior_instructions: { type: "string" },
+        response_instructions: { type: "string" },
+        deep_research: { type: "boolean" },
+        effort: { type: "string", description: "auto | low | high" },
+        enabled: { type: "boolean" },
+      },
+      required: ["agent_id"],
+    },
+  });
+
+  tools.push({
+    name: "delete_agent",
+    description: "Delete a custom agent by id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        agent_id: { type: "string", description: "Agent id" },
+      },
+      required: ["agent_id"],
+    },
+  });
+
   if (isImageGenerationAvailable()) {
     tools.push({
       name: "generate_image",

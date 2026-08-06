@@ -27,6 +27,10 @@ import {
 } from "@/lib/layout-storage";
 import { syncLayoutToServer } from "@/lib/layout-sync";
 import {
+  ACTIVE_AGENT_CHANGE_EVENT,
+  type ActiveAgentChangeDetail,
+} from "@/lib/agents/types";
+import {
   clearSessionAndServer,
   fetchUsageSummary,
   hydrateServerSession,
@@ -337,6 +341,11 @@ export function SmileChatGeneral() {
   const [layoutPrefs, setLayoutPrefs] = useState<LayoutPrefs>(() => defaultLayoutPrefs());
   const layoutPrefsRef = useRef(layoutPrefs);
   layoutPrefsRef.current = layoutPrefs;
+  const [activeAgent, setActiveAgent] = useState<{
+    id: string;
+    name: string;
+    description?: string;
+  } | null>(null);
   const [buildPanelTab, setBuildPanelTab] = useState<BuildPanelTab>("preview");
   const [selectedBuildFilePath, setSelectedBuildFilePath] = useState<string | null>(null);
   const [selectedCanvasSectionId, setSelectedCanvasSectionId] = useState<string | null>(null);
@@ -368,6 +377,56 @@ export function SmileChatGeneral() {
   const composerDockRef = useRef<HTMLDivElement>(null);
   const [composerInset, setComposerInset] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  useEffect(() => {
+    const loadActiveAgent = async () => {
+      if (!readSession()?.userId) {
+        setActiveAgent(null);
+        return;
+      }
+      try {
+        const res = await fetch("/api/agents", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          agents?: Array<{ id: string; name: string; description?: string; enabled?: boolean }>;
+          activeAgentId?: string | null;
+        };
+        const id = data.activeAgentId;
+        const agent = id ? data.agents?.find((a) => a.id === id && a.enabled !== false) : null;
+        setActiveAgent(agent ? { id: agent.id, name: agent.name, description: agent.description } : null);
+      } catch {
+        /* ignore */
+      }
+    };
+    void loadActiveAgent();
+    const onAgent = (e: Event) => {
+      const detail = (e as CustomEvent<ActiveAgentChangeDetail>).detail;
+      if (!detail) {
+        void loadActiveAgent();
+        return;
+      }
+      if (!detail.activeAgentId) {
+        setActiveAgent(null);
+        return;
+      }
+      if (detail.agent) {
+        setActiveAgent({
+          id: detail.agent.id,
+          name: detail.agent.name,
+          description: detail.agent.description,
+        });
+        return;
+      }
+      void loadActiveAgent();
+    };
+    const onAuth = () => void loadActiveAgent();
+    window.addEventListener(ACTIVE_AGENT_CHANGE_EVENT, onAgent);
+    window.addEventListener("smile-auth-changed", onAuth);
+    return () => {
+      window.removeEventListener(ACTIVE_AGENT_CHANGE_EVENT, onAgent);
+      window.removeEventListener("smile-auth-changed", onAuth);
+    };
+  }, []);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -924,6 +983,7 @@ export function SmileChatGeneral() {
         selectedCanvasSectionId,
       ),
       mcpConfig: mcpConfig ?? undefined,
+      agentId: activeAgent?.id ?? undefined,
       userSession: session
         ? {
             email: session.email,
@@ -1036,6 +1096,27 @@ export function SmileChatGeneral() {
         setStreamOutputStarted(false);
         followStreamScroll();
         void fetchUsageSummary().then(setUsage);
+        // Agent tools may have switched the active agent mid-turn.
+        if (session?.userId) {
+          void fetch("/api/agents", { cache: "no-store" })
+            .then(async (r) => {
+              if (!r.ok) return;
+              const data = (await r.json()) as {
+                agents?: Array<{ id: string; name: string; description?: string; enabled?: boolean }>;
+                activeAgentId?: string | null;
+              };
+              const id = data.activeAgentId;
+              const agent = id
+                ? data.agents?.find((a) => a.id === id && a.enabled !== false)
+                : null;
+              setActiveAgent(
+                agent ? { id: agent.id, name: agent.name, description: agent.description } : null,
+              );
+            })
+            .catch(() => {
+              /* ignore */
+            });
+        }
 
         if (connected.services.deviceFiles.connected && session?.userId) {
           const opsPayload = parseDeviceOpsFromText(fullText);
@@ -1089,6 +1170,7 @@ export function SmileChatGeneral() {
     followStreamScroll,
     markStreamOutputStarted,
     setCanvasOpen,
+    activeAgent?.id,
   ]);
 
   const toggleListen = useCallback(() => {
@@ -1285,6 +1367,18 @@ export function SmileChatGeneral() {
           ) : null}
           {attachingFiles ? (
             <p className="px-3 py-2 text-xs text-[var(--accent)]">Processing attachment…</p>
+          ) : null}
+          {activeAgent ? (
+            <div className="flex items-center gap-2 px-3 pt-2">
+              <span className="rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[0.65rem] font-semibold text-[var(--accent)]">
+                Talking to {activeAgent.name}
+              </span>
+              {activeAgent.description ? (
+                <span className="truncate text-[0.65rem] text-[var(--text-faint)]">
+                  {activeAgent.description}
+                </span>
+              ) : null}
+            </div>
           ) : null}
           <textarea
             id="smile-chat-input"

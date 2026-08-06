@@ -21,6 +21,14 @@ import {
   unpublishManagedApp,
 } from "@/lib/apps/store";
 import {
+  createManagedAgent,
+  deleteManagedAgent,
+  getAgentStore,
+  setActiveManagedAgent,
+  updateManagedAgent,
+  type AgentEffort,
+} from "@/lib/agents/store";
+import {
   createManagedTask,
   deleteManagedTask,
   listManagedTasks,
@@ -295,6 +303,157 @@ export async function executeAgentTool(
         const ok = await deleteManagedTask(ctx.userId, taskId);
         if (!ok) return { content: "Task not found", isError: true };
         return { content: JSON.stringify({ ok: true, taskId }) };
+      }
+      case "create_agent": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to create agents.", isError: true };
+        }
+        const name = typeof input.name === "string" ? input.name : "";
+        const effortRaw = typeof input.effort === "string" ? input.effort : "auto";
+        const effort: AgentEffort =
+          effortRaw === "low" || effortRaw === "high" || effortRaw === "auto" ? effortRaw : "auto";
+        try {
+          const agent = await createManagedAgent(ctx.userId, {
+            name,
+            description: typeof input.description === "string" ? input.description : "",
+            behaviorInstructions:
+              typeof input.behavior_instructions === "string" ? input.behavior_instructions : "",
+            responseInstructions:
+              typeof input.response_instructions === "string" ? input.response_instructions : "",
+            deepResearch: Boolean(input.deep_research),
+            effort,
+          });
+          const activate = input.activate !== false;
+          if (activate) {
+            await setActiveManagedAgent(ctx.userId, agent.id);
+          }
+          return {
+            content: JSON.stringify({
+              ok: true,
+              agent: {
+                id: agent.id,
+                name: agent.name,
+                description: agent.description,
+                deepResearch: agent.deepResearch,
+                effort: agent.effort,
+              },
+              active: activate,
+              message: activate
+                ? `Agent "${agent.name}" created and is now active in chat. Tell the user they can switch agents from the Agents menu.`
+                : `Agent "${agent.name}" created. Use set_active_agent to talk to it.`,
+            }),
+          };
+        } catch (e) {
+          return {
+            content: e instanceof Error ? e.message : "Create agent failed",
+            isError: true,
+          };
+        }
+      }
+      case "list_agents": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to list agents.", isError: true };
+        }
+        const store = await getAgentStore(ctx.userId);
+        return {
+          content: JSON.stringify(
+            {
+              ok: true,
+              activeAgentId: store.activeAgentId,
+              agents: store.agents.map((a) => ({
+                id: a.id,
+                name: a.name,
+                description: a.description,
+                deepResearch: a.deepResearch,
+                effort: a.effort,
+                enabled: a.enabled,
+                active: a.id === store.activeAgentId,
+              })),
+            },
+            null,
+            2,
+          ),
+        };
+      }
+      case "set_active_agent": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to switch agents.", isError: true };
+        }
+        const raw = typeof input.agent_id === "string" ? input.agent_id.trim() : "";
+        const agentId = raw.length > 0 ? raw : null;
+        try {
+          const store = await setActiveManagedAgent(ctx.userId, agentId);
+          const active = store.agents.find((a) => a.id === store.activeAgentId) ?? null;
+          return {
+            content: JSON.stringify({
+              ok: true,
+              activeAgentId: store.activeAgentId,
+              agent: active
+                ? { id: active.id, name: active.name, description: active.description }
+                : null,
+              message: active
+                ? `Now talking as agent "${active.name}".`
+                : "Cleared custom agent — using default FIGHURAI.",
+            }),
+          };
+        } catch (e) {
+          return {
+            content: e instanceof Error ? e.message : "Switch agent failed",
+            isError: true,
+          };
+        }
+      }
+      case "update_agent": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to update agents.", isError: true };
+        }
+        const agentId = typeof input.agent_id === "string" ? input.agent_id.trim() : "";
+        if (!agentId) return { content: "agent_id is required", isError: true };
+        const patch: Parameters<typeof updateManagedAgent>[2] = {};
+        if (typeof input.name === "string") patch.name = input.name;
+        if (typeof input.description === "string") patch.description = input.description;
+        if (typeof input.behavior_instructions === "string") {
+          patch.behaviorInstructions = input.behavior_instructions;
+        }
+        if (typeof input.response_instructions === "string") {
+          patch.responseInstructions = input.response_instructions;
+        }
+        if (typeof input.deep_research === "boolean") patch.deepResearch = input.deep_research;
+        if (input.effort === "auto" || input.effort === "low" || input.effort === "high") {
+          patch.effort = input.effort;
+        }
+        if (typeof input.enabled === "boolean") patch.enabled = input.enabled;
+        try {
+          const agent = await updateManagedAgent(ctx.userId, agentId, patch);
+          if (!agent) return { content: "Agent not found", isError: true };
+          return {
+            content: JSON.stringify({
+              ok: true,
+              agent: {
+                id: agent.id,
+                name: agent.name,
+                description: agent.description,
+                deepResearch: agent.deepResearch,
+                effort: agent.effort,
+              },
+            }),
+          };
+        } catch (e) {
+          return {
+            content: e instanceof Error ? e.message : "Update agent failed",
+            isError: true,
+          };
+        }
+      }
+      case "delete_agent": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to delete agents.", isError: true };
+        }
+        const agentId = typeof input.agent_id === "string" ? input.agent_id.trim() : "";
+        if (!agentId) return { content: "agent_id is required", isError: true };
+        const ok = await deleteManagedAgent(ctx.userId, agentId);
+        if (!ok) return { content: "Agent not found", isError: true };
+        return { content: JSON.stringify({ ok: true, agentId }) };
       }
       case "generate_image": {
         const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";

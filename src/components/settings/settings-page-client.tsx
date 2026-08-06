@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { readSession } from "@/lib/auth-storage";
+import { emitActiveAgentChange } from "@/lib/agents/types";
 import { WORK_MODE_OPTIONS, type WorkMode } from "@/lib/work-mode";
 
 type SettingsPageTab =
@@ -326,12 +327,29 @@ export function SettingsPageClient() {
   const setActive = async (id: string | null) => {
     setAgentBusy(true);
     try {
-      await fetch("/api/agents", {
+      const res = await fetch("/api/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "setActive", activeAgentId: id }),
       });
+      const data = (await res.json()) as {
+        activeAgentId?: string | null;
+        agents?: AgentRow[];
+      };
       await loadAgents();
+      const agent = data.agents?.find((a) => a.id === (data.activeAgentId ?? id)) ?? null;
+      emitActiveAgentChange({
+        activeAgentId: data.activeAgentId ?? id,
+        agent: agent
+          ? {
+              id: agent.id,
+              name: agent.name,
+              description: agent.description,
+              deepResearch: agent.deepResearch,
+              effort: agent.effort,
+            }
+          : null,
+      });
     } finally {
       setAgentBusy(false);
     }
