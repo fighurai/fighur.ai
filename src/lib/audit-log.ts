@@ -9,6 +9,7 @@ export type AuditAction =
   | "auth.sign_in"
   | "auth.sign_in_sso"
   | "auth.sign_out"
+  | "auth.account_delete"
   | "auth.session_verify"
   | "chat.request"
   | "chat.complete"

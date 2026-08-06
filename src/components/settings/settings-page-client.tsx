@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
-import { readSession } from "@/lib/auth-storage";
+import { clearSession, readSession } from "@/lib/auth-storage";
 import { emitActiveAgentChange } from "@/lib/agents/types";
 import { WORK_MODE_OPTIONS, type WorkMode } from "@/lib/work-mode";
 
 type SettingsPageTab =
+  | "account"
   | "customize"
   | "tasks"
   | "agents"
@@ -19,6 +20,7 @@ type SettingsPageTab =
   | "mcp";
 
 const TABS: { id: SettingsPageTab; label: string; blurb: string }[] = [
+  { id: "account", label: "Account", blurb: "Profile, legal links, delete account" },
   { id: "customize", label: "Customize", blurb: "Behavior & response instructions" },
   { id: "tasks", label: "Tasks", blurb: "Scheduled agent workflows" },
   { id: "agents", label: "Agents", blurb: "Build custom AI agents" },
@@ -73,12 +75,17 @@ const defaultPrefs = (): PrefsState => ({
 });
 
 export function SettingsPageClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as SettingsPageTab | null) || "customize";
   const [tab, setTab] = useState<SettingsPageTab>(
     TABS.some((t) => t.id === initialTab) ? initialTab : "customize",
   );
   const [signedIn, setSignedIn] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [prefs, setPrefs] = useState<PrefsState>(defaultPrefs);
   const [prefsMsg, setPrefsMsg] = useState<string | null>(null);
   const [prefsBusy, setPrefsBusy] = useState(false);
@@ -112,8 +119,35 @@ export function SettingsPageClient() {
   }, [searchParams]);
 
   useEffect(() => {
-    setSignedIn(Boolean(readSession()?.userId));
+    const s = readSession();
+    setSignedIn(Boolean(s?.userId));
+    setAccountEmail(s?.email ?? null);
   }, []);
+
+  const deleteAccount = async () => {
+    if (deleteConfirm.trim().toUpperCase() !== "DELETE") {
+      setDeleteMsg('Type DELETE to confirm.');
+      return;
+    }
+    setDeleteBusy(true);
+    setDeleteMsg(null);
+    try {
+      const res = await fetch("/api/auth/account", { method: "DELETE", credentials: "include" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setDeleteMsg(data.error || "Could not delete account.");
+        return;
+      }
+      clearSession();
+      setSignedIn(false);
+      setAccountEmail(null);
+      router.push("/?accountDeleted=1");
+    } catch {
+      setDeleteMsg("Could not delete account.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
 
   const loadPrefs = useCallback(async () => {
     if (!readSession()?.userId) return;
@@ -429,6 +463,72 @@ export function SettingsPageClient() {
         </nav>
 
         <section className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[var(--bg-elevated)]/60 p-4 sm:p-5">
+          {tab === "account" ? (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Account</h2>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  Manage your FIGHURAI account, legal documents, and deletion (required for App Store
+                  compliance).
+                </p>
+              </div>
+              {signedIn ? (
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-faint)]">
+                    Signed in as
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--text-primary)]">{accountEmail || "Account"}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--text-muted)]">
+                  <Link href="/sign-in" className="text-[var(--accent)] underline">
+                    Sign in
+                  </Link>{" "}
+                  to manage your account.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-3 text-sm">
+                <Link href="/privacy" className="text-[var(--accent)] underline-offset-2 hover:underline">
+                  Privacy Policy
+                </Link>
+                <Link href="/terms" className="text-[var(--accent)] underline-offset-2 hover:underline">
+                  Terms of Use
+                </Link>
+                <Link href="/support" className="text-[var(--accent)] underline-offset-2 hover:underline">
+                  Support
+                </Link>
+              </div>
+              {signedIn ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+                  <h3 className="text-sm font-semibold text-red-300">Delete account</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">
+                    Permanently deletes your account, chats, agents, tasks, apps, and connector tokens
+                    stored on our servers. This cannot be undone. App Store / Stripe subscriptions must
+                    be canceled separately in Apple ID or your billing portal.
+                  </p>
+                  <label className="mt-3 block text-xs text-[var(--text-muted)]">
+                    Type DELETE to confirm
+                    <input
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-white/[0.1] bg-black/30 px-3 py-2 text-sm text-[var(--text-primary)]"
+                      autoComplete="off"
+                    />
+                  </label>
+                  {deleteMsg ? <p className="mt-2 text-xs text-red-300">{deleteMsg}</p> : null}
+                  <button
+                    type="button"
+                    disabled={deleteBusy}
+                    onClick={() => void deleteAccount()}
+                    className="mt-3 rounded-full border border-red-400/40 bg-red-500/15 px-4 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/25 disabled:opacity-50"
+                  >
+                    {deleteBusy ? "Deleting…" : "Delete my account"}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {tab === "customize" ? (
             <div className="space-y-5">
               <div>

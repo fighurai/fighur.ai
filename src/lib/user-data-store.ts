@@ -391,3 +391,37 @@ export async function updateUserStripeBilling(
   await writeUserFile(userId, "profile.json", JSON.stringify(updated, null, 0));
   return true;
 }
+
+/**
+ * Permanently delete a user account and associated server-side data.
+ * Used for App Store Guideline 5.1.1(v) in-app account deletion.
+ */
+export async function deleteUserAccount(userId: string): Promise<{ ok: true; email?: string }> {
+  if (!isSafeUserId(userId)) throw new Error("Invalid user id");
+
+  const profile = await readUserProfile(userId);
+  const email = profile?.email?.trim().toLowerCase();
+
+  const { ACCOUNT_DELETION_FILE_PATHS, deleteUserFile, deleteGlobalUserFile, usesBlobUserStorage } =
+    await import("@/lib/user-file-storage");
+
+  for (const rel of ACCOUNT_DELETION_FILE_PATHS) {
+    await deleteUserFile(userId, rel);
+  }
+
+  if (email) {
+    const key = emailKey(email);
+    await deleteGlobalUserFile(`_by-email/${key}.json`);
+  }
+
+  if (!usesBlobUserStorage()) {
+    const { rm } = await import("fs/promises");
+    try {
+      await rm(userDir(userId), { recursive: true, force: true });
+    } catch {
+      /* already gone */
+    }
+  }
+
+  return { ok: true, email };
+}

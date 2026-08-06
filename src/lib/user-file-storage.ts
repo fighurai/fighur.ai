@@ -160,3 +160,20 @@ export async function deleteGlobalUserFile(relativePath: string): Promise<void> 
   }
   await deleteFs(fsPathGlobal(relativePath));
 }
+
+/** Known per-user relative paths to wipe on account deletion. */
+export const ACCOUNT_DELETION_FILE_PATHS = [
+  "profile.json",
+  "usage.json",
+  "preferences.json",
+  "tasks.json",
+  "apps.json",
+  "skills.json",
+  "agents.json",
+  "mcp-servers.json",
+  "conversations/conversations.json",
+  "connections/google.sealed",
+  "connections/microsoft.sealed",
+  "connections/slack.sealed",
+] as const;
+

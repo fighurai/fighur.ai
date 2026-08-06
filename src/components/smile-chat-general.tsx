@@ -1927,7 +1927,18 @@ export function SmileChatGeneral() {
               </div>
               {composerPanel}
               <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
-                © {new Date().getFullYear()} FIGHURAI
+                © {new Date().getFullYear()} FIGHURAI ·{" "}
+                <Link href="/privacy" className="hover:text-[var(--text-muted)]">
+                  Privacy
+                </Link>{" "}
+                ·{" "}
+                <Link href="/terms" className="hover:text-[var(--text-muted)]">
+                  Terms
+                </Link>{" "}
+                ·{" "}
+                <Link href="/support" className="hover:text-[var(--text-muted)]">
+                  Support
+                </Link>
               </p>
             </div>
           </div>
