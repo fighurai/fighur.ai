@@ -772,6 +772,10 @@ export function SmileChatGeneral() {
     setAttachments([]);
     setError(null);
     setPending(true);
+    flushSync(() => {
+      setStreamingMessageId(assistantId);
+      setStreamOutputStarted(false);
+    });
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
     if (isBuildRequest) {
       setBuildSidebarOpen(true);
@@ -872,11 +876,9 @@ export function SmileChatGeneral() {
       let lastArtifactCheck = 0;
       let streamFinished = false;
 
-      flushSync(() => {
-        setStreamingMessageId(assistantId);
-        setStreamOutputStarted(false);
-      });
+      // Streaming UI already armed before fetch — reset buffer for this response.
       streamTextRef.current?.reset();
+      setStreamOutputStarted(false);
 
       const checkArtifacts = (snapshot: string) => {
         if (!snapshot.includes("```") && !snapshot.includes("data:image") && !snapshot.includes("![")) {

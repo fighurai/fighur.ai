@@ -9,6 +9,10 @@ import { resolveBookingHref } from "@/lib/booking-from-prompt";
 import { SITE_TITLE } from "@/lib/site-brand";
 import { BOOKING_URL } from "@/lib/site-links";
 import {
+  softenMarkdownForStream,
+  stabilizeStreamingMarkdown,
+} from "@/lib/streaming-markdown";
+import {
   deriveTitle,
   loadConversations,
   loadLastActiveId,
@@ -595,7 +599,11 @@ export function SmileChat() {
                     >
                       {m.role === "assistant" ? (
                         <div className="studio-md">
-                          <Markdown>{m.content || (pending ? " " : "")}</Markdown>
+                          <Markdown>
+                            {stabilizeStreamingMarkdown(
+                              softenMarkdownForStream(m.content || (pending ? " " : "")),
+                            )}
+                          </Markdown>
                           {pending && m.content === "" ? (
                             <span className="inline-block h-4 w-0.5 animate-pulse bg-[var(--accent)] align-middle" />
                           ) : null}

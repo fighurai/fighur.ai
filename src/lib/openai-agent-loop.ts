@@ -63,9 +63,28 @@ async function chatCompletion(
   });
 }
 
+const STREAM_HEADERS = {
+  "Content-Type": "text/plain; charset=utf-8",
+  "Cache-Control": "no-store",
+  "X-Accel-Buffering": "no",
+};
+
+function toolStatusLine(name: string): string {
+  switch (name) {
+    case "web_search":
+      return "\n_Searching the web…_\n";
+    case "fetch_url":
+      return "\n_Reading page…_\n";
+    case "get_weather":
+      return "\n_Checking weather…_\n";
+    default:
+      return `\n_Using ${name}…_\n`;
+  }
+}
+
 /**
  * OpenAI-compatible tool loop (OpenAI / Groq / OpenRouter / NVIDIA).
- * Streams the final answer as plain text after tool rounds complete.
+ * Tool rounds use non-streaming completions; the final answer streams token-by-token.
  */
 export async function streamOpenAIWithTools(opts: {
   url: string;
@@ -77,8 +96,10 @@ export async function streamOpenAIWithTools(opts: {
   signal?: AbortSignal;
   maxTokens?: number;
   extraHeaders?: Record<string, string>;
+  /** Preloaded tools — skip a second availableAgentTools (MCP listTools) round-trip. */
+  tools?: AgentToolDefinition[];
 }): Promise<Response> {
-  const tools = await availableAgentTools(opts.ctx);
+  const tools = opts.tools ?? (await availableAgentTools(opts.ctx));
   if (tools.length === 0) {
     throw new Error("No agent tools available");
   }
@@ -94,6 +115,7 @@ export async function streamOpenAIWithTools(opts: {
     new ReadableStream({
       async start(controller) {
         try {
+          controller.enqueue(encoder.encode("\n"));
           for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
             const res = await chatCompletion(
               opts.url,
@@ -139,7 +161,13 @@ export async function streamOpenAIWithTools(opts: {
             const toolCalls = message.tool_calls ?? [];
             if (toolCalls.length === 0) {
               const text = typeof message.content === "string" ? message.content : "";
-              if (text) controller.enqueue(encoder.encode(text));
+              // Progressive enqueue so StreamingText paints immediately (no empty→wall jump).
+              if (text) {
+                const step = 32;
+                for (let i = 0; i < text.length; i += step) {
+                  controller.enqueue(encoder.encode(text.slice(i, i + step)));
+                }
+              }
               if (pendingDeviceOps) {
                 controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
               }
@@ -156,6 +184,7 @@ export async function streamOpenAIWithTools(opts: {
             ];
 
             for (const tc of toolCalls) {
+              controller.enqueue(encoder.encode(toolStatusLine(tc.function.name)));
               let args: Record<string, unknown> = {};
               try {
                 args = JSON.parse(tc.function.arguments || "{}") as Record<string, unknown>;
@@ -167,7 +196,7 @@ export async function streamOpenAIWithTools(opts: {
                 pendingDeviceOps = result.deviceOps;
                 controller.enqueue(
                   encoder.encode(
-                    "\n\n### Organize files on this device\nAn **Apply** popup will open. Click **Apply** to run the plan. **Do not use Terminal.**\n",
+                    "\n\n**Organize files on this device**\nAn **Apply** popup will open. Click **Apply** to run the plan. **Do not use Terminal.**\n",
                   ),
                 );
                 controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
@@ -181,7 +210,6 @@ export async function streamOpenAIWithTools(opts: {
             }
           }
 
-          // Final streaming pass without tools if we exhausted rounds mid-loop
           const finalRes = await chatCompletion(
             opts.url,
             opts.apiKey,
@@ -220,11 +248,6 @@ export async function streamOpenAIWithTools(opts: {
         }
       },
     }),
-    {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-store",
-      },
-    },
+    { headers: STREAM_HEADERS },
   );
 }

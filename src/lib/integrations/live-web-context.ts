@@ -1,13 +1,16 @@
 import { fetchWeather } from "@/lib/integrations/weather-api";
-import { fetchWebPage } from "@/lib/integrations/fetch-url";
 import { searchWeb, simplifySearchQuery } from "@/lib/integrations/web-search-api";
 
 const GREETING_RE =
   /^(hi|hello|hey|thanks|thank you|ok|okay|yo|sup|good (morning|afternoon|evening))[\s!.]*$/i;
 
+/** Only auto-ground when the message likely needs live facts (keeps TTFB low). */
+const LIVE_HINT_RE =
+  /\b(news|latest|today|tonight|right now|currently|weather|forecast|temperature|humidity|price|stock|score|who is|who'?s|president|prime minister|ceo of|happened|breaking|headline|search for|look up|as of|current events?)\b/i;
+
 /**
- * Skip auto web for pure greetings or messages that are mostly pasted code.
- * Everything else gets live grounding so the chatbot actually has web context.
+ * Skip auto web for greetings, code dumps, and ordinary chat that doesn't need live data.
+ * The model can still call web_search / fetch_url tools when needed.
  */
 export function shouldAutoGroundWeb(userText: string): boolean {
   const t = userText.trim();
@@ -16,7 +19,7 @@ export function shouldAutoGroundWeb(userText: string): boolean {
   const fences = [...t.matchAll(/```[\s\S]*?```/g)];
   const codeChars = fences.reduce((n, m) => n + m[0].length, 0);
   if (t.length > 40 && codeChars / t.length > 0.65) return false;
-  return true;
+  return LIVE_HINT_RE.test(t);
 }
 
 function looksLikeWeather(text: string): boolean {
@@ -32,9 +35,23 @@ function extractCityHint(text: string): string | null {
   return m[1].replace(/[?.!,]+$/, "").trim();
 }
 
+async function withBudget<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
- * Server-side live web grounding. Runs search (and weather when relevant) before
- * the model answers — does not rely on the model deciding to call tools.
+ * Fast server-side live web grounding (search snippets only — no deep page fetch).
+ * Deep reads stay on fetch_url tools so the HTTP response can start sooner.
  */
 export async function buildLiveWebContext(userText: string): Promise<string> {
   if (!shouldAutoGroundWeb(userText)) return "";
@@ -42,85 +59,60 @@ export async function buildLiveWebContext(userText: string): Promise<string> {
   const sections: string[] = [];
   const query = simplifySearchQuery(userText) || userText.trim();
 
-  if (looksLikeWeather(userText)) {
-    const city = extractCityHint(userText);
-    if (city) {
-      try {
-        const weather = await fetchWeather(city);
-        if (weather.ok) {
-          sections.push(
-            `### Live weather (${city})\n\`\`\`json\n${JSON.stringify(weather, null, 2).slice(0, 3500)}\n\`\`\``,
-          );
-        } else {
-          sections.push(`### Live weather\nCould not fetch weather for ${city}: ${weather.error}`);
-        }
-      } catch (e) {
-        sections.push(
-          `### Live weather\nWeather lookup failed: ${e instanceof Error ? e.message : "error"}`,
-        );
-      }
-    }
-  }
+  // Hard budget so chat TTFB stays snappy even when providers are slow.
+  const budgetMs = 2_800;
 
-  try {
-    const search = await searchWeb(query, 6);
-    if (search.ok && search.results.length) {
-      const lines = search.results.map((r, i) => {
-        const bits = [`${i + 1}. **${r.title}**`];
-        if (r.url) bits.push(`   URL: ${r.url}`);
-        if (r.snippet) bits.push(`   ${r.snippet.slice(0, 320)}`);
-        return bits.join("\n");
-      });
-      sections.push(
-        `### Live web search (provider: ${search.provider})\nQuery: ${search.query}\n\n${lines.join("\n\n")}`,
-      );
-
-      // Prefer Wikipedia (has incumbents / facts), then other real URLs — skip news wrappers
-      const rankedUrls = [...search.results]
-        .sort((a, b) => {
-          const aw = /wikipedia\.org/i.test(a.url) ? 1 : 0;
-          const bw = /wikipedia\.org/i.test(b.url) ? 1 : 0;
-          return bw - aw;
-        })
-        .map((r) => r.url);
-      const toFetch = rankedUrls
-        .filter(
-          (u) =>
-            /^https?:\/\//i.test(u) &&
-            !/news\.google\.com/i.test(u) &&
-            !/bing\.com\/news/i.test(u) &&
-            !/duckduckgo\.com\/l\//i.test(u),
-        )
-        .slice(0, 2);
-
-      for (const url of toFetch) {
+  const work = (async () => {
+    if (looksLikeWeather(userText)) {
+      const city = extractCityHint(userText);
+      if (city) {
         try {
-          const page = await fetchWebPage(url);
-          if (!page.ok) continue;
-          const body =
-            page.content.length > 6_000
-              ? `${page.content.slice(0, 6_000)}\n\n[truncated]`
-              : page.content;
-          sections.push(`### Fetched page: ${page.title}\nURL: ${page.url}\n\n${body}`);
-        } catch {
-          /* skip page */
+          const weather = await fetchWeather(city);
+          if (weather.ok) {
+            sections.push(
+              `### Live weather (${city})\n\`\`\`json\n${JSON.stringify(weather, null, 2).slice(0, 3500)}\n\`\`\``,
+            );
+          } else {
+            sections.push(`### Live weather\nCould not fetch weather for ${city}: ${weather.error}`);
+          }
+        } catch (e) {
+          sections.push(
+            `### Live weather\nWeather lookup failed: ${e instanceof Error ? e.message : "error"}`,
+          );
         }
       }
-    } else if (!search.ok) {
-      sections.push(`### Live web search\nSearch unavailable: ${search.error}`);
     }
-  } catch (e) {
-    sections.push(
-      `### Live web search\nSearch failed: ${e instanceof Error ? e.message : "error"}`,
-    );
-  }
+
+    try {
+      const search = await searchWeb(query, 6);
+      if (search.ok && search.results.length) {
+        const lines = search.results.map((r, i) => {
+          const bits = [`${i + 1}. **${r.title}**`];
+          if (r.url) bits.push(`   URL: ${r.url}`);
+          if (r.snippet) bits.push(`   ${r.snippet.slice(0, 320)}`);
+          return bits.join("\n");
+        });
+        sections.push(
+          `### Live web search (provider: ${search.provider})\nQuery: ${search.query}\n\n${lines.join("\n\n")}`,
+        );
+      } else if (!search.ok) {
+        sections.push(`### Live web search\nSearch unavailable: ${search.error}`);
+      }
+    } catch (e) {
+      sections.push(
+        `### Live web search\nSearch failed: ${e instanceof Error ? e.message : "error"}`,
+      );
+    }
+  })();
+
+  await withBudget(work, budgetMs);
 
   if (!sections.length) return "";
 
   return `
 
 ## Live web context (fetched by FIGHURAI server — use this; do not claim you lack internet)
-The following was retrieved from the public internet for this user message. Ground your answer in it and cite URLs when present. If it is incomplete, you may still call web_search / fetch_url tools for more.
+The following was retrieved from the public internet for this user message. Ground your answer in it and cite URLs when present. If it is incomplete, call web_search / fetch_url for more.
 
 ${sections.join("\n\n")}`;
 }

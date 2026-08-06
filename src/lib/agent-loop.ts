@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { availableAgentTools } from "@/lib/agent-tools/registry";
 import { executeAgentTool } from "@/lib/agent-tools/execute";
-import type { AgentToolContext } from "@/lib/agent-tools/types";
+import type { AgentToolContext, AgentToolDefinition } from "@/lib/agent-tools/types";
 import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
 import { formatDeviceOpsFence } from "@/lib/device-ops-parse";
 
@@ -24,6 +24,19 @@ function toAnthropicMessages(
     }));
 }
 
+function toolStatusLine(name: string): string {
+  switch (name) {
+    case "web_search":
+      return "\n_Searching the web…_\n";
+    case "fetch_url":
+      return "\n_Reading page…_\n";
+    case "get_weather":
+      return "\n_Checking weather…_\n";
+    default:
+      return `\n_Using ${name}…_\n`;
+  }
+}
+
 /** Anthropic streaming chat with tool loop (CoWork / Codex integrations). */
 export async function streamAnthropicWithTools(
   apiKey: string,
@@ -33,8 +46,9 @@ export async function streamAnthropicWithTools(
   ctx: AgentToolContext,
   signal: AbortSignal | undefined,
   maxTokens = 8192,
+  preloadedTools?: AgentToolDefinition[],
 ): Promise<Response> {
-  const tools = await availableAgentTools(ctx);
+  const tools = preloadedTools ?? (await availableAgentTools(ctx));
   if (tools.length === 0) {
     throw new Error("No agent tools available");
   }
@@ -49,6 +63,8 @@ export async function streamAnthropicWithTools(
     new ReadableStream({
       async start(controller) {
         try {
+          // Kick the body so proxies/clients don't sit on an empty stream.
+          controller.enqueue(encoder.encode("\n"));
           for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
             const stream = anthropic.messages.stream(
               {
@@ -88,6 +104,7 @@ export async function streamAnthropicWithTools(
 
             const toolResults: Anthropic.ToolResultBlockParam[] = [];
             for (const tu of toolUses) {
+              controller.enqueue(encoder.encode(toolStatusLine(tu.name)));
               const input =
                 tu.input && typeof tu.input === "object"
                   ? (tu.input as Record<string, unknown>)
@@ -97,7 +114,7 @@ export async function streamAnthropicWithTools(
                 pendingDeviceOps = result.deviceOps;
                 controller.enqueue(
                   encoder.encode(
-                    "\n\n### Organize files on this device\nAn **Apply** popup will open (or is already open). Click **Apply** to run the plan. **Do not use Terminal.**\n",
+                    "\n\n**Organize files on this device**\nAn **Apply** popup will open (or is already open). Click **Apply** to run the plan. **Do not use Terminal.**\n",
                   ),
                 );
                 controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
@@ -136,6 +153,7 @@ export async function streamAnthropicWithTools(
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-store",
+        "X-Accel-Buffering": "no",
       },
     },
   );

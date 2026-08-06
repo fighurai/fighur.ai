@@ -1,6 +1,7 @@
 /**
- * Narration visible in chat while tokens stream — hides code fences (open and closed)
- * so the bubble shows explanation text, not raw ``` blocks.
+ * Narration visible in chat while tokens stream — hides code fences and
+ * raw markdown heading markers so the bubble doesn't flash `###` before
+ * react-markdown finalizes the reply.
  */
 export function streamingNarration(raw: string): string {
   if (!raw) return "";
@@ -14,7 +15,35 @@ export function streamingNarration(raw: string): string {
     if (lastOpen !== -1) text = text.slice(0, lastOpen);
   }
 
+  text = softenMarkdownForStream(text);
   return text.replace(/\n{3,}/g, "\n\n");
+}
+
+/**
+ * Soften markdown while streaming: show heading titles without `#` hashes,
+ * and hold incomplete trailing markers.
+ */
+export function softenMarkdownForStream(raw: string): string {
+  if (!raw) return raw;
+  let text = raw;
+
+  // Completed heading lines → plain title (Markdown will restyle on finalize)
+  text = text.replace(/^(#{1,6})[ \t]+(.+)$/gm, "$2");
+
+  // Incomplete trailing heading (only hashes / hashes + partial whitespace)
+  text = text.replace(/(?:^|\n)(#{1,6})[ \t]*$/u, (m) => (m.startsWith("\n") ? "\n" : ""));
+
+  // Unclosed bold at the very end — hide the dangling marker chunk
+  if ((text.match(/\*\*/g) || []).length % 2 === 1) {
+    text = text.replace(/\*\*[^*]*$/u, (m) => m.replace(/^\*\*/, ""));
+  }
+
+  return text;
+}
+
+/** @deprecated alias — prefer softenMarkdownForStream */
+export function holdIncompleteMarkdown(raw: string): string {
+  return softenMarkdownForStream(raw);
 }
 
 /**

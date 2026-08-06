@@ -30,7 +30,7 @@ import {
 } from "@/lib/chat-request-guard";
 import { readVerifiedSession } from "@/lib/session-cookie";
 import type { AgentToolContext } from "@/lib/agent-tools/types";
-import { hasAnyAgentTools } from "@/lib/agent-tools/registry";
+import { availableAgentTools } from "@/lib/agent-tools/registry";
 import { providerSupportsToolLoop } from "@/lib/agent-tools/needs-tool-loop";
 import { streamAnthropicWithTools } from "@/lib/agent-loop";
 import { streamOpenAIWithTools } from "@/lib/openai-agent-loop";
@@ -286,6 +286,7 @@ async function streamOpenAICompatible(
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
     },
   });
 }
@@ -338,6 +339,7 @@ async function streamAnthropic(
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-store",
+        "X-Accel-Buffering": "no",
       },
     },
   );
@@ -601,8 +603,10 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
     mcpConfig,
     mcpBindings: {},
   };
-  const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
   const toolsSupported = providerSupportsToolLoop(option.provider);
+  // Load once — agent loops reuse this list (avoids a second MCP listTools wait).
+  const preloadedAgentTools = toolsSupported ? await availableAgentTools(agentCtx) : [];
+  const runtimeAgentTools = preloadedAgentTools.length > 0;
 
   const skillAllowlist = Array.isArray(b.skillAllowlist)
     ? b.skillAllowlist.filter((x): x is string => typeof x === "string")
@@ -613,7 +617,6 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
   // Always attach the tool loop when the provider can call tools — Abacus-style.
   // Keyword gating previously left most chats without web_search and told the model
   // it had no internet, so it refused to browse.
-  const runtimeAgentTools = agentToolsAvailable && toolsSupported;
 
   if (brochureRedesign && effectiveBuilderTarget === "general") {
     effectiveBuilderTarget = "application";
@@ -708,6 +711,7 @@ ${prefs.customInstructions.trim()}`;
               agentCtx,
               request.signal,
               outputMaxTokens,
+              preloadedAgentTools,
             ),
           );
         }
@@ -731,6 +735,7 @@ ${prefs.customInstructions.trim()}`;
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
+              tools: preloadedAgentTools,
               signal: request.signal,
               maxTokens: outputMaxTokens,
             }),
@@ -757,6 +762,7 @@ ${prefs.customInstructions.trim()}`;
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
+              tools: preloadedAgentTools,
               signal: request.signal,
               maxTokens: outputMaxTokens,
             }),
@@ -783,6 +789,7 @@ ${prefs.customInstructions.trim()}`;
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
+              tools: preloadedAgentTools,
               signal: request.signal,
               maxTokens: outputMaxTokens,
               extraHeaders: {
@@ -816,6 +823,7 @@ ${prefs.customInstructions.trim()}`;
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
+              tools: preloadedAgentTools,
               signal: request.signal,
               maxTokens: outputMaxTokens,
             }),
