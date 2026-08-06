@@ -15,7 +15,7 @@ import { runSandboxedCode } from "@/lib/integrations/code-exec";
 import { generateArtifact } from "@/lib/integrations/generate-artifact";
 import { fetchWeather, fetchWeatherAtCoordinates } from "@/lib/integrations/weather-api";
 import { searchWeb } from "@/lib/integrations/web-search-api";
-import { createManagedApp } from "@/lib/apps/store";
+import { createManagedApp, publishManagedApp, unpublishManagedApp } from "@/lib/apps/store";
 import { formatUserLocationLabel } from "@/lib/client-location";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
@@ -175,12 +175,65 @@ export async function executeAgentTool(
               status: app.status,
               fileCount: app.files.length,
               message:
-                "App saved to App Management. Live hosting/custom domains are not enabled yet—tell the user the app is stored and ready for future deploy.",
+                "App saved. Call publish_app with this appId to make it live at /a/<slug>, or the user can Publish from Settings → Apps.",
             },
             null,
             2,
           ),
         };
+      }
+      case "publish_app": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to publish apps.", isError: true };
+        }
+        const appId = typeof input.app_id === "string" ? input.app_id.trim() : "";
+        if (!appId) return { content: "app_id is required", isError: true };
+        try {
+          const app = await publishManagedApp(ctx.userId, appId);
+          return {
+            content: JSON.stringify(
+              {
+                ok: true,
+                appId: app.id,
+                slug: app.slug,
+                status: app.status,
+                deployedUrl: app.deployedUrl,
+                message: `Live at ${app.deployedUrl}. Include this URL in your reply.`,
+              },
+              null,
+              2,
+            ),
+          };
+        } catch (e) {
+          return {
+            content: e instanceof Error ? e.message : "Publish failed",
+            isError: true,
+          };
+        }
+      }
+      case "unpublish_app": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to unpublish apps.", isError: true };
+        }
+        const appId = typeof input.app_id === "string" ? input.app_id.trim() : "";
+        if (!appId) return { content: "app_id is required", isError: true };
+        try {
+          const app = await unpublishManagedApp(ctx.userId, appId);
+          return {
+            content: JSON.stringify({
+              ok: true,
+              appId: app.id,
+              slug: app.slug,
+              status: app.status,
+              message: "App unpublished; /a/<slug> is offline.",
+            }),
+          };
+        } catch (e) {
+          return {
+            content: e instanceof Error ? e.message : "Unpublish failed",
+            isError: true,
+          };
+        }
       }
       case "generate_image": {
         const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";

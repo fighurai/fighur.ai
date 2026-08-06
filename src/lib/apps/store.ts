@@ -1,5 +1,11 @@
 import { createHash, randomUUID } from "crypto";
 
+import {
+  deleteHostedAppIndex,
+  writeHostedAppIndex,
+} from "@/lib/apps/hosted-index";
+import { findHtmlEntry, sanitizeAppFiles } from "@/lib/apps/serve";
+import { getSiteUrl } from "@/lib/site-url";
 import { isSafeUserId } from "@/lib/user-data-store";
 import { readUserFile, writeUserFile } from "@/lib/user-file-storage";
 
@@ -17,12 +23,10 @@ export type ManagedApp = {
   name: string;
   description: string;
   status: ManagedAppStatus;
-  /** Subdomain slug for future *.fighur.app hosting */
+  /** Public path slug: /a/{slug} */
   slug: string;
   files: ManagedAppFile[];
-  /** Optional conversation id that created this app */
   conversationId?: string;
-  /** Future: live URL after deploy */
   deployedUrl?: string;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +55,10 @@ function slugify(name: string): string {
   return base || "app";
 }
 
+function publicAppUrl(slug: string): string {
+  return `${getSiteUrl()}/a/${slug}`;
+}
+
 async function readStore(userId: string): Promise<AppStore> {
   if (!isSafeUserId(userId)) return emptyStore();
   const raw = await readUserFile(userId, FILE);
@@ -71,6 +79,20 @@ async function writeStore(userId: string, store: AppStore): Promise<AppStore> {
   const next = { ...store, updatedAt: new Date().toISOString() };
   await writeUserFile(userId, FILE, JSON.stringify(next));
   return next;
+}
+
+async function mutateApp(
+  userId: string,
+  appId: string,
+  mutator: (app: ManagedApp) => ManagedApp,
+): Promise<ManagedApp | null> {
+  const store = await readStore(userId);
+  const idx = store.apps.findIndex((a) => a.id === appId);
+  if (idx < 0) return null;
+  const next = mutator(store.apps[idx]!);
+  store.apps[idx] = { ...next, updatedAt: new Date().toISOString() };
+  await writeStore(userId, store);
+  return store.apps[idx]!;
 }
 
 export async function listManagedApps(userId: string): Promise<ManagedApp[]> {
@@ -98,22 +120,20 @@ export async function createManagedApp(
   const slugBase = slugify(input.name);
   const hash = createHash("sha256").update(id).digest("hex").slice(0, 6);
   const now = new Date().toISOString();
+  const files = sanitizeAppFiles(input.files);
+  if (!files.length) throw new Error("No valid files (check paths)");
   const app: ManagedApp = {
     id,
     name: input.name.trim().slice(0, 120) || "Untitled app",
     description: (input.description || "").trim().slice(0, 2000),
     status: "ready",
     slug: `${slugBase}-${hash}`,
-    files: input.files.slice(0, 40).map((f) => ({
-      path: f.path.slice(0, 200),
-      content: f.content.slice(0, 200_000),
-    })),
+    files,
     conversationId: input.conversationId,
     createdAt: now,
     updatedAt: now,
   };
   store.apps.unshift(app);
-  // Cap stored apps
   store.apps = store.apps.slice(0, 50);
   await writeStore(userId, store);
   return app;
@@ -124,28 +144,76 @@ export async function updateManagedApp(
   appId: string,
   patch: Partial<Pick<ManagedApp, "name" | "description" | "status" | "files" | "deployedUrl">>,
 ): Promise<ManagedApp | null> {
-  const store = await readStore(userId);
-  const idx = store.apps.findIndex((a) => a.id === appId);
-  if (idx < 0) return null;
-  const prev = store.apps[idx]!;
-  const next: ManagedApp = {
-    ...prev,
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  };
-  if (patch.files) {
-    next.checkpoint = {
-      label: "auto-before-update",
-      files: prev.files,
-      savedAt: new Date().toISOString(),
-    };
+  return mutateApp(userId, appId, (prev) => {
+    const next: ManagedApp = { ...prev, ...patch };
+    if (patch.files) {
+      next.files = sanitizeAppFiles(patch.files);
+      next.checkpoint = {
+        label: "auto-before-update",
+        files: prev.files,
+        savedAt: new Date().toISOString(),
+      };
+    }
+    return next;
+  });
+}
+
+export async function publishManagedApp(userId: string, appId: string): Promise<ManagedApp> {
+  if (!isSafeUserId(userId)) throw new Error("Invalid user");
+  const app = await getManagedApp(userId, appId);
+  if (!app) throw new Error("App not found");
+  if (app.status === "archived") throw new Error("Archived apps cannot be published");
+  if (!findHtmlEntry(app.files)) {
+    throw new Error("Publish requires an HTML entry file (index.html preferred)");
   }
-  store.apps[idx] = next;
-  await writeStore(userId, store);
-  return next;
+
+  await writeHostedAppIndex({
+    userId,
+    appId: app.id,
+    slug: app.slug,
+    publishedAt: new Date().toISOString(),
+  });
+
+  const updated = await mutateApp(userId, appId, (prev) => ({
+    ...prev,
+    status: "deployed",
+    deployedUrl: publicAppUrl(prev.slug),
+  }));
+  if (!updated) throw new Error("App not found");
+  return updated;
+}
+
+export async function unpublishManagedApp(userId: string, appId: string): Promise<ManagedApp> {
+  if (!isSafeUserId(userId)) throw new Error("Invalid user");
+  const app = await getManagedApp(userId, appId);
+  if (!app) throw new Error("App not found");
+
+  await deleteHostedAppIndex(app.slug);
+
+  const updated = await mutateApp(userId, appId, (prev) => {
+    const { deployedUrl: _drop, ...rest } = prev;
+    return {
+      ...rest,
+      status: prev.status === "archived" ? "archived" : "ready",
+    };
+  });
+  if (!updated) throw new Error("App not found");
+  return updated;
 }
 
 export async function archiveManagedApp(userId: string, appId: string): Promise<boolean> {
-  const updated = await updateManagedApp(userId, appId, { status: "archived" });
+  const app = await getManagedApp(userId, appId);
+  if (!app) return false;
+  if (app.status === "deployed" || app.deployedUrl) {
+    try {
+      await deleteHostedAppIndex(app.slug);
+    } catch {
+      /* continue */
+    }
+  }
+  const updated = await mutateApp(userId, appId, (prev) => {
+    const { deployedUrl: _drop, ...rest } = prev;
+    return { ...rest, status: "archived" };
+  });
   return Boolean(updated);
 }

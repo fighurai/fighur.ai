@@ -4,9 +4,12 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const res = NextResponse.next();
   res.headers.set("X-Content-Type-Options", "nosniff");
-  res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  // Hosted user apps set their own frame policy on /a/*
+  if (!request.nextUrl.pathname.startsWith("/a/")) {
+    res.headers.set("X-Frame-Options", "DENY");
+    res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  }
   if (request.nextUrl.protocol === "https:") {
     res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   }

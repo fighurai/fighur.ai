@@ -151,3 +151,12 @@ export async function writeGlobalUserFile(relativePath: string, content: string)
   }
   await writeFs(fsPathGlobal(relativePath), content);
 }
+
+/** Delete a global index file. */
+export async function deleteGlobalUserFile(relativePath: string): Promise<void> {
+  if (usesBlobUserStorage()) {
+    await deleteBlob(blobPathGlobal(`users/${relativePath}`));
+    return;
+  }
+  await deleteFs(fsPathGlobal(relativePath));
+}

@@ -40,6 +40,7 @@ type AppRow = {
   status: string;
   slug: string;
   fileCount: number;
+  deployedUrl?: string;
   updatedAt: string;
 };
 
@@ -385,6 +386,36 @@ export function SettingsControls() {
       body: JSON.stringify({ action: "archive", id }),
     });
     if (res.ok) void refreshApps();
+  };
+
+  const publishApp = async (id: string) => {
+    setAppsError(null);
+    const res = await fetch("/api/apps", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "publish", id }),
+    });
+    const data = (await res.json()) as { error?: string; app?: AppRow };
+    if (!res.ok) {
+      setAppsError(data.error ?? "Publish failed");
+      return;
+    }
+    void refreshApps();
+  };
+
+  const unpublishApp = async (id: string) => {
+    setAppsError(null);
+    const res = await fetch("/api/apps", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "unpublish", id }),
+    });
+    const data = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setAppsError(data.error ?? "Unpublish failed");
+      return;
+    }
+    void refreshApps();
   };
 
   const disconnectProvider = async (provider: "google" | "microsoft") => {
@@ -943,8 +974,10 @@ export function SettingsControls() {
               <div>
                 <p className="text-xs font-semibold text-[var(--text-primary)]">App Management</p>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Apps saved via the <code className="text-[0.65rem]">save_app</code> tool or API.
-                  Hosting and custom domains come next — registry is live now.
+                  Save with <code className="text-[0.65rem]">save_app</code>, then{" "}
+                  <strong>Publish</strong> for a live URL at{" "}
+                  <code className="text-[0.65rem]">/a/&lt;slug&gt;</code>. Custom{" "}
+                  <code className="text-[0.65rem]">*.fighur.app</code> domains come later.
                 </p>
                 {!readSession()?.userId ? (
                   <p className="mt-3 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
@@ -977,19 +1010,48 @@ export function SettingsControls() {
                           <p className="mt-0.5 text-[0.6rem] text-[var(--text-faint)]">
                             {app.slug} · {app.fileCount} files · {app.status}
                           </p>
+                          {app.deployedUrl ? (
+                            <a
+                              href={app.deployedUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1 block truncate text-[0.65rem] text-[var(--accent)] hover:underline"
+                            >
+                              {app.deployedUrl}
+                            </a>
+                          ) : null}
                           {app.description ? (
                             <p className="mt-1 text-[0.65rem] text-[var(--text-muted)]">
                               {app.description.slice(0, 120)}
                             </p>
                           ) : null}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => void archiveApp(app.id)}
-                          className="shrink-0 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
-                        >
-                          Archive
-                        </button>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          {app.status === "deployed" ? (
+                            <button
+                              type="button"
+                              onClick={() => void unpublishApp(app.id)}
+                              className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[0.65rem] text-amber-100 ring-1 ring-amber-400/30 hover:bg-amber-500/25"
+                            >
+                              Unpublish
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void publishApp(app.id)}
+                              className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
+                            >
+                              Publish
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void archiveApp(app.id)}
+                            className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
+                          >
+                            Archive
+                          </button>
+                        </div>
                       </div>
                     </li>
                   ))}

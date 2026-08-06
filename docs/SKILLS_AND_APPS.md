@@ -40,6 +40,7 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 | `run_code` | Sandboxed JavaScript (no network/fs) |
 | `generate_artifact` | Downloadable md/csv/json/html/txt |
 | `save_app` | Persist Canvas files into App Management |
+| `publish_app` / `unpublish_app` | Live URL at `/a/<slug>` |
 | `mcp__…` | User-configured remote MCP tools |
 
 Tool loops run on **Anthropic and OpenAI-compatible** providers when needed.
@@ -48,6 +49,12 @@ Tool loops run on **Anthropic and OpenAI-compatible** providers when needed.
 
 - `GET /api/apps` — list apps (signed-in)
 - `GET /api/apps?id=` — app detail with files
-- `POST /api/apps` — `{ action: "create"|"update"|"archive", ... }`
+- `POST /api/apps` — `{ action: "create"|"update"|"publish"|"unpublish"|"archive", ... }`
 
-Live hosting / custom domains are **not** enabled yet — apps are stored for future deploy.
+### Hosting
+
+1. Save files (need `index.html` or another `.html` entry).
+2. **Publish** → public URL `{site}/a/{slug}` (also via `publish_app` tool).
+3. **Unpublish** / **Archive** takes the URL offline.
+
+Static HTML/CSS/JS (and common assets) are served from the app registry. Custom `*.fighur.app` subdomains are not enabled yet.

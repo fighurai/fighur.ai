@@ -92,7 +92,7 @@ export async function availableAgentTools(
   tools.push({
     name: "save_app",
     description:
-      "Save a multi-file app into the user's App Management registry (draft/ready). Use after building a site/app in Canvas when the user wants it saved for later deploy. Provide files as path+content. Does not publish a live URL yet—returns an app id and slug.",
+      "Save a multi-file app into the user's App Management registry. Use after building a site/app in Canvas. Provide files as path+content. Returns app id and slug. Follow with publish_app to make it live at /a/<slug>.",
     input_schema: {
       type: "object",
       properties: {
@@ -101,7 +101,7 @@ export async function availableAgentTools(
         files: {
           type: "array",
           description:
-            'Array of {"path":"index.html","content":"..."}. Max 40 files.',
+            'Array of {"path":"index.html","content":"..."}. Max 40 files. Include index.html.',
         },
         files_json: {
           type: "string",
@@ -109,6 +109,31 @@ export async function availableAgentTools(
         },
       },
       required: ["name"],
+    },
+  });
+
+  tools.push({
+    name: "publish_app",
+    description:
+      "Publish a saved App Management app to a public URL (/a/<slug>). Requires index.html (or another .html entry). User must be signed in.",
+    input_schema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string", description: "App id from save_app" },
+      },
+      required: ["app_id"],
+    },
+  });
+
+  tools.push({
+    name: "unpublish_app",
+    description: "Take a published app offline (removes /a/<slug>).",
+    input_schema: {
+      type: "object",
+      properties: {
+        app_id: { type: "string", description: "App id" },
+      },
+      required: ["app_id"],
     },
   });
 

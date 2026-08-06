@@ -6,6 +6,8 @@ import {
   createManagedApp,
   getManagedApp,
   listManagedApps,
+  publishManagedApp,
+  unpublishManagedApp,
   updateManagedApp,
 } from "@/lib/apps/store";
 
@@ -78,12 +80,19 @@ export async function POST(request: Request) {
     if (files.length === 0) {
       return NextResponse.json({ error: "files[] required" }, { status: 400 });
     }
-    const app = await createManagedApp(session.userId, {
-      name,
-      description: typeof b.description === "string" ? b.description : undefined,
-      files,
-    });
-    return NextResponse.json({ ok: true, app });
+    try {
+      const app = await createManagedApp(session.userId, {
+        name,
+        description: typeof b.description === "string" ? b.description : undefined,
+        files,
+      });
+      return NextResponse.json({ ok: true, app });
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Create failed" },
+        { status: 400 },
+      );
+    }
   }
 
   if (action === "update") {
@@ -114,6 +123,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, app });
   }
 
+  if (action === "publish") {
+    const id = typeof b.id === "string" ? b.id : "";
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+    try {
+      const app = await publishManagedApp(session.userId, id);
+      return NextResponse.json({ ok: true, app });
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Publish failed" },
+        { status: 400 },
+      );
+    }
+  }
+
+  if (action === "unpublish") {
+    const id = typeof b.id === "string" ? b.id : "";
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+    try {
+      const app = await unpublishManagedApp(session.userId, id);
+      return NextResponse.json({ ok: true, app });
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Unpublish failed" },
+        { status: 400 },
+      );
+    }
+  }
+
   if (action === "archive") {
     const id = typeof b.id === "string" ? b.id : "";
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -122,5 +159,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  return NextResponse.json({ error: "action must be create|update|archive" }, { status: 400 });
+  return NextResponse.json(
+    { error: "action must be create|update|publish|unpublish|archive" },
+    { status: 400 },
+  );
 }
