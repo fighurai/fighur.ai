@@ -315,9 +315,7 @@ body {
   }
 }
 
-.message-body-complete {
-  animation: message-body-in 0.22s ease-out;
-}
+/* Intentionally no enter animation — streaming→final remount must not jump. */
 
 .studio-md {
   width: 100%;

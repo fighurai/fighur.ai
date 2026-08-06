@@ -1,8 +1,16 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import Markdown from "react-markdown";
+import type { Components } from "react-markdown";
 
-import { streamingNarration } from "@/lib/streaming-markdown";
+import { streamingMarkdownView } from "@/lib/streaming-markdown";
 
 export type StreamingTextHandle = {
   reset: () => void;
@@ -16,65 +24,81 @@ type StreamingTextProps = {
   showCursor?: boolean;
   onUpdate?: () => void;
   onFirstOutput?: () => void;
+  components?: Components;
 };
 
 export const StreamingText = forwardRef<StreamingTextHandle, StreamingTextProps>(
-  function StreamingText({ className = "", showCursor = true, onUpdate, onFirstOutput }, ref) {
-    const rootRef = useRef<HTMLParagraphElement>(null);
+  function StreamingText(
+    { className = "", showCursor = true, onUpdate, onFirstOutput, components },
+    ref,
+  ) {
+    const [view, setView] = useState("");
     const bufferRef = useRef("");
-    const displayedRef = useRef("");
     const notifiedRef = useRef(false);
+    const rafRef = useRef(0);
+    const onUpdateRef = useRef(onUpdate);
+    const onFirstOutputRef = useRef(onFirstOutput);
+    onUpdateRef.current = onUpdate;
+    onFirstOutputRef.current = onFirstOutput;
 
-    const applyNarration = (narration: string) => {
-      const el = rootRef.current;
-      if (!el) return;
-
+    const flush = useCallback(() => {
+      rafRef.current = 0;
+      const narration = streamingMarkdownView(bufferRef.current);
       if (narration && !notifiedRef.current) {
         notifiedRef.current = true;
-        onFirstOutput?.();
+        onFirstOutputRef.current?.();
       }
+      setView(narration);
+      onUpdateRef.current?.();
+    }, []);
 
-      const prev = displayedRef.current;
-      if (narration === prev) return;
-
-      // Always replace — softener rewrites earlier tokens (e.g. strips ###),
-      // so append-by-delta can leave hash markers on screen.
-      el.textContent = narration;
-      displayedRef.current = narration;
-      onUpdate?.();
-    };
+    const scheduleFlush = useCallback(() => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(flush);
+    }, [flush]);
 
     useImperativeHandle(
       ref,
       () => ({
         reset() {
+          if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = 0;
+          }
           bufferRef.current = "";
-          displayedRef.current = "";
           notifiedRef.current = false;
-          const el = rootRef.current;
-          if (el) el.textContent = "";
+          setView("");
         },
         push(chunk: string) {
           if (!chunk) return;
           bufferRef.current += chunk;
-          applyNarration(streamingNarration(bufferRef.current));
+          scheduleFlush();
         },
         replaceAll(text: string) {
           bufferRef.current = text;
-          applyNarration(streamingNarration(text));
+          scheduleFlush();
         },
         getLength() {
           return bufferRef.current.length;
         },
       }),
-      [onFirstOutput, onUpdate],
+      [scheduleFlush],
     );
 
     return (
-      <p
-        ref={rootRef}
-        className={`stream-plain m-0 w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-muted)] ${showCursor ? "stream-cursor" : ""} ${className}`.trim()}
-      />
+      <div
+        className={`stream-live stream-live-md w-full min-w-0 max-w-full ${className}`.trim()}
+        aria-live="polite"
+        aria-atomic="false"
+      >
+        <div
+          className={`studio-md stream-md-partial m-0 w-full min-w-0 max-w-full text-sm leading-relaxed text-[var(--text-muted)] ${
+            showCursor && view ? "stream-cursor-inline" : ""
+          }`}
+        >
+          {view ? <Markdown components={components}>{view}</Markdown> : null}
+        </div>
+      </div>
     );
   },
 );

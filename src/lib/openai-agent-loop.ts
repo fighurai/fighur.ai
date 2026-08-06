@@ -162,11 +162,12 @@ export async function streamOpenAIWithTools(opts: {
             const toolCalls = message.tool_calls ?? [];
             if (toolCalls.length === 0) {
               const text = typeof message.content === "string" ? message.content : "";
-              // Progressive enqueue so StreamingText paints immediately (no empty→wall jump).
+              // Yield between slices so the client paints live markdown (no empty→wall dump).
               if (text) {
-                const step = 32;
+                const step = 40;
                 for (let i = 0; i < text.length; i += step) {
                   controller.enqueue(encoder.encode(text.slice(i, i + step)));
+                  await new Promise((r) => setTimeout(r, 12));
                 }
               }
               if (pendingDeviceOps) {

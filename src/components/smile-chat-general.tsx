@@ -296,18 +296,17 @@ const AssistantMessageBody = memo(function AssistantMessageBody({
 
   if (isStreaming) {
     return (
-      <div className="stream-live" aria-live="polite" aria-atomic="false">
-        <StreamingText
-          ref={streamTextRef}
-          onUpdate={onStreamUpdate}
-          onFirstOutput={onStreamFirstOutput}
-        />
-      </div>
+      <StreamingText
+        ref={streamTextRef}
+        components={assistantMarkdownComponents}
+        onUpdate={onStreamUpdate}
+        onFirstOutput={onStreamFirstOutput}
+      />
     );
   }
   if (!displayContent.trim()) return null;
   return (
-    <div className="message-body-complete studio-md w-full min-w-0 max-w-full">
+    <div className="studio-md w-full min-w-0 max-w-full">
       <Markdown components={assistantMarkdownComponents}>{displayContent}</Markdown>
     </div>
   );

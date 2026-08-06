@@ -1,12 +1,16 @@
 /**
- * Narration visible in chat while tokens stream — hides code fences and
- * raw markdown heading markers so the bubble doesn't flash `###` before
- * react-markdown finalizes the reply.
+ * Narration / markdown helpers for live chat streaming.
+ * Keeps the bubble free of raw `###` / dangling `**` while still letting
+ * completed markdown (headings, bold, lists) render as the final reply does.
  */
-export function streamingNarration(raw: string): string {
-  if (!raw) return "";
 
-  let text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+function normalizeNewlines(raw: string): string {
+  return raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+/** Strip finished + open code fences from the chat bubble (Canvas owns builds). */
+export function stripStreamingFences(raw: string): string {
+  let text = normalizeNewlines(raw);
   text = text.replace(/```device-ops[\s\S]*?```/gi, "");
   text = text.replace(/```[^\n`]*\r?\n[\s\S]*?```/g, "");
 
@@ -15,30 +19,48 @@ export function streamingNarration(raw: string): string {
     const lastOpen = text.lastIndexOf("```");
     if (lastOpen !== -1) text = text.slice(0, lastOpen);
   }
-
-  text = softenMarkdownForStream(text);
-  return text.replace(/\n{3,}/g, "\n\n");
+  return text;
 }
 
 /**
- * Soften markdown while streaming: show heading titles without `#` hashes,
+ * Hold incomplete trailing markers so react-markdown doesn't flash raw tokens.
+ * Does NOT strip completed headings/bold — those should render live.
+ */
+export function holdIncompleteMarkdownTokens(raw: string): string {
+  if (!raw) return raw;
+  let text = normalizeNewlines(raw);
+
+  // Trailing bare ATX opener with no title yet: "###" or "## "
+  text = text.replace(/(?:^|\n)[ \t]*#{1,6}[ \t]*$/g, (m) => (m.startsWith("\n") ? "\n" : ""));
+
+  // Unclosed bold at the very end
+  if ((text.match(/\*\*/g) || []).length % 2 === 1) {
+    text = text.replace(/\*\*[^*]*$/u, (m) => m.replace(/^\*\*/, ""));
+  }
+
+  // Unclosed inline `code`
+  if ((text.match(/`/g) || []).length % 2 === 1) {
+    text = text.replace(/`[^`]*$/u, "");
+  }
+
+  return text;
+}
+
+/**
+ * Soften markdown for plain-text surfaces: show heading titles without `#`,
  * and hold incomplete trailing markers.
  */
 export function softenMarkdownForStream(raw: string): string {
   if (!raw) return raw;
-  let text = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  let text = normalizeNewlines(raw);
 
-  // ATX headings (with or without space): "### Title", "###Title", "  ## "
-  // Strip 1–6 leading hashes on each line so hashes never paint mid-stream.
   text = text.replace(/^[ \t]*#{1,6}[ \t]*/gm, "");
-
-  // Closing ATX hashes: "Title ###" left after opener strip
   text = text.replace(/[ \t]+#+[ \t]*$/gm, "");
-
-  // Incomplete trailing bare hashes if any survived (e.g. odd token splits)
   text = text.replace(/(?:^|\n)[ \t]*#{1,6}[ \t]*$/g, (m) => (m.startsWith("\n") ? "\n" : ""));
 
-  // Unclosed bold at the very end — hide the dangling marker chunk
+  // Show completed bold without asterisks in plain mode
+  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+
   if ((text.match(/\*\*/g) || []).length % 2 === 1) {
     text = text.replace(/\*\*[^*]*$/u, (m) => m.replace(/^\*\*/, ""));
   }
@@ -46,9 +68,30 @@ export function softenMarkdownForStream(raw: string): string {
   return text;
 }
 
-/** @deprecated alias — prefer softenMarkdownForStream */
+/** @deprecated alias — prefer softenMarkdownForStream / holdIncompleteMarkdownTokens */
 export function holdIncompleteMarkdown(raw: string): string {
   return softenMarkdownForStream(raw);
+}
+
+/**
+ * Plain-text stream narration (legacy). Prefer streamingMarkdownView for UI.
+ */
+export function streamingNarration(raw: string): string {
+  if (!raw) return "";
+  let text = stripStreamingFences(raw);
+  text = softenMarkdownForStream(text);
+  return text.replace(/\n{3,}/g, "\n\n");
+}
+
+/**
+ * Markdown string for the live bubble — same visual language as the finalized reply.
+ */
+export function streamingMarkdownView(raw: string): string {
+  if (!raw) return "";
+  let text = stripStreamingFences(raw);
+  text = holdIncompleteMarkdownTokens(text);
+  text = stabilizeStreamingMarkdown(text);
+  return text.replace(/\n{3,}/g, "\n\n");
 }
 
 /**
