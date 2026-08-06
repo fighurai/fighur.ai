@@ -43,6 +43,9 @@ import { resolveUserLocation, userLocationSystemContext } from "@/lib/resolve-us
 import { buildPrefetchedUrlContext, extractLinkedUrls } from "@/lib/integrations/fetch-url";
 import { buildLiveWebContext } from "@/lib/integrations/live-web-context";
 import { buildIntegrationSnapshot } from "@/lib/integration-snapshot";
+import { resolveMcpConfig } from "@/lib/mcp/config-store";
+import { formatMcpSystemContext } from "@/lib/mcp/tools";
+import { isStdioMcpServer } from "@/lib/mcp/types";
 import {
   buildSmileSystemPrompt,
   type ChatIntegrationFlags,
@@ -359,6 +362,8 @@ export async function POST(request: Request) {
     canvasContext?: unknown;
     /** Optional conversation-level skill allowlist (Abacus-style wrench preselect) */
     skillAllowlist?: unknown;
+    /** Browser-local MCP config (used when server store empty / anonymous) */
+    mcpConfig?: unknown;
   };
 
   const rawMessages = b.messages;
@@ -583,12 +588,18 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
   const userSession = verified ? { email: verified.email, name: verified.name } : undefined;
   const clientHint = parseClientLocationPayload(b.clientLocation);
   const userLocation = await resolveUserLocation(request, clientHint);
+  const mcpConfig = await resolveMcpConfig({
+    userId: verified?.userId ?? null,
+    clientConfig: b.mcpConfig,
+  });
   const agentCtx: AgentToolContext = {
     request,
     flags: integrationFlags ?? {},
     deviceManifest,
     userLocation,
     userId: verified?.userId ?? null,
+    mcpConfig,
+    mcpBindings: {},
   };
   const agentToolsAvailable = await hasAnyAgentTools(agentCtx);
   const toolsSupported = providerSupportsToolLoop(option.provider);
@@ -622,6 +633,17 @@ ${prefs.customInstructions.trim()}`;
   }
   system += formatSkillsCatalogContext(allSkills);
   system += formatSkillsSystemContext(matchedSkills);
+  {
+    const mcpToolDefs = Object.keys(agentCtx.mcpBindings ?? {}).map((name) => ({
+      name,
+      description: "",
+      input_schema: { type: "object" as const, properties: {} },
+    }));
+    const skippedStdio = Object.entries(mcpConfig.mcpServers)
+      .filter(([, cfg]) => isStdioMcpServer(cfg))
+      .map(([id]) => id);
+    system += formatMcpSystemContext(mcpToolDefs, skippedStdio);
+  }
   if (!brochureRedesign) {
     system += buildOutputSystemContext(effectiveBuilderTarget, lastUserText);
   } else {

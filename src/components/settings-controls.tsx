@@ -100,6 +100,8 @@ export function SettingsControls() {
     '{\n  "mcpServers": {}\n}',
   );
   const [mcpMsg, setMcpMsg] = useState<string | null>(null);
+  const [mcpBusy, setMcpBusy] = useState(false);
+  const [mcpSignedIn, setMcpSignedIn] = useState(false);
 
   const refreshOauth = useCallback(async () => {
     try {
@@ -201,6 +203,34 @@ export function SettingsControls() {
     }
   }, [refreshOauth, refreshLocal]);
 
+  const refreshMcp = useCallback(async () => {
+    try {
+      const res = await fetch("/api/mcp", { cache: "no-store" });
+      const data = (await res.json()) as {
+        signedIn?: boolean;
+        config?: { mcpServers?: Record<string, unknown> };
+      };
+      setMcpSignedIn(Boolean(data.signedIn));
+      if (data.signedIn && data.config && Object.keys(data.config.mcpServers ?? {}).length > 0) {
+        setMcpJson(JSON.stringify(data.config, null, 2));
+        try {
+          localStorage.setItem("fighur-mcp-config", JSON.stringify(data.config, null, 2));
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+    } catch {
+      setMcpSignedIn(false);
+    }
+    try {
+      const saved = localStorage.getItem("fighur-mcp-config");
+      if (saved) setMcpJson(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     setConnectError(null);
@@ -208,15 +238,10 @@ export function SettingsControls() {
     void refreshSkills();
     void refreshPrefs();
     void refreshApps();
+    void refreshMcp();
     const userId = readSession()?.userId;
     if (userId) void syncConnectedServicesFromServer(userId).then(() => refreshLocal());
-    try {
-      const saved = localStorage.getItem("fighur-mcp-config");
-      if (saved) setMcpJson(saved);
-    } catch {
-      /* ignore */
-    }
-  }, [open, refreshOauth, refreshLocal, refreshSkills, refreshPrefs, refreshApps]);
+  }, [open, refreshOauth, refreshLocal, refreshSkills, refreshPrefs, refreshApps, refreshMcp]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -443,13 +468,62 @@ export function SettingsControls() {
     persistLocal(next);
   };
 
-  const saveMcpLocal = () => {
+  const saveMcp = async () => {
+    setMcpBusy(true);
+    setMcpMsg(null);
     try {
-      JSON.parse(mcpJson);
-      localStorage.setItem("fighur-mcp-config", mcpJson);
-      setMcpMsg("Saved locally. MCP runtime wiring ships next — config is ready.");
+      const parsed = JSON.parse(mcpJson) as unknown;
+      localStorage.setItem("fighur-mcp-config", JSON.stringify(parsed, null, 2));
+      if (mcpSignedIn || readSession()?.userId) {
+        const res = await fetch("/api/mcp", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed),
+        });
+        const data = (await res.json()) as { error?: string; ok?: boolean };
+        if (!res.ok) {
+          setMcpMsg(data.error || "Save failed");
+          return;
+        }
+        setMcpMsg("Saved. Remote HTTP/SSE servers are callable in chat.");
+      } else {
+        setMcpMsg("Saved in this browser. Sign in to sync across devices.");
+      }
     } catch {
       setMcpMsg("Invalid JSON.");
+    } finally {
+      setMcpBusy(false);
+    }
+  };
+
+  const probeMcp = async () => {
+    setMcpBusy(true);
+    setMcpMsg(null);
+    try {
+      const parsed = JSON.parse(mcpJson) as unknown;
+      const res = await fetch("/api/mcp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "probe", config: parsed }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        probes?: Array<{ serverId: string; ok: boolean; error?: string; tools?: unknown[] }>;
+      };
+      if (!res.ok) {
+        setMcpMsg(data.error || "Probe failed");
+        return;
+      }
+      const lines = (data.probes ?? []).map((p) =>
+        p.ok
+          ? `${p.serverId}: ok (${p.tools?.length ?? 0} tools)`
+          : `${p.serverId}: ${p.error || "failed"}`,
+      );
+      setMcpMsg(lines.length ? lines.join(" · ") : "No servers configured");
+    } catch {
+      setMcpMsg("Invalid JSON.");
+    } finally {
+      setMcpBusy(false);
     }
   };
 
@@ -929,23 +1003,35 @@ export function SettingsControls() {
                   MCP Server Configuration
                 </p>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Abacus stores MCP under Settings → Connectors → MCP. Paste OpenAI-style{" "}
-                  <code className="text-[0.65rem]">mcpServers</code> JSON here. Runtime execution is
-                  next — config is saved in this browser for now.
+                  Paste OpenAI-style <code className="text-[0.65rem]">mcpServers</code> JSON.
+                  Hosted FigHur runs <strong>remote HTTP/SSE</strong> servers (
+                  <code className="text-[0.65rem]">url</code>
+                  ). Stdio <code className="text-[0.65rem]">command</code> entries are saved but
+                  need a desktop host.
                 </p>
                 <textarea
                   value={mcpJson}
                   onChange={(e) => setMcpJson(e.target.value)}
                   rows={10}
+                  spellCheck={false}
                   className="mt-3 w-full resize-y rounded-xl border border-white/[0.1] bg-black/30 px-3 py-2 font-mono text-[0.65rem] leading-relaxed text-[var(--text-primary)] focus:border-[var(--accent)]/40 focus:outline-none"
                 />
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={saveMcpLocal}
-                    className="rounded-full bg-[var(--accent)]/20 px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30"
+                    disabled={mcpBusy}
+                    onClick={() => void saveMcp()}
+                    className="rounded-full bg-[var(--accent)]/20 px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 disabled:opacity-50"
                   >
                     Save config
+                  </button>
+                  <button
+                    type="button"
+                    disabled={mcpBusy}
+                    onClick={() => void probeMcp()}
+                    className="rounded-full bg-white/[0.08] px-3 py-1.5 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.12] disabled:opacity-50"
+                  >
+                    Test connection
                   </button>
                   {mcpMsg ? (
                     <span className="text-[0.65rem] text-[var(--text-faint)]">{mcpMsg}</span>

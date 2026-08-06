@@ -1,5 +1,7 @@
 import type { AgentToolContext, AgentToolDefinition } from "@/lib/agent-tools/types";
 import { isImageGenerationAvailable } from "@/lib/integrations/image-generation-api";
+import { loadMcpAgentTools } from "@/lib/mcp/tools";
+import { emptyMcpConfig } from "@/lib/mcp/types";
 import { getGoogleAccessToken, getMicrosoftAccessToken } from "@/lib/oauth-token";
 
 export async function availableAgentTools(
@@ -238,6 +240,17 @@ export async function availableAgentTools(
         required: ["path"],
       },
     });
+  }
+
+  const mcpConfig = ctx.mcpConfig ?? emptyMcpConfig();
+  if (Object.keys(mcpConfig.mcpServers).length > 0) {
+    const mcp = await loadMcpAgentTools(mcpConfig);
+    if (ctx.mcpBindings) {
+      Object.assign(ctx.mcpBindings, mcp.bindings);
+    } else {
+      ctx.mcpBindings = mcp.bindings;
+    }
+    tools.push(...mcp.tools);
   }
 
   return tools;

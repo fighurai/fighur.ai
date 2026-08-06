@@ -12,7 +12,7 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 | **Skills** | Customize & Add Skills → Agent tab (toggles, import, export) |
 | **Connectors** | Profile → First Party Connectors |
 | **Apps** | Apps Management Console |
-| **MCP** | Settings → Connectors → MCP Server Configuration (config saved; runtime next) |
+| **MCP** | Settings → Connectors → MCP — remote HTTP/SSE tools run in chat |
 
 ## Skills
 
@@ -26,6 +26,13 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 - `GET /api/skills` — list skills (anonymous sees builtins)
 - `POST /api/skills` — `{ action: "toggle"|"import"|"export"|"delete", ... }` (signed-in)
 
+## MCP
+
+- Config: Settings → **MCP** (`mcpServers` JSON). Signed-in users persist via `PUT /api/mcp`; browser always keeps a local copy for chat.
+- Runtime: hosted FigHur connects to **remote** servers (`url` — Streamable HTTP, with SSE fallback). Tools appear as `mcp__server__tool` in the agent loop.
+- Stdio (`command` / `args`) is stored for desktop hosts but is not executed on Vercel.
+- `POST /api/mcp` with `{ action: "probe", config? }` lists tools / connection errors (signed-in).
+
 ## New agent tools
 
 | Tool | Purpose |
@@ -33,6 +40,7 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 | `run_code` | Sandboxed JavaScript (no network/fs) |
 | `generate_artifact` | Downloadable md/csv/json/html/txt |
 | `save_app` | Persist Canvas files into App Management |
+| `mcp__…` | User-configured remote MCP tools |
 
 Tool loops run on **Anthropic and OpenAI-compatible** providers when needed.
 

@@ -1,6 +1,8 @@
 import type { UserLocationHint } from "@/lib/client-location";
 import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
 import type { DeviceManifest } from "@/lib/device-manifest";
+import type { McpToolBinding } from "@/lib/mcp/tools";
+import type { McpServersConfig } from "@/lib/mcp/types";
 import type { ChatIntegrationFlags } from "@/lib/smile-system-prompt";
 
 export type AgentToolContext = {
@@ -10,6 +12,10 @@ export type AgentToolContext = {
   userLocation: UserLocationHint | null;
   /** Signed-in user id for skills/apps persistence */
   userId?: string | null;
+  /** User MCP servers (HTTP/SSE). */
+  mcpConfig?: McpServersConfig | null;
+  /** Namespaced tool name → server/tool binding (filled when tools are listed). */
+  mcpBindings?: Record<string, McpToolBinding> | null;
 };
 
 export type AgentToolDefinition = {

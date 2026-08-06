@@ -802,6 +802,14 @@ export function SmileChatGeneral() {
         ? await buildDeviceManifestForChat(session.userId)
         : null;
 
+    let mcpConfig: unknown;
+    try {
+      const raw = localStorage.getItem("fighur-mcp-config");
+      if (raw) mcpConfig = JSON.parse(raw);
+    } catch {
+      mcpConfig = undefined;
+    }
+
     const chatPayload = JSON.stringify({
       messages: history,
       model: selectedModel,
@@ -814,6 +822,7 @@ export function SmileChatGeneral() {
         selectedBuildFilePath,
         selectedCanvasSectionId,
       ),
+      mcpConfig: mcpConfig ?? undefined,
       userSession: session
         ? {
             email: session.email,

@@ -142,7 +142,7 @@ function integrationsContext(
 No mail/calendar/device connectors are active this session.
 
 **Live tools (enabled this session)**
-- **get_weather**, **web_search**, **fetch_url**, **run_code**, and **generate_artifact** are available—use them when needed.`;
+- **get_weather**, **web_search**, **fetch_url**, **run_code**, **generate_artifact**, and any **mcp__…** tools from the user's MCP config are available—use them when needed.`;
   }
   const active: string[] = [];
   const mode = flags.workMode ?? (flags.coworkDevice ? "cowork" : "chat");
@@ -171,6 +171,7 @@ No mail/calendar/device connectors are active this session.
   const toolRules = agentToolsEnabled
     ? `**Live tools (enabled this session)**
 - **get_weather**, **web_search**, **fetch_url**, **run_code**, and **generate_artifact** are available.
+- User-configured **mcp__…** tools (if listed) — call when they match the task.
 - **save_app** saves multi-file projects to App Management when the user is signed in.
 - Gmail, Calendar, Outlook: read-only on the server (no send/delete) when connected.
 - Device: \`list_device_files\` / \`read_device_file\` to inspect; **\`propose_device_file_ops\`** to organize (Apply button in the app). Mail/calendar tools are read-only—do not cite them as a reason you cannot move files.

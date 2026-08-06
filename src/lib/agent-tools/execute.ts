@@ -20,6 +20,8 @@ import { formatUserLocationLabel } from "@/lib/client-location";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
 import { manifestSummary } from "@/lib/device-manifest";
+import { executeMcpAgentTool } from "@/lib/mcp/tools";
+import { emptyMcpConfig } from "@/lib/mcp/types";
 import { getGoogleAccessToken, getMicrosoftAccessToken } from "@/lib/oauth-token";
 
 function clampMax(n: unknown, fallback = 8): number {
@@ -319,8 +321,13 @@ export async function executeAgentTool(
           deviceOps: payload,
         };
       }
-      default:
+      default: {
+        const binding = ctx.mcpBindings?.[name];
+        if (binding) {
+          return executeMcpAgentTool(ctx.mcpConfig ?? emptyMcpConfig(), binding, input);
+        }
         return { content: `Unknown tool: ${name}`, isError: true };
+      }
     }
   } catch (e) {
     return {
