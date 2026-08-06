@@ -36,7 +36,9 @@ FIGHURAI is designed so each signed-in user only accesses their own data.
 - Alternatively, set `SMILE_USER_DATA_DIR` to a persistent disk mount path if you self-host.
 - Comply with Google/Microsoft API policies and your privacy policy (data minimization, user deletion on request).
 
-## User rights (recommended policy)
+## User rights
 
 - Users can disconnect integrations in Settings.
-- Account deletion (if you offer it) should remove `users/<uuid>/` on disk and revoke OAuth tokens at the provider.
+- **Delete account** in Settings → Account (`DELETE /api/auth/account`) removes server-side profile, chats, agents, tasks, apps, preferences, and sealed connector tokens, plus the email index.
+- Public policies: `/privacy`, `/terms`, `/support` (App Store listing URLs).
+- See `docs/APP_STORE.md` for full App Store readiness.

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>FIGHURAI</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #07080c;
+        color: #f4f4f5;
+        font-family: system-ui, sans-serif;
+        display: grid;
+        place-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Loading FIGHURAI…</p>
+    <script>
+      // Capacitor production builds use server.url; this page is a fallback shell.
+      if (!window.Capacitor?.isNativePlatform?.()) {
+        location.replace("https://fighur.ai");
+      }
+    </script>
+  </body>
+</html>

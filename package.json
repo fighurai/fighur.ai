@@ -6,13 +6,20 @@
     "dev": "next dev --turbopack -p 3099",
     "build": "next build",
     "start": "next start -p 3099",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cap:sync": "npx cap sync ios",
+    "cap:open": "npx cap open ios",
+    "ios:add": "npx cap add ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/core": "^8.5.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@vercel/blob": "^2.4.0",
     "chrono-node": "^2.9.0",
+    "jose": "^6.2.8",
     "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -20,6 +27,8 @@
     "stripe": "^22.2.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

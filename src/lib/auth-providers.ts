@@ -10,12 +10,25 @@ export function isMicrosoftSsoConfigured(): boolean {
   );
 }
 
+export function isAppleSsoConfigured(): boolean {
+  return Boolean(
+    process.env.APPLE_TEAM_ID?.trim() &&
+      process.env.APPLE_KEY_ID?.trim() &&
+      process.env.APPLE_PRIVATE_KEY?.trim() &&
+      (process.env.APPLE_SERVICES_ID?.trim() || process.env.APPLE_BUNDLE_ID?.trim()),
+  );
+}
+
 export function googleSsoRedirectUri(origin: string): string {
   return `${origin}/api/auth/sso/google/callback`;
 }
 
 export function googleConnectRedirectUri(origin: string): string {
   return `${origin}/api/connect/google/callback`;
+}
+
+export function appleSsoRedirectUri(origin: string): string {
+  return `${origin}/api/auth/sso/apple/callback`;
 }
 
 export function isGoogleConnectConfigured(): boolean {
@@ -31,5 +44,6 @@ export function connectRedirectUris(origin: string) {
     google: googleConnectRedirectUri(origin),
     microsoft: `${origin}/api/connect/microsoft/callback`,
     microsoftSso: `${origin}/api/auth/sso/microsoft/callback`,
+    appleSso: appleSsoRedirectUri(origin),
   };
 }

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
+  appleSsoRedirectUri,
   googleConnectRedirectUri,
   googleSsoRedirectUri,
+  isAppleSsoConfigured,
   isGoogleSsoConfigured,
   isMicrosoftSsoConfigured,
 } from "@/lib/auth-providers";
@@ -22,5 +24,9 @@ export async function GET() {
       connectRedirectUri: googleConnectRedirectUri(origin),
     },
     microsoft: { sso: isMicrosoftSsoConfigured() },
+    apple: {
+      sso: isAppleSsoConfigured(),
+      redirectUri: appleSsoRedirectUri(origin),
+    },
   });
 }

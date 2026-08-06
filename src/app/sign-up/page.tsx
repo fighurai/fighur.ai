@@ -26,6 +26,12 @@ export default function SignUpPage() {
 
       <div className="mt-6 flex flex-col gap-2">
         <a
+          href="/api/auth/sso/apple"
+          className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white py-2.5 text-sm font-medium text-black transition hover:bg-white/90"
+        >
+          Sign up with Apple
+        </a>
+        <a
           href="/api/auth/sso/google"
           className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.04] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-white/[0.08]"
         >

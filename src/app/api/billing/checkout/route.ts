@@ -12,6 +12,18 @@ import { readUserProfile } from "@/lib/user-data-store";
 import { clientIp, userAgent } from "@/lib/request-context";
 
 export async function POST(request: Request) {
+  // App Store Guideline 3.1.1 — digital goods in the iOS app must use IAP, not Stripe.
+  const ua = request.headers.get("user-agent") || "";
+  if (/FigHurNative|Capacitor/i.test(ua)) {
+    return NextResponse.json(
+      {
+        error: "Use Apple In-App Purchase in the iOS app.",
+        code: "USE_APPLE_IAP",
+      },
+      { status: 403 },
+    );
+  }
+
   if (!stripeCheckoutConfigured()) {
     return NextResponse.json(
       {

@@ -56,7 +56,7 @@ export function userDir(userId: string): string {
   return path.join(getUsersRoot(), userId);
 }
 
-export type AuthProvider = "email" | "google" | "microsoft";
+export type AuthProvider = "email" | "google" | "microsoft" | "apple";
 
 export type UserPlan = "free" | "pro";
 
@@ -133,12 +133,16 @@ export type UserProfile = {
   permissions?: Permission[];
   authProvider: AuthProvider;
   passwordHash?: string;
-  ssoSubjects?: { google?: string; microsoft?: string };
+  ssoSubjects?: { google?: string; microsoft?: string; apple?: string };
   emailVerified?: boolean;
   /** free = unlimited Claude; pro = all models */
   plan: UserPlan;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  /** App Store original transaction id (StoreKit 2). */
+  appleOriginalTransactionId?: string;
+  appleProductId?: string;
+  appleEnvironment?: string;
 };
 
 async function ensureDirSecure(dir: string): Promise<void> {
@@ -155,7 +159,7 @@ export type EnsureUserOptions = {
   passwordHash?: string;
   authProvider?: AuthProvider;
   roles?: Role[];
-  ssoSubject?: { provider: "google" | "microsoft"; subject: string };
+  ssoSubject?: { provider: "google" | "microsoft" | "apple"; subject: string };
   emailVerified?: boolean;
   plan?: UserPlan;
 };
@@ -227,6 +231,7 @@ async function ensureUserOnDisk(
     const ssoSubjects = { ...existing.ssoSubjects };
     if (opts.ssoSubject?.provider === "google") ssoSubjects.google = opts.ssoSubject.subject;
     if (opts.ssoSubject?.provider === "microsoft") ssoSubjects.microsoft = opts.ssoSubject.subject;
+    if (opts.ssoSubject?.provider === "apple") ssoSubjects.apple = opts.ssoSubject.subject;
 
     profile = {
       ...existing,
@@ -424,4 +429,57 @@ export async function deleteUserAccount(userId: string): Promise<{ ok: true; ema
   }
 
   return { ok: true, email };
+}
+
+export async function updateUserAppleBilling(
+  userId: string,
+  patch: {
+    plan?: UserPlan;
+    appleOriginalTransactionId?: string | null;
+    appleProductId?: string;
+    appleEnvironment?: string;
+  },
+): Promise<boolean> {
+  const profile = await readUserProfile(userId);
+  if (!profile) return false;
+  const updated: UserProfile = {
+    ...profile,
+    updatedAt: new Date().toISOString(),
+  };
+  if (patch.plan !== undefined) updated.plan = normalizePlan(patch.plan);
+  if (patch.appleOriginalTransactionId === null) {
+    delete updated.appleOriginalTransactionId;
+  } else if (patch.appleOriginalTransactionId !== undefined) {
+    updated.appleOriginalTransactionId = patch.appleOriginalTransactionId;
+    const key = createHash("sha256")
+      .update(`apple-tx:${patch.appleOriginalTransactionId}`, "utf8")
+      .digest("hex");
+    await writeGlobalUserFile(
+      `_by-apple-tx/${key}.json`,
+      JSON.stringify({ userId }, null, 0),
+    );
+  }
+  if (patch.appleProductId !== undefined) updated.appleProductId = patch.appleProductId;
+  if (patch.appleEnvironment !== undefined) updated.appleEnvironment = patch.appleEnvironment;
+  await writeUserFile(userId, "profile.json", JSON.stringify(updated, null, 0));
+  return true;
+}
+
+export async function findUserIdByAppleOriginalTransactionId(
+  originalTransactionId: string,
+): Promise<string | null> {
+  const key = createHash("sha256")
+    .update(`apple-tx:${originalTransactionId}`, "utf8")
+    .digest("hex");
+  const raw = await readGlobalUserFile(`_by-apple-tx/${key}.json`);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { userId?: unknown };
+    if (typeof parsed.userId === "string" && isSafeUserId(parsed.userId)) {
+      return parsed.userId;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }

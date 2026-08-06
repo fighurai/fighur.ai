@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { fetchUsageSummary, hydrateServerSession, clearSession } from "@/lib/auth-storage";
+import { purchaseProWithAppleIap } from "@/lib/native-bridge";
+import { shouldUseAppleIap } from "@/lib/native-platform";
 
 function UpgradeContent() {
   const router = useRouter();
@@ -13,17 +15,31 @@ function UpgradeContent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+  const [useAppleIap, setUseAppleIap] = useState(false);
 
   useEffect(() => {
     void hydrateServerSession().then((ok) => {
       setSignedIn(ok);
     });
+    setUseAppleIap(shouldUseAppleIap());
   }, []);
 
   async function startCheckout() {
     setError(null);
     setBusy(true);
     try {
+      if (shouldUseAppleIap()) {
+        const result = await purchaseProWithAppleIap();
+        if (!result.ok) {
+          setError(result.error || "Purchase failed.");
+          return;
+        }
+        await hydrateServerSession();
+        void fetchUsageSummary();
+        router.push("/?upgraded=pro");
+        return;
+      }
+
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         credentials: "include",
@@ -82,7 +98,11 @@ function UpgradeContent() {
       <ul className="mt-6 space-y-2 text-sm text-[var(--text-muted)]">
         <li>✓ All models in the model picker</li>
         <li>✓ Same private data environment &amp; audit logs</li>
-        <li>✓ Billed securely via Stripe</li>
+        <li>
+          {useAppleIap
+            ? "✓ Billed securely via Apple In-App Purchase"
+            : "✓ Billed securely via Stripe (web)"}
+        </li>
       </ul>
 
       {canceled ? (
@@ -109,7 +129,13 @@ function UpgradeContent() {
           onClick={() => void startCheckout()}
           className="mt-8 w-full rounded-xl bg-[var(--accent)] py-3 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_0_24px_var(--accent-glow)] transition hover:brightness-110 disabled:opacity-50"
         >
-          {busy ? "Redirecting to Stripe…" : "Upgrade to Pro"}
+          {busy
+            ? useAppleIap
+              ? "Starting Apple purchase…"
+              : "Redirecting to Stripe…"
+            : useAppleIap
+              ? "Upgrade with Apple"
+              : "Upgrade to Pro"}
         </button>
       )}
 
@@ -122,6 +148,14 @@ function UpgradeContent() {
       <p className="mt-8 text-center text-xs text-[var(--text-faint)]">
         <Link href="/" className="text-[var(--text-muted)] underline-offset-2 hover:underline">
           Back to chat
+        </Link>
+        {" · "}
+        <Link href="/terms" className="text-[var(--text-muted)] underline-offset-2 hover:underline">
+          Terms
+        </Link>
+        {" · "}
+        <Link href="/privacy" className="text-[var(--text-muted)] underline-offset-2 hover:underline">
+          Privacy
         </Link>
       </p>
     </div>

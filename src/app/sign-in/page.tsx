@@ -14,7 +14,9 @@ const SSO_ERRORS: Record<string, string> = {
   session: "Could not create a session. Contact support if this persists.",
   session_sync: "Signed in with Google but the app could not load your session. Try again.",
   sso_failed: "Sign-in failed on the server. Try again in a moment.",
-  access_denied: "Google sign-in was cancelled or your account is not on the OAuth test-user list.",
+  access_denied: "Sign-in was cancelled or your account is not allowed.",
+  apple_not_configured: "Sign in with Apple is not configured on the server yet.",
+  apple_services_id: "Apple Services ID is missing. Set APPLE_SERVICES_ID.",
 };
 
 export default function SignInPage() {
@@ -55,6 +57,12 @@ function SignInForm() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-2">
+        <a
+          href="/api/auth/sso/apple"
+          className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white py-2.5 text-sm font-medium text-black transition hover:bg-white/90"
+        >
+          Continue with Apple
+        </a>
         <a
           href="/api/auth/sso/google"
           className="flex w-full items-center justify-center rounded-xl border border-white/[0.14] bg-white/[0.04] py-2.5 text-sm font-medium text-[var(--text-primary)] transition hover:bg-white/[0.08]"
