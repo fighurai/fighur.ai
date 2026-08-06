@@ -137,6 +137,46 @@ export async function availableAgentTools(
     },
   });
 
+  tools.push({
+    name: "create_task",
+    description:
+      "Create a scheduled FIGHURAI task (hourly/daily/weekly). Runs the prompt on cron; store last result in Settings → Tasks. User must be signed in.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Short task name" },
+        prompt: { type: "string", description: "Prompt to run on schedule" },
+        schedule: {
+          type: "string",
+          description: "hourly | daily | weekly",
+        },
+        enabled: { type: "boolean", description: "Default true" },
+      },
+      required: ["name", "prompt", "schedule"],
+    },
+  });
+
+  tools.push({
+    name: "list_tasks",
+    description: "List the signed-in user's scheduled tasks (name, schedule, last result).",
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
+  });
+
+  tools.push({
+    name: "delete_task",
+    description: "Delete a scheduled task by id.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "Task id from list_tasks / create_task" },
+      },
+      required: ["task_id"],
+    },
+  });
+
   if (isImageGenerationAvailable()) {
     tools.push({
       name: "generate_image",

@@ -119,11 +119,11 @@ description: Use when designing automations, agent workflows, cron/scheduled job
 2. Produce a step diagram in markdown plus implementation notes.
 3. Call out required connectors (Gmail, Calendar, Slack, APIs) and secrets.
 4. If coding, prefer webhook handlers, job stubs, and idempotent steps.
-5. Be honest: FIGHURAI may not yet run cloud cron—design the workflow and say what must be scheduled externally until Tasks ship.
+5. Prefer FIGHURAI Tasks (create_task) for recurring prompts when the user is signed in; otherwise design the workflow and note external cron.
 
 ## Quality
 - Explicit inputs/outputs per step.
-- No fake "task created" claims without a task API result.`,
+- No fake "task created" claims without a create_task tool result.`,
 ];
 
 let cache: SkillMeta[] | null = null;

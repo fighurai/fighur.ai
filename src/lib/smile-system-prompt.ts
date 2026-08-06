@@ -122,13 +122,14 @@ You are connected to the live web through tools. This is not a offline-only chat
 - **generate_artifact** — downloadable markdown/CSV/JSON/HTML/txt.
 - **save_app** — save multi-file Canvas projects (signed-in).
 - **publish_app** / **unpublish_app** — live URL at /a/<slug> after save.
+- **create_task** / **list_tasks** / **delete_task** — scheduled prompts (hourly/daily/weekly).
 - **generate_image** — DALL·E 3 when configured.
 
 **Forbidden phrases** (tools exist — do not say these):
 "I don't have internet access", "I can't browse", "I cannot open websites", "I don't have access to real-time data", "I cannot search the web", "as an AI I can't access the internet".
 
 Cite sources (title + URL) from tool results. Never invent URLs.
-Never claim scheduled tasks, cloud sandboxes, or browser automation unless a tool result proves it. Only claim a live deploy URL when publish_app (or Settings Publish) returns deployedUrl.`;
+Never claim cloud sandboxes or browser automation unless a tool result proves it. Only claim a live deploy URL when publish_app returns deployedUrl. Only claim a scheduled task exists when create_task / list_tasks succeeds.`;
 }
 
 function integrationsContext(
@@ -175,6 +176,7 @@ No mail/calendar/device connectors are active this session.
 - User-configured **mcp__…** tools (if listed) — call when they match the task.
 - **save_app** saves multi-file projects to App Management when the user is signed in.
 - **publish_app** publishes a live page at /a/<slug>; **unpublish_app** takes it offline.
+- **create_task** schedules hourly/daily/weekly prompts; results show in Settings → Tasks.
 - Gmail, Calendar, Outlook: read-only on the server (no send/delete) when connected.
 - Device: \`list_device_files\` / \`read_device_file\` to inspect; **\`propose_device_file_ops\`** to organize (Apply button in the app). Mail/calendar tools are read-only—do not cite them as a reason you cannot move files.
 - **Call tools** when the user asks about weather, news, inbox, schedule, files, calculations, exports, or saving apps—do not guess.${coworkDeviceOrganize}

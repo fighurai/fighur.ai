@@ -24,7 +24,7 @@ import {
 import { saveWorkModeToServer, syncConnectedServicesFromServer } from "@/lib/connected-services-sync";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
-type SettingsTab = "agent" | "skills" | "connectors" | "apps" | "mcp";
+type SettingsTab = "agent" | "skills" | "connectors" | "apps" | "tasks" | "mcp";
 
 type SkillRow = {
   name: string;
@@ -44,11 +44,23 @@ type AppRow = {
   updatedAt: string;
 };
 
+type TaskRow = {
+  id: string;
+  name: string;
+  schedule: string;
+  enabled: boolean;
+  nextRunAt: string;
+  lastRunAt?: string;
+  lastStatus?: string;
+  lastResultPreview?: string;
+};
+
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "agent", label: "Customize" },
   { id: "skills", label: "Skills" },
   { id: "connectors", label: "Connectors" },
   { id: "apps", label: "Apps" },
+  { id: "tasks", label: "Tasks" },
   { id: "mcp", label: "MCP" },
 ];
 
@@ -96,6 +108,14 @@ export function SettingsControls() {
 
   const [apps, setApps] = useState<AppRow[]>([]);
   const [appsError, setAppsError] = useState<string | null>(null);
+
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const [tasksEphemeral, setTasksEphemeral] = useState(false);
+  const [taskName, setTaskName] = useState("");
+  const [taskPrompt, setTaskPrompt] = useState("");
+  const [taskSchedule, setTaskSchedule] = useState<"hourly" | "daily" | "weekly">("daily");
+  const [taskBusy, setTaskBusy] = useState(false);
 
   const [mcpJson, setMcpJson] = useState(
     '{\n  "mcpServers": {}\n}',
@@ -149,6 +169,34 @@ export function SettingsControls() {
       setApps(Array.isArray(data.apps) ? data.apps : []);
     } catch {
       setAppsError("Failed to load apps");
+    }
+  }, []);
+
+  const refreshTasks = useCallback(async () => {
+    setTasksError(null);
+    if (!readSession()?.userId) {
+      setTasks([]);
+      return;
+    }
+    try {
+      const res = await fetch("/api/tasks", { cache: "no-store" });
+      if (res.status === 401) {
+        setTasks([]);
+        return;
+      }
+      const data = (await res.json()) as {
+        tasks?: TaskRow[];
+        ephemeralStorage?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setTasksError(data.error ?? "Failed to load tasks");
+        return;
+      }
+      setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+      setTasksEphemeral(Boolean(data.ephemeralStorage));
+    } catch {
+      setTasksError("Failed to load tasks");
     }
   }, []);
 
@@ -239,10 +287,11 @@ export function SettingsControls() {
     void refreshSkills();
     void refreshPrefs();
     void refreshApps();
+    void refreshTasks();
     void refreshMcp();
     const userId = readSession()?.userId;
     if (userId) void syncConnectedServicesFromServer(userId).then(() => refreshLocal());
-  }, [open, refreshOauth, refreshLocal, refreshSkills, refreshPrefs, refreshApps, refreshMcp]);
+  }, [open, refreshOauth, refreshLocal, refreshSkills, refreshPrefs, refreshApps, refreshTasks, refreshMcp]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -418,6 +467,64 @@ export function SettingsControls() {
     void refreshApps();
   };
 
+  const createTask = async () => {
+    setTaskBusy(true);
+    setTasksError(null);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          name: taskName,
+          prompt: taskPrompt,
+          schedule: taskSchedule,
+          enabled: true,
+        }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setTasksError(data.error ?? "Create failed");
+        return;
+      }
+      setTaskName("");
+      setTaskPrompt("");
+      void refreshTasks();
+    } finally {
+      setTaskBusy(false);
+    }
+  };
+
+  const toggleTask = async (id: string, enabled: boolean) => {
+    setTasksError(null);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update", id, enabled }),
+    });
+    const data = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setTasksError(data.error ?? "Update failed");
+      return;
+    }
+    void refreshTasks();
+  };
+
+  const deleteTask = async (id: string) => {
+    setTasksError(null);
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id }),
+    });
+    const data = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setTasksError(data.error ?? "Delete failed");
+      return;
+    }
+    void refreshTasks();
+  };
+
   const disconnectProvider = async (provider: "google" | "microsoft") => {
     setOauthBusy(provider);
     try {
@@ -585,7 +692,7 @@ export function SettingsControls() {
           <div className="border-b border-white/[0.08] px-4 pt-3 pb-0">
             <p className="text-xs font-semibold text-[var(--text-primary)]">Settings</p>
             <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">
-              Customize AI · Skills · Connectors · Apps — Abacus-style control surface
+              Customize · Skills · Connectors · Apps · Tasks · MCP
             </p>
             <div
               className="mt-3 flex gap-0.5 overflow-x-auto pb-2"
@@ -1056,6 +1163,122 @@ export function SettingsControls() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            ) : null}
+
+            {tab === "tasks" ? (
+              <div>
+                <p className="text-xs font-semibold text-[var(--text-primary)]">Scheduled Tasks</p>
+                <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
+                  Abacus-style recurring prompts. Cron runs every 15 minutes on Vercel when{" "}
+                  <code className="text-[0.65rem]">CRON_SECRET</code> is set. Results appear under
+                  each task.
+                </p>
+                {!readSession()?.userId ? (
+                  <p className="mt-3 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
+                    <Link href="/sign-in" className="font-medium underline-offset-2 hover:underline">
+                      Sign in
+                    </Link>{" "}
+                    to create tasks.
+                  </p>
+                ) : null}
+                {tasksEphemeral ? (
+                  <p className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-[0.65rem] text-amber-100/95">
+                    Storage looks ephemeral on this host — enable Blob (
+                    <code className="text-[0.6rem]">BLOB_READ_WRITE_TOKEN</code>) so tasks survive
+                    deploys.
+                  </p>
+                ) : null}
+                {tasksError ? (
+                  <p className="mt-2 text-[0.65rem] text-red-300/90">{tasksError}</p>
+                ) : null}
+
+                {readSession()?.userId ? (
+                  <div className="mt-3 space-y-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                    <input
+                      value={taskName}
+                      onChange={(e) => setTaskName(e.target.value)}
+                      placeholder="Task name"
+                      className="w-full rounded-lg border border-white/[0.1] bg-black/30 px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]/40 focus:outline-none"
+                    />
+                    <textarea
+                      value={taskPrompt}
+                      onChange={(e) => setTaskPrompt(e.target.value)}
+                      placeholder="Prompt to run on schedule…"
+                      rows={3}
+                      className="w-full resize-y rounded-lg border border-white/[0.1] bg-black/30 px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:border-[var(--accent)]/40 focus:outline-none"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={taskSchedule}
+                        onChange={(e) =>
+                          setTaskSchedule(e.target.value as "hourly" | "daily" | "weekly")
+                        }
+                        className="rounded-full border border-white/[0.1] bg-black/30 px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)]"
+                      >
+                        <option value="hourly">Hourly</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                      <button
+                        type="button"
+                        disabled={taskBusy || !taskName.trim() || !taskPrompt.trim()}
+                        onClick={() => void createTask()}
+                        className="rounded-full bg-[var(--accent)]/20 px-3 py-1 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 disabled:opacity-50"
+                      >
+                        Create task
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <ul className="mt-3 space-y-2">
+                  {tasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[var(--text-primary)]">
+                            {task.name}
+                          </p>
+                          <p className="mt-0.5 text-[0.6rem] text-[var(--text-faint)]">
+                            {task.schedule} · {task.enabled ? "on" : "off"} · next{" "}
+                            {new Date(task.nextRunAt).toLocaleString()}
+                          </p>
+                          {task.lastStatus ? (
+                            <p className="mt-1 text-[0.65rem] text-[var(--text-muted)]">
+                              Last: {task.lastStatus}
+                              {task.lastResultPreview ? ` — ${task.lastResultPreview}` : ""}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => void toggleTask(task.id, !task.enabled)}
+                            className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
+                          >
+                            {task.enabled ? "Disable" : "Enable"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteTask(task.id)}
+                            className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {tasks.length === 0 && readSession()?.userId ? (
+                  <p className="mt-3 text-[0.7rem] text-[var(--text-faint)]">
+                    No tasks yet. Create one above or ask FIGHURAI to schedule a recurring prompt.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 

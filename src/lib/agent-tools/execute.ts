@@ -15,7 +15,18 @@ import { runSandboxedCode } from "@/lib/integrations/code-exec";
 import { generateArtifact } from "@/lib/integrations/generate-artifact";
 import { fetchWeather, fetchWeatherAtCoordinates } from "@/lib/integrations/weather-api";
 import { searchWeb } from "@/lib/integrations/web-search-api";
-import { createManagedApp, publishManagedApp, unpublishManagedApp } from "@/lib/apps/store";
+import {
+  createManagedApp,
+  publishManagedApp,
+  unpublishManagedApp,
+} from "@/lib/apps/store";
+import {
+  createManagedTask,
+  deleteManagedTask,
+  listManagedTasks,
+} from "@/lib/tasks/store";
+import { isTaskSchedulePreset } from "@/lib/tasks/schedule";
+import { taskSummary } from "@/lib/tasks/run";
 import { formatUserLocationLabel } from "@/lib/client-location";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
@@ -234,6 +245,56 @@ export async function executeAgentTool(
             isError: true,
           };
         }
+      }
+      case "create_task": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to create tasks.", isError: true };
+        }
+        const name = typeof input.name === "string" ? input.name : "";
+        const prompt = typeof input.prompt === "string" ? input.prompt : "";
+        const schedule = input.schedule;
+        if (!isTaskSchedulePreset(schedule)) {
+          return { content: "schedule must be hourly, daily, or weekly", isError: true };
+        }
+        try {
+          const task = await createManagedTask(ctx.userId, {
+            name,
+            prompt,
+            schedule,
+            enabled: input.enabled !== false,
+          });
+          return {
+            content: JSON.stringify({
+              ok: true,
+              task: taskSummary(task),
+              message: `Task scheduled (${schedule}). Next run ${task.nextRunAt}. Manage in Settings → Tasks.`,
+            }),
+          };
+        } catch (e) {
+          return {
+            content: e instanceof Error ? e.message : "Create task failed",
+            isError: true,
+          };
+        }
+      }
+      case "list_tasks": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to list tasks.", isError: true };
+        }
+        const tasks = await listManagedTasks(ctx.userId);
+        return {
+          content: JSON.stringify({ ok: true, tasks: tasks.map(taskSummary) }, null, 2),
+        };
+      }
+      case "delete_task": {
+        if (!ctx.userId) {
+          return { content: "User must be signed in to delete tasks.", isError: true };
+        }
+        const taskId = typeof input.task_id === "string" ? input.task_id.trim() : "";
+        if (!taskId) return { content: "task_id is required", isError: true };
+        const ok = await deleteManagedTask(ctx.userId, taskId);
+        if (!ok) return { content: "Task not found", isError: true };
+        return { content: JSON.stringify({ ok: true, taskId }) };
       }
       case "generate_image": {
         const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";

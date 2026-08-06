@@ -12,6 +12,7 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 | **Skills** | Customize & Add Skills → Agent tab (toggles, import, export) |
 | **Connectors** | Profile → First Party Connectors |
 | **Apps** | Apps Management Console |
+| **Tasks** | Scheduled / recurring agent prompts |
 | **MCP** | Settings → Connectors → MCP — remote HTTP/SSE tools run in chat |
 
 ## Skills
@@ -41,6 +42,7 @@ Open **Settings** in the header. Tabs map to Abacus surfaces:
 | `generate_artifact` | Downloadable md/csv/json/html/txt |
 | `save_app` | Persist Canvas files into App Management |
 | `publish_app` / `unpublish_app` | Live URL at `/a/<slug>` |
+| `create_task` / `list_tasks` / `delete_task` | Scheduled prompts (hourly/daily/weekly) |
 | `mcp__…` | User-configured remote MCP tools |
 
 Tool loops run on **Anthropic and OpenAI-compatible** providers when needed.
@@ -58,3 +60,11 @@ Tool loops run on **Anthropic and OpenAI-compatible** providers when needed.
 3. **Unpublish** / **Archive** takes the URL offline.
 
 Static HTML/CSS/JS (and common assets) are served from the app registry. Custom `*.fighur.app` subdomains are not enabled yet.
+
+## Tasks
+
+- Settings → **Tasks**: create hourly / daily / weekly prompts; enable/disable; view last result.
+- `GET/POST /api/tasks` — session-authed CRUD.
+- `GET|POST /api/cron/tasks` — Vercel Cron (every 15m via `vercel.json`); requires `Authorization: Bearer $CRON_SECRET` in production.
+- Durable schedules need Blob (`BLOB_READ_WRITE_TOKEN`) — `/tmp` alone will not survive deploys.
+- Agent tools: `create_task`, `list_tasks`, `delete_task`. Runs are text-only (no tool loop).
