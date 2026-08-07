@@ -1555,7 +1555,7 @@ export function SmileChatGeneral() {
   );
 
   const sidebarContent = (
-    <>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-white/[0.06] p-3">
         <button
           type="button"
@@ -1565,7 +1565,7 @@ export function SmileChatGeneral() {
           + New chat
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-2">
         <p className="px-2 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
           Previous chats
         </p>
@@ -1662,16 +1662,20 @@ export function SmileChatGeneral() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 
   return (
     <div
-      className={`flex flex-1 flex-col md:flex-row ${showEmpty ? "min-h-[calc(100dvh-3.25rem)]" : "min-h-0"}`}
+      className={`flex flex-1 flex-col md:flex-row ${
+        showEmpty
+          ? "min-h-[calc(100dvh-3.25rem)]"
+          : "h-full max-h-full min-h-0 overflow-hidden"
+      }`}
     >
       {layoutPrefs.sidebarVisible ? (
         <aside
-          className={`relative hidden min-h-0 shrink-0 flex-col bg-[var(--bg-elevated)]/90 md:flex ${
+          className={`relative hidden h-full max-h-full min-h-0 shrink-0 flex-col overflow-hidden bg-[var(--bg-elevated)]/90 md:flex ${
             layoutPrefs.sidebarSide === "right" ? "border-l border-white/[0.06]" : "border-r border-white/[0.06]"
           }`}
           style={{
@@ -1727,7 +1731,9 @@ export function SmileChatGeneral() {
       ) : null}
 
       <div
-        className={`flex min-h-0 flex-1 flex-col ${showEmpty ? "" : "h-[calc(100dvh-3.25rem)] max-h-[calc(100dvh-3.25rem)] overflow-hidden"}`}
+        className={`flex min-h-0 flex-1 flex-col ${
+          showEmpty ? "" : "h-full max-h-full overflow-hidden"
+        }`}
         style={{ order: columnOrders.main }}
       >
         <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">

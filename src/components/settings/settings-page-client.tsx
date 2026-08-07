@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { clearSession, readSession } from "@/lib/auth-storage";
 import { emitActiveAgentChange } from "@/lib/agents/types";
@@ -19,16 +19,23 @@ type SettingsPageTab =
   | "apps"
   | "mcp";
 
+const NAV_GROUPS: { label: string; ids: SettingsPageTab[] }[] = [
+  { label: "Account", ids: ["account"] },
+  { label: "Preferences", ids: ["customize", "research"] },
+  { label: "Automation", ids: ["tasks", "agents"] },
+  { label: "Integrations", ids: ["skills", "connectors", "apps", "mcp"] },
+];
+
 const TABS: { id: SettingsPageTab; label: string; blurb: string }[] = [
-  { id: "account", label: "Account", blurb: "Profile, legal links, delete account" },
-  { id: "customize", label: "Customize", blurb: "Behavior & response instructions" },
-  { id: "tasks", label: "Tasks", blurb: "Scheduled agent workflows" },
-  { id: "agents", label: "Agents", blurb: "Build custom AI agents" },
-  { id: "research", label: "Deep Research", blurb: "Multi-source research prefs" },
-  { id: "skills", label: "Skills", blurb: "Manage in quick Settings" },
-  { id: "connectors", label: "Connectors", blurb: "Manage in quick Settings" },
-  { id: "apps", label: "Apps", blurb: "Manage in quick Settings" },
-  { id: "mcp", label: "MCP", blurb: "Manage in quick Settings" },
+  { id: "account", label: "Account", blurb: "Profile, legal, delete" },
+  { id: "customize", label: "Customize", blurb: "Behavior & response" },
+  { id: "tasks", label: "Tasks", blurb: "Scheduled workflows" },
+  { id: "agents", label: "Agents", blurb: "Custom chat agents" },
+  { id: "research", label: "Deep Research", blurb: "Research preferences" },
+  { id: "skills", label: "Skills", blurb: "Skill packs & toggles" },
+  { id: "connectors", label: "Connectors", blurb: "Google, Microsoft, device" },
+  { id: "apps", label: "Apps", blurb: "Published /a apps" },
+  { id: "mcp", label: "MCP", blurb: "Model Context Protocol" },
 ];
 
 type TaskRow = {
@@ -389,89 +396,98 @@ export function SettingsPageClient() {
     }
   };
 
-  const quickLinkTabs = useMemo(
-    () => TABS.filter((t) => ["skills", "connectors", "apps", "mcp"].includes(t.id)),
-    [],
-  );
+  const tabMeta = TABS.find((t) => t.id === tab) ?? TABS[0]!;
+
+  const selectTab = (id: SettingsPageTab) => {
+    setTab(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", id);
+    window.history.replaceState(null, "", url.pathname + "?" + url.searchParams.toString());
+  };
+
+  const openHeaderSettings = () => {
+    router.push("/");
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("fighur-open-header-settings"));
+    }, 400);
+  };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 md:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">
-            Workspace
-          </p>
-          <h1 className="mt-1 font-[family-name:var(--font-fraunces)] text-3xl font-semibold text-[var(--text-primary)]">
-            Settings
-          </h1>
-          <p className="mt-2 max-w-xl text-sm text-[var(--text-muted)]">
-            Abacus-style control center — instructions, scheduled tasks, custom agents, and deep
-            research. Quick connectors/skills stay in the header Settings menu.
-          </p>
-        </div>
-        <Link
-          href="/"
-          className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-        >
-          ← Back to chat
-        </Link>
-      </div>
-
-      {!signedIn ? (
-        <p className="rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-100/95">
-          <Link href="/sign-in" className="font-semibold underline-offset-2 hover:underline">
-            Sign in
-          </Link>{" "}
-          to create agents, tasks, and sync preferences across devices.
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-6 md:flex-row">
-        <nav className="flex shrink-0 flex-row gap-1 overflow-x-auto md:w-48 md:flex-col md:overflow-visible">
-          {TABS.filter((t) => !quickLinkTabs.includes(t)).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setTab(t.id);
-                const url = new URL(window.location.href);
-                url.searchParams.set("tab", t.id);
-                window.history.replaceState(null, "", url.pathname + "?" + url.searchParams.toString());
-              }}
-              className={`rounded-xl px-3 py-2 text-left text-xs transition ${
-                tab === t.id
-                  ? "bg-[var(--accent)]/15 font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30"
-                  : "text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              <span className="block">{t.label}</span>
-              <span className="mt-0.5 hidden text-[0.65rem] font-normal text-[var(--text-faint)] md:block">
-                {t.blurb}
-              </span>
-            </button>
-          ))}
-          <div className="mt-2 hidden border-t border-white/[0.06] pt-2 md:block">
-            <p className="px-3 text-[0.6rem] uppercase tracking-wide text-[var(--text-faint)]">
-              Also in header Settings
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-3 sm:px-5 md:px-6">
+        <header className="flex shrink-0 flex-wrap items-end justify-between gap-3 border-b border-white/[0.06] py-4 sm:py-5">
+          <div>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">
+              Workspace
             </p>
-            {quickLinkTabs.map((t) => (
-              <p key={t.id} className="px-3 py-1 text-[0.7rem] text-[var(--text-muted)]">
-                {t.label}
-              </p>
-            ))}
+            <h1 className="mt-1 font-[family-name:var(--font-fraunces)] text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl">
+              Settings
+            </h1>
+            <p className="mt-1.5 max-w-xl text-sm text-[var(--text-muted)]">
+              Account, automation, and integrations — pick a section on the left.
+            </p>
           </div>
-        </nav>
+          <Link
+            href="/"
+            className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          >
+            ← Back to chat
+          </Link>
+        </header>
 
-        <section className="min-w-0 flex-1 rounded-2xl border border-white/[0.08] bg-[var(--bg-elevated)]/60 p-4 sm:p-5">
+        {!signedIn ? (
+          <p className="mt-3 shrink-0 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-100/95">
+            <Link href="/sign-in" className="font-semibold underline-offset-2 hover:underline">
+              Sign in
+            </Link>{" "}
+            to create agents, tasks, and sync preferences across devices.
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:mt-5 md:flex-row md:gap-6">
+          <nav
+            aria-label="Settings sections"
+            className="flex shrink-0 flex-row gap-1 overflow-x-auto pb-1 md:h-full md:w-56 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-4"
+          >
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="flex flex-row gap-1 md:mb-3 md:flex-col md:gap-0.5">
+                <p className="hidden px-3 pb-1 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] md:block">
+                  {group.label}
+                </p>
+                {group.ids.map((id) => {
+                  const t = TABS.find((x) => x.id === id)!;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => selectTab(t.id)}
+                      className={`shrink-0 rounded-xl px-3 py-2 text-left text-xs transition ${
+                        tab === t.id
+                          ? "bg-[var(--accent)]/15 font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30"
+                          : "text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-primary)]"
+                      }`}
+                    >
+                      <span className="block">{t.label}</span>
+                      <span className="mt-0.5 hidden text-[0.65rem] font-normal text-[var(--text-faint)] md:block">
+                        {t.blurb}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
+
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[var(--bg-elevated)]/60">
+            <div className="shrink-0 border-b border-white/[0.06] px-4 py-3 sm:px-5">
+              <h2 className="text-base font-semibold text-[var(--text-primary)] sm:text-lg">
+                {tabMeta.label}
+              </h2>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)] sm:text-sm">{tabMeta.blurb}</p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5">
           {tab === "account" ? (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Account</h2>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">
-                  Manage your FIGHURAI account, legal documents, and deletion (required for App Store
-                  compliance).
-                </p>
-              </div>
               {signedIn ? (
                 <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
                   <p className="text-xs font-medium uppercase tracking-wide text-[var(--text-faint)]">
@@ -997,7 +1013,47 @@ export function SettingsPageClient() {
               </ul>
             </div>
           ) : null}
-        </section>
+
+          {tab === "skills" || tab === "connectors" || tab === "apps" || tab === "mcp" ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  {tabMeta.label} live controls
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">
+                  {tab === "skills"
+                    ? "Enable skill packs, import SKILL.md files, and control what tools the agent can use."
+                    : tab === "connectors"
+                      ? "Connect Google, Microsoft, Slack, and a local device folder for chat tools."
+                      : tab === "apps"
+                        ? "Browse published apps under /a/… and manage Canvas project publishes."
+                        : "Configure MCP servers so chat can call external tools you define."}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={openHeaderSettings}
+                    className="rounded-full bg-[var(--accent)]/15 px-4 py-2 text-xs font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 transition hover:bg-[var(--accent)]/25"
+                  >
+                    Open in chat header Settings
+                  </button>
+                  <Link
+                    href="/"
+                    className="rounded-full border border-white/[0.1] px-4 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    Back to chat
+                  </Link>
+                </div>
+              </div>
+              <p className="text-[0.7rem] text-[var(--text-faint)]">
+                Quick Settings in the header stays available while you chat — this page is for
+                account, tasks, agents, and research prefs.
+              </p>
+            </div>
+          ) : null}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

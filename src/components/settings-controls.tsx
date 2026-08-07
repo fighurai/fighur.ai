@@ -310,6 +310,12 @@ export function SettingsControls() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  useEffect(() => {
+    const openFromPage = () => setOpen(true);
+    window.addEventListener("fighur-open-header-settings", openFromPage);
+    return () => window.removeEventListener("fighur-open-header-settings", openFromPage);
+  }, []);
+
   const persistLocal = useCallback((next: ConnectedServicesState) => {
     setLocal(next);
     writeConnectedServices(next, readSession()?.userId);
