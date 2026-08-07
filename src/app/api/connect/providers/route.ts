@@ -4,6 +4,7 @@ import {
   connectRedirectUris,
   isGoogleConnectConfigured,
   isMicrosoftConnectConfigured,
+  isSlackConnectConfigured,
 } from "@/lib/auth-providers";
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
@@ -16,5 +17,6 @@ export async function GET() {
     redirectUris: connectRedirectUris(origin),
     google: { connect: isGoogleConnectConfigured() },
     microsoft: { connect: isMicrosoftConnectConfigured() },
+    slack: { connect: isSlackConnectConfigured() },
   });
 }

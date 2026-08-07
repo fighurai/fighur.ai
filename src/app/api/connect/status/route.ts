@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { isGoogleConnectConfigured, isMicrosoftConnectConfigured } from "@/lib/auth-providers";
-import { getAppSealingSecret, unsealJson } from "@/lib/oauth-crypto";
+import {
+  isGoogleConnectConfigured,
+  isMicrosoftConnectConfigured,
+  isSlackConnectConfigured,
+} from "@/lib/auth-providers";
+import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { readVerifiedSession } from "@/lib/session-cookie";
-import { readGoogleFromStore, readMicrosoftFromStore } from "@/lib/user-oauth-store";
+import {
+  readGoogleFromStore,
+  readMicrosoftFromStore,
+  readSlackFromStore,
+} from "@/lib/user-oauth-store";
 
 export async function GET(request: Request) {
   const secret = getAppSealingSecret();
@@ -11,8 +19,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       configured: false,
       signedIn: false,
-      google: { connected: false },
-      microsoft: { connected: false },
+      google: { connected: false, available: false },
+      microsoft: { connected: false, available: false },
+      slack: { connected: false, available: false },
       hint: "Set SMILE_APP_SECRET or SMILE_OAUTH_COOKIE_SECRET (16+ chars) and provider client IDs to enable OAuth.",
     });
   }
@@ -24,6 +33,8 @@ export async function GET(request: Request) {
   let googleConnected = false;
   let microsoftEmail: string | undefined;
   let microsoftConnected = false;
+  let slackTeam: string | undefined;
+  let slackConnected = false;
 
   if (session) {
     const g = await readGoogleFromStore(session.userId, secret, request);
@@ -35,6 +46,11 @@ export async function GET(request: Request) {
     if (m) {
       microsoftConnected = true;
       microsoftEmail = m.email;
+    }
+    const s = await readSlackFromStore(session.userId, secret, request);
+    if (s) {
+      slackConnected = true;
+      slackTeam = typeof s.team_name === "string" ? s.team_name : s.email;
     }
   }
 
@@ -52,8 +68,15 @@ export async function GET(request: Request) {
       email: microsoftEmail,
       available: isMicrosoftConnectConfigured(),
     },
+    slack: {
+      connected: slackConnected,
+      team: slackTeam,
+      available: isSlackConnectConfigured(),
+    },
     ...(!signedIn
-      ? { hint: "Sign in to connect Gmail, Calendar, or Outlook. Connections are private to your account." }
+      ? {
+          hint: "Sign in to connect Gmail, Calendar, Outlook, or Slack. Connections are private to your account.",
+        }
       : {}),
   });
 }

@@ -11,6 +11,9 @@ import {
   type ConnectedServicesState,
 } from "@/lib/connected-services";
 import { PrivacyWaiverModal } from "@/components/privacy-waiver-modal";
+import { SettingsAppsPanel } from "@/components/settings/settings-apps-panel";
+import { SettingsConnectorsPanel } from "@/components/settings/settings-connectors-panel";
+import { SettingsMcpPanel } from "@/components/settings/settings-mcp-panel";
 import {
   connectDeviceFolder,
   idbClearDeviceHandle,
@@ -705,7 +708,7 @@ export function SettingsControls() {
       {open ? (
         <div
           id={panelId}
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] flex w-[min(28rem,calc(100vw-1.5rem))] max-h-[min(42rem,82vh)] flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[var(--bg-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] flex w-[min(32rem,calc(100vw-1.5rem))] max-h-[min(42rem,82vh)] flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[var(--bg-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
         >
           <div className="border-b border-white/[0.08] px-4 pt-3 pb-0">
             <div className="flex items-start justify-between gap-2">
@@ -964,245 +967,9 @@ export function SettingsControls() {
               </div>
             ) : null}
 
-            {tab === "connectors" ? (
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-primary)]">
-                  First-party connectors
-                </p>
-                <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Connect under your identity — same model as Abacus First Party Connectors. Tokens
-                  stay encrypted on this server.
-                </p>
-                {oauth?.needsSignInForConnect && configured ? (
-                  <p className="mt-2 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
-                    <Link href="/sign-in" className="font-medium underline-offset-2 hover:underline">
-                      Sign in
-                    </Link>{" "}
-                    so Google and Microsoft connect to your account.
-                  </p>
-                ) : null}
-                {!configured ? (
-                  <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[0.65rem] text-amber-100/90">
-                    Set <code className="text-[0.6rem]">SMILE_APP_SECRET</code> plus Google / Microsoft
-                    client IDs to enable connections.
-                  </p>
-                ) : null}
-                {connectError || oauthError ? (
-                  <p className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[0.65rem] text-red-100/95">
-                    {connectError ?? oauthError}
-                  </p>
-                ) : null}
+            {tab === "connectors" ? <SettingsConnectorsPanel /> : null}
 
-                {local.workMode === "cowork" ? (
-                  <p className="mt-3 rounded-lg border border-sky-500/20 bg-sky-500/8 px-2.5 py-2 text-[0.65rem] leading-relaxed text-sky-100/90">
-                    <span className="font-medium">CoWork tip:</span> connect This device · folder for
-                    file-organizing plans.
-                  </p>
-                ) : null}
-
-                <ul className="mt-3 space-y-2">
-                  <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-[var(--text-primary)]">
-                          Google · Gmail & Calendar
-                        </p>
-                        {oauth?.google.connected ? (
-                          <p className="mt-0.5 truncate text-[0.65rem] text-emerald-200/90">
-                            {oauth.google.email ?? "Connected"}
-                          </p>
-                        ) : (
-                          <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">Not connected</p>
-                        )}
-                      </div>
-                      {oauth?.google.connected ? (
-                        <button
-                          type="button"
-                          disabled={oauthBusy === "google"}
-                          onClick={() => void disconnectProvider("google")}
-                          className="shrink-0 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.12] disabled:opacity-40"
-                        >
-                          Disconnect
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={connectGoogle}
-                          disabled={oauth?.google.available === false}
-                          className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Connect
-                        </button>
-                      )}
-                    </div>
-                  </li>
-
-                  <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-[var(--text-primary)]">
-                          Microsoft · Outlook & 365
-                        </p>
-                        {oauth?.microsoft.connected ? (
-                          <p className="mt-0.5 truncate text-[0.65rem] text-emerald-200/90">
-                            {oauth.microsoft.email ?? "Connected"}
-                          </p>
-                        ) : (
-                          <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">Not connected</p>
-                        )}
-                      </div>
-                      {oauth?.microsoft.connected ? (
-                        <button
-                          type="button"
-                          disabled={oauthBusy === "microsoft"}
-                          onClick={() => void disconnectProvider("microsoft")}
-                          className="shrink-0 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.12] disabled:opacity-40"
-                        >
-                          Disconnect
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={connectMicrosoft}
-                          disabled={oauth?.microsoft.available === false}
-                          className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Connect
-                        </button>
-                      )}
-                    </div>
-                  </li>
-
-                  <li className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-[var(--text-primary)]">
-                          This device · folder
-                        </p>
-                        {local.services.deviceFiles.connected ? (
-                          <p className="mt-0.5 truncate text-[0.65rem] text-emerald-200/90">
-                            {local.services.deviceFiles.label ?? "Folder granted"}
-                          </p>
-                        ) : (
-                          <p className="mt-0.5 text-[0.65rem] text-[var(--text-faint)]">
-                            Pick a folder for CoWork file ops
-                          </p>
-                        )}
-                      </div>
-                      {local.services.deviceFiles.connected ? (
-                        <button
-                          type="button"
-                          onClick={disconnectDevice}
-                          className="shrink-0 rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.12]"
-                        >
-                          Clear
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => void connectDeviceFolderHandler()}
-                          className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] font-medium text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
-                        >
-                          Choose…
-                        </button>
-                      )}
-                    </div>
-                    {deviceError ? (
-                      <p className="mt-2 text-[0.65rem] text-red-300/90">{deviceError}</p>
-                    ) : null}
-                  </li>
-                </ul>
-              </div>
-            ) : null}
-
-            {tab === "apps" ? (
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-primary)]">App Management</p>
-                <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Save with <code className="text-[0.65rem]">save_app</code>, then{" "}
-                  <strong>Publish</strong> for a live URL at{" "}
-                  <code className="text-[0.65rem]">/a/&lt;slug&gt;</code>. Custom{" "}
-                  <code className="text-[0.65rem]">*.fighur.app</code> domains come later.
-                </p>
-                {!readSession()?.userId ? (
-                  <p className="mt-3 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2 py-1.5 text-[0.65rem] text-sky-100/95">
-                    <Link href="/sign-in" className="font-medium underline-offset-2 hover:underline">
-                      Sign in
-                    </Link>{" "}
-                    to view and manage apps.
-                  </p>
-                ) : null}
-                {appsError ? (
-                  <p className="mt-2 text-[0.65rem] text-red-300/90">{appsError}</p>
-                ) : null}
-                {apps.length === 0 && readSession()?.userId ? (
-                  <p className="mt-4 text-[0.7rem] text-[var(--text-faint)]">
-                    No apps yet. Build something in chat, then ask FIGHURAI to{" "}
-                    <span className="text-[var(--text-muted)]">save this app</span>.
-                  </p>
-                ) : null}
-                <ul className="mt-3 space-y-2">
-                  {apps.map((app) => (
-                    <li
-                      key={app.id}
-                      className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-[var(--text-primary)]">
-                            {app.name}
-                          </p>
-                          <p className="mt-0.5 text-[0.6rem] text-[var(--text-faint)]">
-                            {app.slug} · {app.fileCount} files · {app.status}
-                          </p>
-                          {app.deployedUrl ? (
-                            <a
-                              href={app.deployedUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-1 block truncate text-[0.65rem] text-[var(--accent)] hover:underline"
-                            >
-                              {app.deployedUrl}
-                            </a>
-                          ) : null}
-                          {app.description ? (
-                            <p className="mt-1 text-[0.65rem] text-[var(--text-muted)]">
-                              {app.description.slice(0, 120)}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          {app.status === "deployed" ? (
-                            <button
-                              type="button"
-                              onClick={() => void unpublishApp(app.id)}
-                              className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[0.65rem] text-amber-100 ring-1 ring-amber-400/30 hover:bg-amber-500/25"
-                            >
-                              Unpublish
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => void publishApp(app.id)}
-                              className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[0.65rem] text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
-                            >
-                              Publish
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => void archiveApp(app.id)}
-                            className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)] hover:bg-white/[0.12]"
-                          >
-                            Archive
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+            {tab === "apps" ? <SettingsAppsPanel /> : null}
 
             {tab === "tasks" ? (
               <div>
@@ -1253,48 +1020,7 @@ export function SettingsControls() {
               </div>
             ) : null}
 
-            {tab === "mcp" ? (
-              <div>
-                <p className="text-xs font-semibold text-[var(--text-primary)]">
-                  MCP Server Configuration
-                </p>
-                <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Paste OpenAI-style <code className="text-[0.65rem]">mcpServers</code> JSON.
-                  Hosted FigHur runs <strong>remote HTTP/SSE</strong> servers (
-                  <code className="text-[0.65rem]">url</code>
-                  ). Stdio <code className="text-[0.65rem]">command</code> entries are saved but
-                  need a desktop host.
-                </p>
-                <textarea
-                  value={mcpJson}
-                  onChange={(e) => setMcpJson(e.target.value)}
-                  rows={10}
-                  spellCheck={false}
-                  className="mt-3 w-full resize-y rounded-xl border border-white/[0.1] bg-black/30 px-3 py-2 font-mono text-[0.65rem] leading-relaxed text-[var(--text-primary)] focus:border-[var(--accent)]/40 focus:outline-none"
-                />
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={mcpBusy}
-                    onClick={() => void saveMcp()}
-                    className="rounded-full bg-[var(--accent)]/20 px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 disabled:opacity-50"
-                  >
-                    Save config
-                  </button>
-                  <button
-                    type="button"
-                    disabled={mcpBusy}
-                    onClick={() => void probeMcp()}
-                    className="rounded-full bg-white/[0.08] px-3 py-1.5 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.12] disabled:opacity-50"
-                  >
-                    Test connection
-                  </button>
-                  {mcpMsg ? (
-                    <span className="text-[0.65rem] text-[var(--text-faint)]">{mcpMsg}</span>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
+            {tab === "mcp" ? <SettingsMcpPanel /> : null}
           </div>
         </div>
       ) : null}

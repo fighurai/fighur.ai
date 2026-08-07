@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { SettingsAppsPanel } from "@/components/settings/settings-apps-panel";
+import { SettingsConnectorsPanel } from "@/components/settings/settings-connectors-panel";
+import { SettingsMcpPanel } from "@/components/settings/settings-mcp-panel";
 import { clearSession, readSession } from "@/lib/auth-storage";
 import { emitActiveAgentChange } from "@/lib/agents/types";
 import { WORK_MODE_OPTIONS, type WorkMode } from "@/lib/work-mode";
@@ -33,9 +36,9 @@ const TABS: { id: SettingsPageTab; label: string; blurb: string }[] = [
   { id: "agents", label: "Agents", blurb: "Custom chat agents" },
   { id: "research", label: "Deep Research", blurb: "Research preferences" },
   { id: "skills", label: "Skills", blurb: "Skill packs & toggles" },
-  { id: "connectors", label: "Connectors", blurb: "Google, Microsoft, device" },
-  { id: "apps", label: "Apps", blurb: "Published /a apps" },
-  { id: "mcp", label: "MCP", blurb: "Model Context Protocol" },
+  { id: "connectors", label: "Connectors", blurb: "Google, Microsoft, Slack, and more" },
+  { id: "apps", label: "Apps", blurb: "Saved apps & conversation builds" },
+  { id: "mcp", label: "MCP", blurb: "Custom remote MCP servers" },
 ];
 
 type TaskRow = {
@@ -423,7 +426,7 @@ export function SettingsPageClient() {
                 <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">
                   Workspace
                 </p>
-                <h1 className="mt-1 font-[family-name:var(--font-fraunces)] text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">
+                <h1 className="mt-1 text-xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-2xl">
                   Settings
                 </h1>
               </div>
@@ -1028,20 +1031,12 @@ export function SettingsPageClient() {
             </div>
           ) : null}
 
-          {tab === "skills" || tab === "connectors" || tab === "apps" || tab === "mcp" ? (
+          {tab === "skills" ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                  {tabMeta.label} live controls
-                </h3>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Skills</h3>
                 <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">
-                  {tab === "skills"
-                    ? "Enable skill packs, import SKILL.md files, and control what tools the agent can use."
-                    : tab === "connectors"
-                      ? "Connect Google, Microsoft, Slack, and a local device folder for chat tools."
-                      : tab === "apps"
-                        ? "Browse published apps under /a/… and manage Canvas project publishes."
-                        : "Configure MCP servers so chat can call external tools you define."}
+                  Enable skill packs, import SKILL.md files, and control what tools the agent can use.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -1049,7 +1044,7 @@ export function SettingsPageClient() {
                     onClick={openHeaderSettings}
                     className="rounded-full bg-[var(--accent)]/15 px-4 py-2 text-xs font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 transition hover:bg-[var(--accent)]/25"
                   >
-                    Open in chat header Settings
+                    Open skill controls
                   </button>
                   <Link
                     href="/"
@@ -1059,12 +1054,12 @@ export function SettingsPageClient() {
                   </Link>
                 </div>
               </div>
-              <p className="text-[0.7rem] text-[var(--text-faint)]">
-                Quick Settings in the header stays available while you chat — this page is for
-                account, tasks, agents, and research prefs.
-              </p>
             </div>
           ) : null}
+
+          {tab === "connectors" ? <SettingsConnectorsPanel /> : null}
+          {tab === "apps" ? <SettingsAppsPanel /> : null}
+          {tab === "mcp" ? <SettingsMcpPanel /> : null}
             </div>
           </div>
         </section>

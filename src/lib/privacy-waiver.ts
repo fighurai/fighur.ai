@@ -4,7 +4,7 @@ const STORAGE_PREFIX = "fighurai-privacy-waiver-v1";
 
 export const PRIVACY_WAIVER_VERSION = 1;
 
-export type PrivacyWaiverKind = "google" | "microsoft" | "device";
+export type PrivacyWaiverKind = "google" | "microsoft" | "slack" | "device";
 
 export function waiverStorageKey(userId: string): string {
   return `${STORAGE_PREFIX}:${userId}`;

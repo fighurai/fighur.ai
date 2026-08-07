@@ -724,6 +724,17 @@ export function SmileChatGeneral() {
     [stopAll, session?.userId, resolveCanvasOpen],
   );
 
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    const u = new URL(window.location.href);
+    const id = u.searchParams.get("conversation");
+    if (!id) return;
+    const c = conversations.find((x) => x.id === id);
+    if (c) selectConversation(c);
+    u.searchParams.delete("conversation");
+    window.history.replaceState({}, "", `${u.pathname}${u.search}`);
+  }, [hydrated, conversations, selectConversation]);
+
   const deleteConversation = useCallback(
     (ev: MouseEvent<HTMLButtonElement>, convId: string) => {
       ev.stopPropagation();
@@ -964,7 +975,32 @@ export function SmileChatGeneral() {
     let mcpConfig: unknown;
     try {
       const raw = localStorage.getItem("fighur-mcp-config");
-      if (raw) mcpConfig = JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          mcpServers?: Record<string, unknown>;
+        };
+        let disabled = new Set<string>();
+        try {
+          const d = localStorage.getItem("fighur-mcp-disabled");
+          if (d) {
+            const arr = JSON.parse(d) as unknown;
+            disabled = new Set(
+              Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [],
+            );
+          }
+        } catch {
+          /* ignore */
+        }
+        if (parsed?.mcpServers && typeof parsed.mcpServers === "object") {
+          const mcpServers: Record<string, unknown> = {};
+          for (const [id, cfg] of Object.entries(parsed.mcpServers)) {
+            if (!disabled.has(id)) mcpServers[id] = cfg;
+          }
+          mcpConfig = { mcpServers };
+        } else {
+          mcpConfig = parsed;
+        }
+      }
     } catch {
       mcpConfig = undefined;
     }
