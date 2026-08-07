@@ -143,7 +143,7 @@ async function searchGoogleNewsRss(query: string, maxResults: number): Promise<W
   const res = await fetch(url, {
     headers: { "User-Agent": "FIGHURAI/1.0 (+https://fighur.ai)", Accept: "application/rss+xml,application/xml,text/xml,*/*" },
     cache: "no-store",
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) return { ok: false, error: `Google News RSS failed (${res.status})` };
   const xml = await res.text();
@@ -161,13 +161,42 @@ async function searchBingNewsRss(query: string, maxResults: number): Promise<Web
       Accept: "application/rss+xml,application/xml,text/xml,*/*",
     },
     cache: "no-store",
-    signal: AbortSignal.timeout(12_000),
+    redirect: "follow",
+    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) return { ok: false, error: `Bing News RSS failed (${res.status})` };
   const xml = await res.text();
   const results = parseRssItems(xml, maxResults);
   if (!results.length) return { ok: false, error: "Bing News RSS returned no items" };
   return { ok: true, query, provider: "bing_news_rss", results };
+}
+
+/** Bing web SERP as RSS — works from datacenter IPs where HTML scrapers get captchas. */
+async function searchBingWebRss(query: string, maxResults: number): Promise<WebSearchResult> {
+  const url = new URL("https://www.bing.com/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "rss");
+  url.searchParams.set("setlang", "en-US");
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "FIGHURAI/1.0 (+https://fighur.ai)",
+      Accept: "application/rss+xml,application/xml,text/xml,*/*",
+    },
+    cache: "no-store",
+    redirect: "follow",
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!res.ok) return { ok: false, error: `Bing web RSS failed (${res.status})` };
+  const xml = await res.text();
+  const results = parseRssItems(xml, maxResults).filter((r) => {
+    // Drop channel chrome / empty junk
+    if (!r.title || /^bing:/i.test(r.title)) return false;
+    if (r.title.toLowerCase() === query.toLowerCase() && !r.url && !r.snippet) return false;
+    return Boolean(r.url || r.snippet.length > 20);
+  });
+  if (!results.length) return { ok: false, error: "Bing web RSS returned no items" };
+  return { ok: true, query, provider: "bing_web_rss", results };
 }
 
 async function searchDuckDuckGoInstant(query: string): Promise<WebSearchResult> {
@@ -462,8 +491,9 @@ function mergeResults(
       if (batch.provider.includes("instant")) score += 4;
       if (batch.provider.includes("wikipedia")) score += wantsNews ? 1 : 4;
       if (batch.provider.includes("brave") || batch.provider.includes("tavily")) score += 6;
+      if (batch.provider.includes("bing_web")) score += 5;
       if (batch.provider.includes("news") || batch.provider.includes("rss")) {
-        score += wantsNews ? 6 : -1;
+        score += wantsNews ? 6 : batch.provider.includes("bing_web") ? 2 : -1;
       }
       if (/news\.google\.com|bing\.com\/news/i.test(hit.url)) score += wantsNews ? 2 : -1;
       // Penalize tangential "President of Princeton"-style misses
@@ -479,61 +509,152 @@ function mergeResults(
   for (const hit of scored) {
     const key = (hit.url || hit.title).toLowerCase();
     if (!key || seen.has(key)) continue;
+    // Drop obvious off-topic chrome/extension spam that Bing sometimes returns for rare names
+    if (
+      /\b(download and install google chrome|chrome web store|crx file)\b/i.test(
+        `${hit.title} ${hit.snippet}`,
+      ) &&
+      !/\bchrome\b/i.test(query)
+    ) {
+      continue;
+    }
     seen.add(key);
     merged.push({ title: hit.title, url: hit.url, snippet: hit.snippet });
     if (merged.length >= maxResults) break;
   }
 
-  if (!merged.length) {
+  // Person-like queries: only keep hits that share distinctive name tokens
+  const personLike = looksLikePersonQuery(query);
+  const relevant = personLike
+    ? merged.filter(
+        (h) =>
+          titleRelevance(query, h.title) >= 3 ||
+          titleRelevance(query, h.snippet) >= 3 ||
+          titleRelevance(query, h.url) >= 3,
+      )
+    : merged;
+
+  if (!relevant.length) {
     const errors = batches.filter((b) => !b.ok).map((b) => (!b.ok ? b.error : ""));
+    const allEmpty =
+      !batches.some((b) => b.ok) &&
+      errors.every(
+        (e) =>
+          /no (results|items|parseable)|returned nothing|returned no/i.test(e) ||
+          /missing/i.test(e),
+      );
+    const anyNetwork = errors.some((e) =>
+      /failed \(\d+\)|timeout|fetch|ENOTFOUND|ECONN|challenged|AbortError/i.test(e),
+    );
+
+    // Empty indexed coverage ≠ outage. Tell the model clearly so it doesn't invent
+    // "search systems are down" for obscure personal names.
+    if (personLike || allEmpty || !anyNetwork || batches.some((b) => b.ok)) {
+      return {
+        ok: true,
+        query,
+        provider: "no_indexed_results",
+        results: [],
+      };
+    }
+
     return {
       ok: false,
-      error: `Web search failed. ${errors.slice(0, 4).join(" · ")}. Set BRAVE_SEARCH_API_KEY or TAVILY_API_KEY for best results.`,
+      error: `Web search providers failed (${errors.slice(0, 4).join(" · ")}). Retry with a simpler query, or set BRAVE_SEARCH_API_KEY / TAVILY_API_KEY.`,
     };
   }
 
   return {
     ok: true,
     query,
-    provider: providers.join("+"),
-    results: merged,
+    provider: providers.join("+") || "merged",
+    results: relevant.slice(0, maxResults),
   };
+}
+
+function looksLikePersonQuery(query: string): boolean {
+  const words = simplifySearchQuery(query)
+    .replace(/^(who is|who's|who are)\s+/i, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length < 2 || words.length > 5) return false;
+  return words.every((w) => /^[A-Za-z][A-Za-z'-]*$/.test(w));
 }
 
 /**
  * Search the public web. Uses paid keys when present, otherwise fans out across
- * keyless providers (Google/Bing News RSS, DuckDuckGo Instant, Wikipedia, DDG HTML).
+ * keyless providers (Bing web RSS, Wikipedia, Google/Bing News, DuckDuckGo Instant).
  */
 export async function searchWeb(query: string, maxResults = 6): Promise<WebSearchResult> {
   const q = query.trim();
   if (!q) return { ok: false, error: "query is required" };
   const max = Math.min(10, Math.max(1, maxResults));
   const simplified = simplifySearchQuery(q);
+  const primary = simplified || q;
 
-  if (braveKey()) {
-    const r = await searchBrave(q, max);
-    if (r.ok) return r;
-  }
-  if (tavilyKey()) {
-    const r = await searchTavily(q, max);
-    if (r.ok) return r;
-  }
-
+  // Race paid + free together — never block free providers behind a slow/broken key.
   const settled = await Promise.allSettled([
-    // Prefer encyclopedic / direct answers before noisy news RSS
+    braveKey() ? searchBrave(q, max) : Promise.resolve({ ok: false, error: "Brave key missing" } as WebSearchResult),
+    tavilyKey() ? searchTavily(q, max) : Promise.resolve({ ok: false, error: "Tavily key missing" } as WebSearchResult),
+    searchBingWebRss(primary, max),
+    searchWikipedia(primary, max),
     searchDuckDuckGoInstant(q),
-    searchDuckDuckGoInstant(simplified),
-    searchWikipedia(simplified || q, max),
-    searchGoogleNewsRss(simplified || q, max),
-    searchBingNewsRss(simplified || q, max),
-    searchDuckDuckGoHtml(simplified || q, max),
+    searchDuckDuckGoInstant(primary),
+    searchGoogleNewsRss(primary, max),
+    searchBingNewsRss(primary, max),
+    // HTML often captcha'd from datacenters — keep as last-resort only
+    searchDuckDuckGoHtml(primary, max),
   ]);
 
   const batches = settled.map((s) =>
     s.status === "fulfilled"
       ? s.value
-      : ({ ok: false, error: s.reason instanceof Error ? s.reason.message : "provider error" } as WebSearchResult),
+      : ({
+          ok: false,
+          error: s.reason instanceof Error ? s.reason.message : "provider error",
+        } as WebSearchResult),
   );
 
+  // Prefer a strong single paid hit when it succeeded
+  const braveHit = batches.find((b) => b.ok && b.provider === "brave");
+  if (braveHit?.ok && braveHit.results.length >= Math.min(3, max)) return braveHit;
+  const tavilyHit = batches.find((b) => b.ok && b.provider === "tavily");
+  if (tavilyHit?.ok && tavilyHit.results.length >= Math.min(3, max)) return tavilyHit;
+
   return mergeResults(q, batches, max);
+}
+
+/** Lightweight probe for ops /settings diagnostics. */
+export async function probeWebSearchProviders(): Promise<
+  Array<{ provider: string; ok: boolean; detail: string }>
+> {
+  const q = "Apple";
+  const checks = await Promise.allSettled([
+    searchWikipedia(q, 2),
+    searchBingWebRss(q, 2),
+    searchGoogleNewsRss(q, 2),
+    searchDuckDuckGoInstant(q),
+    braveKey()
+      ? searchBrave(q, 2)
+      : Promise.resolve({ ok: false, error: "not configured" } as WebSearchResult),
+    tavilyKey()
+      ? searchTavily(q, 2)
+      : Promise.resolve({ ok: false, error: "not configured" } as WebSearchResult),
+  ]);
+  return checks.map((s, i) => {
+    const names = ["wikipedia", "bing_web_rss", "google_news_rss", "duckduckgo_instant", "brave", "tavily"];
+    if (s.status !== "fulfilled") {
+      return {
+        provider: names[i]!,
+        ok: false,
+        detail: s.reason instanceof Error ? s.reason.message : "error",
+      };
+    }
+    const r = s.value;
+    return {
+      provider: names[i]!,
+      ok: r.ok,
+      detail: r.ok ? `${r.results.length} hits` : r.error,
+    };
+  });
 }

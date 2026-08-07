@@ -60,7 +60,7 @@ export async function buildLiveWebContext(userText: string): Promise<string> {
   const query = simplifySearchQuery(userText) || userText.trim();
 
   // Hard budget so chat TTFB stays snappy even when providers are slow.
-  const budgetMs = 2_800;
+  const budgetMs = 4_500;
 
   const work = (async () => {
     if (looksLikeWeather(userText)) {

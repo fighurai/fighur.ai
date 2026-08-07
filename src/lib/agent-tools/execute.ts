@@ -100,7 +100,27 @@ export async function executeAgentTool(
         const max =
           typeof input.max_results === "number" ? Math.min(10, Math.max(1, input.max_results)) : 6;
         const res = await searchWeb(query, max);
-        if (!res.ok) return { content: res.error, isError: true };
+        if (!res.ok) {
+          return {
+            content: `${res.error}\n\nDo NOT tell the user that "search systems are down" unless this error clearly indicates a network/provider outage. Retry once with a shorter, more specific query (name + company/role/location), or ask the user for clarifying context.`,
+            isError: true,
+          };
+        }
+        if (!res.results.length) {
+          return {
+            content: JSON.stringify(
+              {
+                ok: true,
+                query: res.query,
+                provider: res.provider,
+                results: [],
+                note: "Search ran successfully but found no strong public web hits for this query. This is not an outage — the person/topic may not be widely indexed. Ask the user for more context (industry, location, company, LinkedIn/X handle) instead of saying search is down.",
+              },
+              null,
+              2,
+            ),
+          };
+        }
         return { content: JSON.stringify(res, null, 2) };
       }
       case "run_code": {
