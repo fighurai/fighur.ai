@@ -206,7 +206,8 @@ export function BuildCanvas({
   onResizeWidth,
   columnOrder,
 }: BuildCanvasProps) {
-  const [device, setDevice] = useState<PreviewDevice>("desktop");
+  const isSheet = variant === "sheet";
+  const [device, setDevice] = useState<PreviewDevice>(isSheet ? "mobile" : "desktop");
   const [previewKey, setPreviewKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [resizing, setResizing] = useState(false);
@@ -239,12 +240,11 @@ export function BuildCanvas({
     if (preview.doc) openPreviewInNewTab(preview.doc);
   }, [preview.doc]);
 
-  const shellClass =
-    variant === "sidebar"
-      ? `hidden shrink-0 bg-[var(--bg-elevated)]/90 backdrop-blur-md md:flex md:flex-col ${
-          side === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
-        }`
-      : "fixed inset-x-0 bottom-0 top-20 z-[95] border-t border-white/[0.08] bg-[var(--bg-elevated)]/95 backdrop-blur-md md:hidden flex flex-col";
+  const shellClass = isSheet
+    ? "fixed inset-x-0 bottom-0 top-[3.25rem] z-[95] flex flex-col border-t border-white/[0.08] bg-[var(--bg-elevated)] md:hidden"
+    : `hidden shrink-0 bg-[var(--bg-elevated)]/90 backdrop-blur-md md:flex md:flex-col ${
+        side === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
+      }`;
 
   const startResize = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (variant !== "sidebar" || !onResizeWidth || fullscreen) return;
@@ -286,142 +286,238 @@ export function BuildCanvas({
         />
       ) : null}
 
-      {/* Compact chrome */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.08] px-2.5 py-2">
-        <p className="shrink-0 text-sm font-semibold text-[var(--text-primary)]">Canvas</p>
-        {artifact?.incomplete ? (
-          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-400" title="Still generating" />
-        ) : null}
+      {/* Compact chrome — sheet gets a phone-first toolbar */}
+      <div
+        className={`flex shrink-0 flex-col gap-2 border-b border-white/[0.08] ${
+          isSheet ? "px-3 py-2.5" : "px-2.5 py-2"
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <p className="shrink-0 text-sm font-semibold text-[var(--text-primary)]">Canvas</p>
+          {artifact?.incomplete ? (
+            <span
+              className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-400"
+              title="Still generating"
+            />
+          ) : null}
 
-        <div className="ml-1 flex items-center rounded-lg bg-black/25 p-0.5">
-          {(["preview", "code"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => onTabChange(t)}
-              className={`rounded-md px-2.5 py-1 text-[0.7rem] capitalize ${
-                tab === t
-                  ? "bg-white/[0.1] font-medium text-[var(--text-primary)]"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {tab === "preview" && canPreviewInteractive ? (
-          <div className="flex items-center rounded-lg bg-black/25 p-0.5">
-            {(Object.keys(PREVIEW_DEVICES) as PreviewDevice[]).map((d) => (
+          <div className="ml-1 flex items-center rounded-lg bg-black/25 p-0.5">
+            {(["preview", "code"] as const).map((t) => (
               <button
-                key={d}
+                key={t}
                 type="button"
-                title={PREVIEW_DEVICES[d].label}
-                onClick={() => setDevice(d)}
-                className={`flex items-center justify-center rounded-md px-2 py-1 ${
-                  device === d
-                    ? "bg-white/[0.12] text-[var(--text-primary)]"
+                onClick={() => onTabChange(t)}
+                className={`rounded-md px-2.5 py-1 text-[0.7rem] capitalize ${
+                  tab === t
+                    ? "bg-white/[0.1] font-medium text-[var(--text-primary)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 }`}
               >
-                <DeviceIcon device={d} active={device === d} />
+                {t}
               </button>
             ))}
           </div>
-        ) : null}
 
-        <div className="ml-auto flex items-center gap-0.5">
-          {tab === "preview" && canPreviewInteractive ? (
-            <>
-              <button
-                type="button"
-                onClick={refreshPreview}
-                className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
-                title="Refresh preview"
-              >
-                Refresh
-              </button>
-              {canvasSections.length > 0 ? (
+          {/* Device picker stays desktop-sidebar only — phone sheet is already a phone */}
+          {!isSheet && tab === "preview" && canPreviewInteractive ? (
+            <div className="flex items-center rounded-lg bg-black/25 p-0.5">
+              {(Object.keys(PREVIEW_DEVICES) as PreviewDevice[]).map((d) => (
                 <button
+                  key={d}
                   type="button"
-                  onClick={() => setSectionsOpen((v) => !v)}
-                  className={`rounded-md px-2 py-1 text-[0.7rem] ${
-                    sectionsOpen
-                      ? "bg-white/[0.08] text-[var(--text-primary)]"
-                      : "text-[var(--text-muted)] hover:bg-white/[0.06]"
+                  title={PREVIEW_DEVICES[d].label}
+                  onClick={() => setDevice(d)}
+                  className={`flex items-center justify-center rounded-md px-2 py-1 ${
+                    device === d
+                      ? "bg-white/[0.12] text-[var(--text-primary)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  Sections
+                  <DeviceIcon device={d} active={device === d} />
                 </button>
-              ) : null}
+              ))}
+            </div>
+          ) : null}
+
+          <div className="ml-auto flex items-center gap-0.5">
+            {!isSheet && tab === "preview" && canPreviewInteractive ? (
+              <>
+                <button
+                  type="button"
+                  onClick={refreshPreview}
+                  className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                  title="Refresh preview"
+                >
+                  Refresh
+                </button>
+                {canvasSections.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSectionsOpen((v) => !v)}
+                    className={`rounded-md px-2 py-1 text-[0.7rem] ${
+                      sectionsOpen
+                        ? "bg-white/[0.08] text-[var(--text-primary)]"
+                        : "text-[var(--text-muted)] hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    Sections
+                  </button>
+                ) : null}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen((v) => !v)}
+                    className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06]"
+                    aria-expanded={moreOpen}
+                  >
+                    ···
+                  </button>
+                  {moreOpen ? (
+                    <div className="absolute right-0 top-full z-20 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-white/[0.1] bg-[var(--bg-elevated)] py-1 shadow-xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFullscreen((v) => !v);
+                          setMoreOpen(false);
+                        }}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                      >
+                        {fullscreen ? "Exit fullscreen" : "Fullscreen"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openExternal();
+                          setMoreOpen(false);
+                        }}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                      >
+                        Open in tab
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+
+            {isSheet ? (
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setMoreOpen((v) => !v)}
-                  className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06]"
+                  className="rounded-md px-2.5 py-1.5 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06]"
                   aria-expanded={moreOpen}
                 >
-                  ···
+                  More
                 </button>
                 {moreOpen ? (
-                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-white/[0.1] bg-[var(--bg-elevated)] py-1 shadow-xl">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFullscreen((v) => !v);
-                        setMoreOpen(false);
-                      }}
-                      className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
-                    >
-                      {fullscreen ? "Exit fullscreen" : "Fullscreen"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        openExternal();
-                        setMoreOpen(false);
-                      }}
-                      className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
-                    >
-                      Open in tab
-                    </button>
+                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] overflow-hidden rounded-xl border border-white/[0.1] bg-[var(--bg-elevated)] py-1 shadow-xl">
+                    {tab === "preview" && canPreviewInteractive ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            refreshPreview();
+                            setMoreOpen(false);
+                          }}
+                          className="block w-full px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                        >
+                          Refresh
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openExternal();
+                            setMoreOpen(false);
+                          }}
+                          className="block w-full px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                        >
+                          Open in tab
+                        </button>
+                        {canvasSections.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSectionsOpen((v) => !v);
+                              setMoreOpen(false);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                          >
+                            {sectionsOpen ? "Hide sections" : "Sections"}
+                          </button>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {artifact && !isImageArtifact(artifact) && activeFile ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          downloadBuildCode({
+                            language: activeFile.language,
+                            code: activeFile.code,
+                            primaryPath: activeFile.path,
+                          });
+                          setMoreOpen(false);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                      >
+                        Download code
+                      </button>
+                    ) : null}
+                    {previewImageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void downloadImageUrl(previewImageUrl);
+                          setMoreOpen(false);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-xs text-[var(--accent)] hover:bg-[var(--accent)]/10"
+                      >
+                        Save image
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
-            </>
-          ) : null}
+            ) : (
+              <>
+                {artifact && !isImageArtifact(artifact) && activeFile ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadBuildCode({
+                        language: activeFile.language,
+                        code: activeFile.code,
+                        primaryPath: activeFile.path,
+                      })
+                    }
+                    className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                  >
+                    Download
+                  </button>
+                ) : null}
+                {previewImageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => void downloadImageUrl(previewImageUrl)}
+                    className="rounded-md px-2 py-1 text-[0.7rem] font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
+                  >
+                    Save
+                  </button>
+                ) : null}
+              </>
+            )}
 
-          {artifact && !isImageArtifact(artifact) && activeFile ? (
             <button
               type="button"
-              onClick={() =>
-                downloadBuildCode({
-                  language: activeFile.language,
-                  code: activeFile.code,
-                  primaryPath: activeFile.path,
-                })
-              }
-              className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+              onClick={onClose}
+              className={`rounded-md text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] ${
+                isSheet ? "px-2.5 py-1.5 font-medium" : "px-2 py-1"
+              }`}
             >
-              Download
+              Close
             </button>
-          ) : null}
-          {previewImageUrl ? (
-            <button
-              type="button"
-              onClick={() => void downloadImageUrl(previewImageUrl)}
-              className="rounded-md px-2 py-1 text-[0.7rem] font-medium text-[var(--accent)] hover:bg-[var(--accent)]/10"
-            >
-              Save
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06]"
-          >
-            Close
-          </button>
+          </div>
         </div>
       </div>
 
@@ -463,7 +559,11 @@ export function BuildCanvas({
       ) : null}
 
       {/* Stage */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden ${
+          isSheet ? "pb-[env(safe-area-inset-bottom,0px)]" : ""
+        }`}
+      >
         {tab === "preview" ? (
           canPreviewImage ? (
             <div className="flex min-h-0 flex-1 items-center justify-center p-4">
@@ -474,18 +574,26 @@ export function BuildCanvas({
               />
             </div>
           ) : canPreviewInteractive && preview.doc ? (
-            <PreviewFrame
-              device={device}
-              previewKey={previewKey}
-              srcDoc={preview.doc}
-              pointerEvents={!resizing}
-            />
+            isSheet ? (
+              <MobileSheetPreview
+                previewKey={previewKey}
+                srcDoc={preview.doc}
+                pointerEvents={!resizing}
+              />
+            ) : (
+              <PreviewFrame
+                device={device}
+                previewKey={previewKey}
+                srcDoc={preview.doc}
+                pointerEvents={!resizing}
+              />
+            )
           ) : (
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
               <div className="rounded-2xl border border-dashed border-white/[0.12] bg-black/20 px-6 py-10">
                 <p className="text-sm font-medium text-[var(--text-primary)]">No preview yet</p>
                 <p className="mt-2 max-w-[16rem] text-xs leading-relaxed text-[var(--text-muted)]">
-                  Ask for a site or app — the live preview appears here with desktop and mobile frames.
+                  Ask for a site or app — the live preview appears here.
                 </p>
               </div>
             </div>
@@ -493,7 +601,11 @@ export function BuildCanvas({
         ) : tab === "code" && artifact && activeFile ? (
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {buildFileList.length > 1 ? (
-              <div className="flex w-[7.5rem] shrink-0 flex-col overflow-y-auto border-r border-white/[0.06] bg-black/20 py-2">
+              <div
+                className={`flex shrink-0 flex-col overflow-y-auto border-r border-white/[0.06] bg-black/20 py-2 ${
+                  isSheet ? "w-[5.75rem]" : "w-[7.5rem]"
+                }`}
+              >
                 {buildFileList.map((f) => (
                   <button
                     key={f.path}
@@ -518,7 +630,11 @@ export function BuildCanvas({
                   <span className="ml-2 uppercase opacity-70">{activeFile.language}</span>
                 </p>
               </div>
-              <pre className="p-3 text-[0.72rem] leading-relaxed text-[var(--text-primary)]">
+              <pre
+                className={`p-3 leading-relaxed text-[var(--text-primary)] ${
+                  isSheet ? "text-[0.8rem]" : "text-[0.72rem]"
+                }`}
+              >
                 <code>{activeFile.code}</code>
               </pre>
             </div>
@@ -530,5 +646,28 @@ export function BuildCanvas({
         )}
       </div>
     </aside>
+  );
+}
+
+/** Full-bleed preview for the phone sheet — no nested desktop/phone chrome. */
+function MobileSheetPreview({
+  previewKey,
+  srcDoc,
+  pointerEvents,
+}: {
+  previewKey: number;
+  srcDoc: string;
+  pointerEvents: boolean;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
+      <iframe
+        key={previewKey}
+        title="Canvas preview"
+        sandbox="allow-scripts allow-forms allow-modals allow-popups"
+        srcDoc={srcDoc}
+        className={`min-h-0 w-full flex-1 border-0 bg-white ${pointerEvents ? "" : "pointer-events-none"}`}
+      />
+    </div>
   );
 }
