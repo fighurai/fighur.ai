@@ -11,6 +11,11 @@ import {
   type LayoutSide,
 } from "@/lib/layout-storage";
 import { syncLayoutToServer } from "@/lib/layout-sync";
+import {
+  HEADER_PANEL_BACKDROP_CLASS,
+  HEADER_PANEL_CLASS,
+  HEADER_TRIGGER_CLASS,
+} from "@/lib/header-panel";
 
 export function LayoutControls() {
   const panelId = useId();
@@ -34,11 +39,12 @@ export function LayoutControls() {
   }, []);
 
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: Event) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    if (open) document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    if (!open) return;
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
   }, [open]);
 
   const persist = useCallback((next: LayoutPrefs) => {
@@ -55,7 +61,7 @@ export function LayoutControls() {
     <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
-        className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition hover:border-white/[0.18] hover:text-[var(--text-primary)]"
+        className={HEADER_TRIGGER_CLASS}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
@@ -63,10 +69,19 @@ export function LayoutControls() {
         Layout
       </button>
       {open ? (
-        <div
-          id={panelId}
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] w-[min(18rem,calc(100vw-1.5rem))] rounded-2xl border border-white/[0.1] bg-[var(--bg-elevated)] p-4 shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
-        >
+        <>
+          <button
+            type="button"
+            aria-label="Close layout"
+            className={HEADER_PANEL_BACKDROP_CLASS}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            id={panelId}
+            role="dialog"
+            aria-label="Layout"
+            className={`${HEADER_PANEL_CLASS} p-4 md:w-[min(18rem,calc(100vw-1.5rem))]`}
+          >
           <p className="text-xs font-medium text-[var(--text-primary)]">Workspace layout</p>
           <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
             Desktop only. Starts as today’s layout — change panels here or drag the Canvas edge.
@@ -130,7 +145,8 @@ export function LayoutControls() {
           >
             Reset to default layout
           </button>
-        </div>
+          </div>
+        </>
       ) : null}
     </div>
   );

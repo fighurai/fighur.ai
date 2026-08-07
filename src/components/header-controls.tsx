@@ -27,8 +27,9 @@ export function HeaderControls() {
     );
   }
 
+  // Do NOT use overflow-x-auto here — it clips absolute/fixed dropdowns on iOS.
   return (
-    <div className="flex max-w-[min(100%,calc(100vw-4.5rem))] shrink-0 items-center justify-end gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] sm:max-w-none sm:gap-2 [&::-webkit-scrollbar]:hidden">
+    <div className="flex min-w-0 shrink items-center justify-end gap-1 sm:gap-2">
       <AgentsControls />
       <LayoutControls />
       <ThemeControls />

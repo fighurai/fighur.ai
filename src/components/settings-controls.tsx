@@ -25,6 +25,11 @@ import {
   type PrivacyWaiverKind,
 } from "@/lib/privacy-waiver";
 import { saveWorkModeToServer, syncConnectedServicesFromServer } from "@/lib/connected-services-sync";
+import {
+  HEADER_PANEL_BACKDROP_CLASS,
+  HEADER_PANEL_CLASS,
+  HEADER_TRIGGER_CLASS,
+} from "@/lib/header-panel";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
 type SettingsTab = "agent" | "skills" | "connectors" | "apps" | "tasks" | "mcp";
@@ -306,11 +311,12 @@ export function SettingsControls() {
   }, [open, refreshOauth, refreshLocal, refreshSkills, refreshPrefs, refreshApps, refreshTasks, refreshMcp]);
 
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: Event) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    if (open) document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    if (!open) return;
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
   }, [open]);
 
   useEffect(() => {
@@ -693,7 +699,7 @@ export function SettingsControls() {
     <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
-        className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition hover:border-white/[0.18] hover:text-[var(--text-primary)]"
+        className={HEADER_TRIGGER_CLASS}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
@@ -706,10 +712,19 @@ export function SettingsControls() {
         ) : null}
       </button>
       {open ? (
-        <div
-          id={panelId}
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-[60] flex w-[min(32rem,calc(100vw-1.5rem))] max-h-[min(42rem,82vh)] flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[var(--bg-elevated)] shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
-        >
+        <>
+          <button
+            type="button"
+            aria-label="Close settings"
+            className={HEADER_PANEL_BACKDROP_CLASS}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            id={panelId}
+            role="dialog"
+            aria-label="Settings"
+            className={`${HEADER_PANEL_CLASS} md:w-[min(32rem,calc(100vw-1.5rem))]`}
+          >
           <div className="border-b border-white/[0.08] px-4 pt-3 pb-0">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -1022,7 +1037,8 @@ export function SettingsControls() {
 
             {tab === "mcp" ? <SettingsMcpPanel /> : null}
           </div>
-        </div>
+          </div>
+        </>
       ) : null}
 
       <PrivacyWaiverModal
