@@ -414,44 +414,47 @@ export function SettingsPageClient() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-3 sm:px-5 md:px-6">
-        <header className="flex shrink-0 flex-wrap items-end justify-between gap-3 border-b border-white/[0.06] py-4 sm:py-5">
-          <div>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">
-              Workspace
-            </p>
-            <h1 className="mt-1 font-[family-name:var(--font-fraunces)] text-2xl font-semibold text-[var(--text-primary)] sm:text-3xl">
-              Settings
-            </h1>
-            <p className="mt-1.5 max-w-xl text-sm text-[var(--text-muted)]">
-              Account, automation, and integrations — pick a section on the left.
+      {/* Full-bleed split: filled nav rail + content, with breathing room at the bottom */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <aside className="flex shrink-0 flex-col border-b border-white/[0.06] bg-[var(--bg-elevated)]/50 md:w-[15.5rem] md:border-b-0 md:border-r md:border-white/[0.08]">
+          <div className="shrink-0 px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">
+                  Workspace
+                </p>
+                <h1 className="mt-1 font-[family-name:var(--font-fraunces)] text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">
+                  Settings
+                </h1>
+              </div>
+              <Link
+                href="/"
+                className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] md:hidden"
+              >
+                ← Chat
+              </Link>
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--text-muted)]">
+              Pick a section below.
             </p>
           </div>
-          <Link
-            href="/"
-            className="rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-          >
-            ← Back to chat
-          </Link>
-        </header>
 
-        {!signedIn ? (
-          <p className="mt-3 shrink-0 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-xs text-sky-100/95">
-            <Link href="/sign-in" className="font-semibold underline-offset-2 hover:underline">
-              Sign in
-            </Link>{" "}
-            to create agents, tasks, and sync preferences across devices.
-          </p>
-        ) : null}
+          {!signedIn ? (
+            <p className="mx-4 mb-3 shrink-0 rounded-lg border border-sky-500/25 bg-sky-500/10 px-2.5 py-2 text-[0.7rem] text-sky-100/95 sm:mx-5">
+              <Link href="/sign-in" className="font-semibold underline-offset-2 hover:underline">
+                Sign in
+              </Link>{" "}
+              to sync prefs, agents, and tasks.
+            </p>
+          ) : null}
 
-        <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:mt-5 md:flex-row md:gap-6">
           <nav
             aria-label="Settings sections"
-            className="flex shrink-0 flex-row gap-1 overflow-x-auto pb-1 md:h-full md:w-56 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pb-4"
+            className="flex min-h-0 flex-1 flex-row gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:px-3 md:pb-5"
           >
             {NAV_GROUPS.map((group) => (
-              <div key={group.label} className="flex flex-row gap-1 md:mb-3 md:flex-col md:gap-0.5">
-                <p className="hidden px-3 pb-1 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] md:block">
+              <div key={group.label} className="flex flex-row gap-1 md:mb-4 md:flex-col md:gap-0.5">
+                <p className="hidden px-2.5 pb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] md:block">
                   {group.label}
                 </p>
                 {group.ids.map((id) => {
@@ -461,14 +464,14 @@ export function SettingsPageClient() {
                       key={t.id}
                       type="button"
                       onClick={() => selectTab(t.id)}
-                      className={`shrink-0 rounded-xl px-3 py-2 text-left text-xs transition ${
+                      className={`w-full shrink-0 rounded-xl px-2.5 py-2 text-left text-xs transition ${
                         tab === t.id
                           ? "bg-[var(--accent)]/15 font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30"
-                          : "text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-primary)]"
+                          : "text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-[var(--text-primary)]"
                       }`}
                     >
                       <span className="block">{t.label}</span>
-                      <span className="mt-0.5 hidden text-[0.65rem] font-normal text-[var(--text-faint)] md:block">
+                      <span className="mt-0.5 hidden text-[0.65rem] font-normal leading-snug text-[var(--text-faint)] md:block">
                         {t.blurb}
                       </span>
                     </button>
@@ -478,14 +481,25 @@ export function SettingsPageClient() {
             ))}
           </nav>
 
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[var(--bg-elevated)]/60">
+          <div className="mt-auto hidden shrink-0 border-t border-white/[0.06] px-4 py-3 md:block">
+            <Link
+              href="/"
+              className="inline-flex text-xs font-medium text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline"
+            >
+              ← Back to chat
+            </Link>
+          </div>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 sm:p-4 md:p-5 md:pl-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[var(--bg-elevated)]/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             <div className="shrink-0 border-b border-white/[0.06] px-4 py-3 sm:px-5">
               <h2 className="text-base font-semibold text-[var(--text-primary)] sm:text-lg">
                 {tabMeta.label}
               </h2>
               <p className="mt-0.5 text-xs text-[var(--text-muted)] sm:text-sm">{tabMeta.blurb}</p>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 pb-6 sm:p-5 sm:pb-8">
           {tab === "account" ? (
             <div className="space-y-6">
               {signedIn ? (
@@ -1052,8 +1066,8 @@ export function SettingsPageClient() {
             </div>
           ) : null}
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );
