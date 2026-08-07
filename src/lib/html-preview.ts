@@ -8,6 +8,22 @@ export const PREVIEW_DEVICE_WIDTHS: Record<PreviewDevice, number | null> = {
   mobile: 390,
 };
 
+/** Visual frame metadata for the Canvas preview stage. */
+export const PREVIEW_DEVICES: Record<
+  PreviewDevice,
+  {
+    label: string;
+    width: number | null;
+    /** Screen height inside the frame (null = fill available). */
+    height: number | null;
+    kind: "browser" | "tablet" | "phone";
+  }
+> = {
+  desktop: { label: "Desktop", width: null, height: null, kind: "browser" },
+  tablet: { label: "Tablet", width: 768, height: 1024, kind: "tablet" },
+  mobile: { label: "Mobile", width: 390, height: 844, kind: "phone" },
+};
+
 const REACT_LANGUAGES = new Set(["tsx", "jsx", "javascript", "typescript", "js", "ts"]);
 const JS_LANGUAGES = new Set(["javascript", "js", "typescript", "ts"]);
 
