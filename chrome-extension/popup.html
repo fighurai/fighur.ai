@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FIGHURAI Colors</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <img src="icons/icon48.png" width="28" height="28" alt="" />
+      <div>
+        <h1>Colors</h1>
+        <p>FIGHURAI · same as the site</p>
+      </div>
+    </header>
+
+    <p id="status" class="status" data-tone="muted">Checking Pro…</p>
+    <section id="gate" class="gate" hidden></section>
+
+    <section id="controls" class="controls" hidden>
+      <p class="lead">Page colors</p>
+      <p class="hint">Pick background and text. Uses your OS color picker.</p>
+
+      <label class="check">
+        <input id="enabled" type="checkbox" />
+        <span>Use custom colors</span>
+      </label>
+
+      <label class="row">
+        <span>Background</span>
+        <input id="background" type="color" value="#EEFF00" />
+      </label>
+
+      <label class="row">
+        <span>Text</span>
+        <input id="text" type="color" value="#1432F5" />
+      </label>
+
+      <button id="apply" type="button" class="btn primary">Apply to this page</button>
+      <button id="reset" type="button" class="btn ghost">Turn off custom colors</button>
+    </section>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

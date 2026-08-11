@@ -98,7 +98,13 @@ function UpgradeContent() {
 
       <ul className="mt-6 space-y-2 text-sm text-[var(--text-muted)]">
         <li>✓ All models in the model picker</li>
-        <li>✓ Colors Chrome extension — same Colors panel as on FIGHURAI, on any website</li>
+        <li>
+          ✓{" "}
+          <Link href="/extension" className="text-[var(--accent)] underline-offset-2 hover:underline">
+            Colors Chrome extension
+          </Link>{" "}
+          — same Colors panel as on FIGHURAI, on any website
+        </li>
         <li>✓ Same private data environment &amp; audit logs</li>
         <li>
           {useAppleIap

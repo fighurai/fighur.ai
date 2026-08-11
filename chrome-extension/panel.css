@@ -1,3 +1,41 @@
+/* Floating action button — Simplify-style corner control */
+#fighur-colors-fab {
+  all: initial;
+  position: fixed !important;
+  right: 16px !important;
+  bottom: 16px !important;
+  z-index: 2147483645 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: #14151c !important;
+  color: #f4f4f5 !important;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  cursor: pointer !important;
+}
+
+#fighur-colors-fab .fighur-fab-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #eeff00, #1432f5);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+#fighur-colors-fab .fighur-fab-label {
+  line-height: 1;
+}
+
+#fighur-colors-fab:hover {
+  border-color: rgba(110, 231, 183, 0.45) !important;
+}
+
 #fighur-colors-root {
   all: initial;
   position: fixed;
@@ -17,7 +55,7 @@
   border: 0;
   margin: 0;
   padding: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.4);
   cursor: pointer;
 }
 
@@ -48,16 +86,14 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  min-width: 0;
 }
 
 #fighur-colors-root .fighur-mark {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 0.45rem;
-  background: radial-gradient(circle at 30% 30%, #6ee7b7, #0c0d12 70%);
+  background: linear-gradient(135deg, #eeff00, #1432f5);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  flex-shrink: 0;
 }
 
 #fighur-colors-root .fighur-title {
@@ -118,11 +154,6 @@
   cursor: pointer;
 }
 
-#fighur-colors-root .fighur-check input {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
 #fighur-colors-root .fighur-row input[type="color"] {
   width: 3.5rem;
   height: 2.25rem;
@@ -135,7 +166,6 @@
 
 #fighur-colors-root .fighur-row input[type="color"]:disabled {
   opacity: 0.4;
-  cursor: not-allowed;
 }
 
 #fighur-colors-root .fighur-btn {
@@ -162,9 +192,4 @@
   background: transparent;
   color: #a1a1aa;
   border-color: rgba(255, 255, 255, 0.1);
-}
-
-#fighur-colors-root .fighur-btn-ghost:hover {
-  color: #f4f4f5;
-  background: rgba(255, 255, 255, 0.06);
 }

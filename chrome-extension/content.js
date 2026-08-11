@@ -3,11 +3,11 @@
   window.__fighurColorsBooted = true;
 
   const STYLE_ID = "fighur-page-theme-style";
+  const FAB_ID = "fighur-colors-fab";
   const ROOT_ID = "fighur-colors-root";
   const ATTR = "data-fighur-page-theme";
   const UPGRADE_URL = "https://fighur.ai/upgrade";
-  const SIGN_IN_URL = "https://fighur.ai/sign-in";
-  const HOME_URL = "https://fighur.ai/";
+  const HOME_URL = "https://fighur.ai/extension";
   const CACHE_MAX_MS = 1000 * 60 * 60 * 24;
 
   const DEFAULT_THEME = {
@@ -17,7 +17,15 @@
   };
 
   let panelOpen = false;
-  let latestTheme = { ...DEFAULT_THEME };
+
+  function normalizeTheme(raw) {
+    const t = raw || {};
+    return {
+      enabled: Boolean(t.enabled),
+      bg: t.bg || t.background || DEFAULT_THEME.bg,
+      fg: t.fg || t.text || DEFAULT_THEME.fg,
+    };
+  }
 
   function ensureStyle() {
     let el = document.getElementById(STYLE_ID);
@@ -35,24 +43,17 @@
   }
 
   function applyTheme(theme) {
-    const raw = theme || {};
-    latestTheme = {
-      enabled: Boolean(raw.enabled),
-      bg: raw.bg || raw.background || DEFAULT_THEME.bg,
-      fg: raw.fg || raw.text || DEFAULT_THEME.fg,
-    };
-    if (!latestTheme.enabled) {
+    const t = normalizeTheme(theme);
+    if (!t.enabled) {
       clearTheme();
       return;
     }
-    const bg = latestTheme.bg || DEFAULT_THEME.bg;
-    const fg = latestTheme.fg || DEFAULT_THEME.fg;
     const el = ensureStyle();
     document.documentElement?.setAttribute(ATTR, "on");
     el.textContent = `
 html[${ATTR}], html[${ATTR}] body {
-  background-color: ${bg} !important;
-  color: ${fg} !important;
+  background-color: ${t.bg} !important;
+  color: ${t.fg} !important;
   background-image: none !important;
 }
 html[${ATTR}] p, html[${ATTR}] li, html[${ATTR}] span, html[${ATTR}] h1,
@@ -61,10 +62,7 @@ html[${ATTR}] label, html[${ATTR}] td, html[${ATTR}] th, html[${ATTR}] a,
 html[${ATTR}] button, html[${ATTR}] input, html[${ATTR}] textarea, html[${ATTR}] select,
 html[${ATTR}] div, html[${ATTR}] section, html[${ATTR}] article, html[${ATTR}] nav,
 html[${ATTR}] header, html[${ATTR}] footer, html[${ATTR}] main, html[${ATTR}] aside {
-  color: ${fg} !important;
-}
-html[${ATTR}] a {
-  text-decoration-color: ${fg} !important;
+  color: ${t.fg} !important;
 }
 `;
   }
@@ -96,6 +94,22 @@ html[${ATTR}] a {
     });
   }
 
+  function ensureFab() {
+    if (document.getElementById(FAB_ID)) return;
+    const btn = document.createElement("button");
+    btn.id = FAB_ID;
+    btn.type = "button";
+    btn.title = "FIGHURAI Colors";
+    btn.setAttribute("aria-label", "Open FIGHURAI Colors");
+    btn.innerHTML = `<span class="fighur-fab-dot"></span><span class="fighur-fab-label">Colors</span>`;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void togglePanel();
+    });
+    document.documentElement.appendChild(btn);
+  }
+
   function closePanel() {
     document.getElementById(ROOT_ID)?.remove();
     panelOpen = false;
@@ -107,32 +121,29 @@ html[${ATTR}] a {
     let body = "";
     if (needsVisit) {
       body = `
-        <p class="fighur-lead">Open FIGHURAI once in this Chrome profile so Pro can sync.</p>
+        <p class="fighur-lead">Open FIGHURAI once so Pro can sync.</p>
         <a class="fighur-btn fighur-btn-primary" href="${HOME_URL}" target="_blank" rel="noreferrer">Open FIGHURAI</a>
-        <p class="fighur-hint">Stay signed in, then click the extension again.</p>
       `;
     } else if (!signedIn) {
       body = `
-        <p class="fighur-lead">Sign in to FIGHURAI, then open Colors again.</p>
-        <a class="fighur-btn fighur-btn-primary" href="${SIGN_IN_URL}" target="_blank" rel="noreferrer">Sign in</a>
-        <p class="fighur-hint">Page Theme / Colors is included with Pro.</p>
+        <p class="fighur-lead">Sign in on FIGHURAI to use Colors.</p>
+        <a class="fighur-btn fighur-btn-primary" href="https://fighur.ai/sign-in" target="_blank" rel="noreferrer">Sign in</a>
       `;
     } else {
       body = `
-        <p class="fighur-lead">Colors on any website is a <strong>Pro</strong> feature.</p>
-        <p class="fighur-hint">Same background and text controls as on FIGHURAI.</p>
+        <p class="fighur-lead">Colors on any site is included with <strong>Pro</strong>.</p>
         <a class="fighur-btn fighur-btn-primary" href="${UPGRADE_URL}" target="_blank" rel="noreferrer">Upgrade to Pro</a>
       `;
     }
     root.innerHTML = `
-      <button type="button" class="fighur-backdrop" aria-label="Close colors" data-fighur-close></button>
+      <button type="button" class="fighur-backdrop" data-fighur-close aria-label="Close"></button>
       <div class="fighur-panel" role="dialog" aria-label="Colors">
         <div class="fighur-panel-head">
           <div class="fighur-brand">
-            <span class="fighur-mark" aria-hidden="true"></span>
+            <span class="fighur-mark"></span>
             <div>
               <p class="fighur-title">Colors</p>
-              <p class="fighur-sub">FIGHURAI Pro</p>
+              <p class="fighur-sub">FIGHURAI</p>
             </div>
           </div>
           <button type="button" class="fighur-x" data-fighur-close aria-label="Close">×</button>
@@ -143,13 +154,13 @@ html[${ATTR}] a {
   }
 
   function renderControls(root, theme) {
-    const t = { ...DEFAULT_THEME, ...theme };
+    const t = normalizeTheme(theme);
     root.innerHTML = `
-      <button type="button" class="fighur-backdrop" aria-label="Close colors" data-fighur-close></button>
+      <button type="button" class="fighur-backdrop" data-fighur-close aria-label="Close"></button>
       <div class="fighur-panel" role="dialog" aria-label="Colors">
         <div class="fighur-panel-head">
           <div class="fighur-brand">
-            <span class="fighur-mark" aria-hidden="true"></span>
+            <span class="fighur-mark"></span>
             <div>
               <p class="fighur-title">Colors</p>
               <p class="fighur-sub">Same as FIGHURAI</p>
@@ -159,7 +170,7 @@ html[${ATTR}] a {
         </div>
         <div class="fighur-panel-body">
           <p class="fighur-lead">Page colors</p>
-          <p class="fighur-hint">Pick background and text. Uses your OS color picker (often a wheel on mobile).</p>
+          <p class="fighur-hint">Pick background and text — the same controls as on FIGHURAI.</p>
           <label class="fighur-check">
             <input type="checkbox" id="fighur-enabled" ${t.enabled ? "checked" : ""} />
             <span>Use custom colors</span>
@@ -172,6 +183,7 @@ html[${ATTR}] a {
             <span>Text</span>
             <input type="color" id="fighur-fg" value="${t.fg}" ${t.enabled ? "" : "disabled"} />
           </label>
+          <button type="button" class="fighur-btn fighur-btn-primary" id="fighur-apply">Apply</button>
           <button type="button" class="fighur-btn fighur-btn-ghost" id="fighur-off">Turn off custom colors</button>
         </div>
       </div>
@@ -180,9 +192,8 @@ html[${ATTR}] a {
     const enabledEl = root.querySelector("#fighur-enabled");
     const bgEl = root.querySelector("#fighur-bg");
     const fgEl = root.querySelector("#fighur-fg");
-    const offBtn = root.querySelector("#fighur-off");
 
-    const persistFromForm = () => {
+    const persist = () => {
       const next = {
         enabled: Boolean(enabledEl.checked),
         bg: bgEl.value,
@@ -193,14 +204,18 @@ html[${ATTR}] a {
       void saveTheme(next);
     };
 
-    enabledEl.addEventListener("change", persistFromForm);
-    bgEl.addEventListener("input", persistFromForm);
-    fgEl.addEventListener("input", persistFromForm);
-    offBtn.addEventListener("click", () => {
+    enabledEl.addEventListener("change", persist);
+    bgEl.addEventListener("input", persist);
+    fgEl.addEventListener("input", persist);
+    root.querySelector("#fighur-apply").addEventListener("click", () => {
+      enabledEl.checked = true;
+      persist();
+    });
+    root.querySelector("#fighur-off").addEventListener("click", () => {
       enabledEl.checked = false;
       bgEl.value = DEFAULT_THEME.bg;
       fgEl.value = DEFAULT_THEME.fg;
-      persistFromForm();
+      persist();
     });
   }
 
@@ -209,21 +224,15 @@ html[${ATTR}] a {
     const host = document.createElement("div");
     host.id = ROOT_ID;
     document.documentElement.appendChild(host);
-
     const state = await getState();
     if (!isPro(state.entitlement)) {
       renderGate(host, state.entitlement);
     } else {
       renderControls(host, state.theme);
     }
-
     host.addEventListener("click", (e) => {
-      const t = e.target;
-      if (t && t.closest && t.closest("[data-fighur-close]")) {
-        closePanel();
-      }
+      if (e.target?.closest?.("[data-fighur-close]")) closePanel();
     });
-
     panelOpen = true;
   }
 
@@ -253,8 +262,9 @@ html[${ATTR}] a {
     if (msg?.type === "fighur-page-theme-apply") {
       applyTheme(msg.theme);
       sendResponse({ ok: true });
-      return false;
     }
     return false;
   });
+
+  ensureFab();
 })();

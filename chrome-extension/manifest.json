@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "FIGHURAI Page Theme",
-  "version": "1.1.0",
-  "description": "Open FIGHURAI Colors on any website — the same background and text controls from the platform. Included with Pro.",
+  "name": "FIGHURAI Colors",
+  "version": "1.2.0",
+  "description": "Apply FIGHURAI Colors (background + text) on any website. Included with FIGHURAI Pro.",
+  "homepage_url": "https://fighur.ai/extension",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -10,6 +11,7 @@
   },
   "action": {
     "default_title": "FIGHURAI Colors",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -19,7 +21,7 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [
     "https://fighur.ai/*",
     "https://www.fighur.ai/*",

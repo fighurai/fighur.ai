@@ -110,61 +110,39 @@ export function SettingsAppsPanel() {
         <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-[var(--text-primary)]">Page Theme</p>
+              <p className="text-xs font-semibold text-[var(--text-primary)]">FIGHURAI Colors</p>
               <p className="mt-1 text-[0.65rem] leading-relaxed text-[var(--text-muted)]">
-                Click the extension on any site to open the same <strong>Colors</strong> panel as on
-                FIGHURAI — background and text, synced with your Pro account.
+                Chrome extension (Simplify-style): pin it, then open Colors on any website — same
+                background and text controls as on FIGHURAI.
               </p>
-              {isPro ? (
-                <ol className="mt-2 list-decimal space-y-1 pl-4 text-[0.65rem] text-[var(--text-faint)]">
-                  <li>
-                    Download{" "}
-                    <a
-                      href="/downloads/fighur-page-theme.zip"
-                      className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                    >
-                      fighur-page-theme.zip
-                    </a>
-                  </li>
-                  <li>
-                    Unzip, open <code className="text-[0.6rem]">chrome://extensions</code>, enable
-                    Developer mode
-                  </li>
-                  <li>Load unpacked → select the unzipped folder</li>
-                  <li>Keep this tab open once so Pro status syncs to the extension</li>
-                </ol>
-              ) : (
-                <p className="mt-2 text-[0.65rem] text-[var(--text-faint)]">
-                  Included with Pro.{" "}
-                  <Link
-                    href="/upgrade"
-                    className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                  >
-                    Upgrade to Pro
-                  </Link>{" "}
-                  to install.
-                </p>
-              )}
             </div>
             <span className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[0.6rem] font-semibold text-[var(--accent)]">
               Pro
             </span>
           </div>
-          {isPro ? (
-            <a
-              href="/downloads/fighur-page-theme.zip"
-              className="mt-3 inline-flex rounded-full bg-[var(--accent)]/15 px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 hover:bg-[var(--accent)]/25"
-            >
-              Download extension
-            </a>
-          ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
             <Link
-              href="/upgrade"
-              className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent-foreground)]"
+              href="/extension"
+              className="inline-flex rounded-full bg-[var(--accent)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent-foreground)]"
             >
-              Upgrade to Pro
+              {isPro ? "Add to Chrome" : "View install guide"}
             </Link>
-          )}
+            {isPro ? (
+              <a
+                href="/downloads/fighur-page-theme.zip"
+                className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.06]"
+              >
+                Download zip
+              </a>
+            ) : (
+              <Link
+                href="/upgrade"
+                className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--accent)]"
+              >
+                Upgrade to Pro
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 
