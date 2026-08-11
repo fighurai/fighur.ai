@@ -64,11 +64,23 @@ function ExtensionContent() {
       ) : null}
 
       <a
-        href="/downloads/fighur-page-theme.zip"
+        href="/api/extension/download"
+        download="fighur-page-theme.zip"
         className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] py-3.5 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_0_24px_var(--accent-glow)] transition hover:brightness-110"
       >
-        Add to Chrome — download extension
+        Download FIGHURAI Colors (.zip)
       </a>
+      <p className="mt-2 text-center text-[0.65rem] text-[var(--text-faint)]">
+        If the button does nothing, open{" "}
+        <a
+          href="/api/extension/download"
+          download="fighur-page-theme.zip"
+          className="text-[var(--accent)] underline-offset-2 hover:underline"
+        >
+          this direct link
+        </a>
+        , or right‑click → Save Link As…
+      </p>
       <p className="mt-2 text-center text-[0.65rem] text-[var(--text-faint)]">
         Chrome Web Store listing coming soon. Until then, install with Developer mode (same files
         Chrome will review). The extension does not receive your email or name — only a Pro check.

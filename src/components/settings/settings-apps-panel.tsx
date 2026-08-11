@@ -129,7 +129,8 @@ export function SettingsAppsPanel() {
             </Link>
             {isPro ? (
               <a
-                href="/downloads/fighur-page-theme.zip"
+                href="/api/extension/download"
+                download="fighur-page-theme.zip"
                 className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.06]"
               >
                 Download zip
