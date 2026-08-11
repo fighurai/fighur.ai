@@ -62,7 +62,23 @@ export default function PrivacyPage() {
         accept the in-product waiver. You can disconnect them anytime in Settings.
       </p>
 
-      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">4. Retention</h2>
+      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">
+        4. Chrome extension (FIGHURAI Colors)
+      </h2>
+      <p>
+        The optional FIGHURAI Colors browser extension applies background and text colors on
+        websites you visit. It stores color preferences locally in the browser. The extension only
+        receives a Pro entitlement check (<code className="text-[0.8em]">signedIn</code> /{" "}
+        <code className="text-[0.8em]">pro</code>) from fighur.ai — it does not receive or display
+        your email, name, or other account profile fields. See also the extension privacy note
+        packaged with the extension and{" "}
+        <a className="text-[var(--accent)] underline" href="/extension">
+          /extension
+        </a>
+        .
+      </p>
+
+      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">5. Retention</h2>
       <p>
         We keep account and chat data while your account is active. Anonymous trial usage may be
         stored in cookies/local storage on your device. When you delete your account in Settings, we
@@ -70,7 +86,7 @@ export default function PrivacyPage() {
         deletion flow (subject to short-lived backups and legal retention where required).
       </p>
 
-      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">5. Your choices</h2>
+      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">6. Your choices</h2>
       <ul className="list-disc space-y-2 pl-5">
         <li>Access and update account details by signing in.</li>
         <li>Disconnect integrations in Settings.</li>
@@ -83,7 +99,7 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
-      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">6. Children</h2>
+      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">7. Children</h2>
       <p>
         {SITE_TITLE} is not directed to children under 13 (or the minimum age in your region). Do
         not create an account if you are under that age.

@@ -154,7 +154,7 @@
     }
     showControls();
     fillForm(state.theme);
-    setStatus(`Pro · ${state.entitlement.email || "signed in"}`, "ok");
+    setStatus("Pro active", "ok");
   }
 
   void init();

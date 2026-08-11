@@ -71,7 +71,12 @@ function ExtensionContent() {
       </a>
       <p className="mt-2 text-center text-[0.65rem] text-[var(--text-faint)]">
         Chrome Web Store listing coming soon. Until then, install with Developer mode (same files
-        Chrome will review).
+        Chrome will review). The extension does not receive your email or name — only a Pro check.
+        Privacy:{" "}
+        <Link href="/privacy" className="underline-offset-2 hover:underline">
+          fighur.ai/privacy
+        </Link>
+        .
       </p>
 
       <ol className="mt-8 space-y-4 text-sm text-[var(--text-muted)]">

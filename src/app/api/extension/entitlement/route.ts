@@ -5,7 +5,7 @@ import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import { hasPageThemeExtensionAccess } from "@/lib/plan-access";
 import { extensionCorsHeaders } from "@/lib/extension-cors";
 import { readVerifiedSession } from "@/lib/session-cookie";
-import { ensureComplimentaryEntitlements, readUserProfile } from "@/lib/user-data-store";
+import { ensureComplimentaryEntitlements } from "@/lib/user-data-store";
 
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
@@ -27,15 +27,13 @@ export async function GET(request: NextRequest) {
   await ensureComplimentaryEntitlements(session.userId, session.email);
   const plan = await resolveUserPlan(session.userId, session);
   const roles = await resolveUserRoles(session.userId, session);
-  const profile = await readUserProfile(session.userId);
   const pageTheme = hasPageThemeExtensionAccess(plan, roles);
 
+  // Intentionally omit email, name, userId — extension only needs Pro entitlement.
   return NextResponse.json(
     {
       ok: true,
       signedIn: true,
-      email: profile?.email ?? session.email,
-      plan,
       pro: plan === "pro" || pageTheme,
       features: {
         pageTheme,

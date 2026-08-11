@@ -92,8 +92,6 @@
         at: Date.now(),
         signedIn: Boolean(data.signedIn) && res.status !== 401,
         pro: Boolean(data.pro || data.features?.pageTheme),
-        email: typeof data.email === "string" ? data.email : null,
-        plan: typeof data.plan === "string" ? data.plan : null,
       };
       if (res.status === 401) {
         payload.signedIn = false;
