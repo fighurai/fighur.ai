@@ -20,11 +20,17 @@ export function LegalShell({
             {SITE_TITLE}
           </Link>
           <nav className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+            <Link href="/legal" className="hover:text-[var(--text-primary)]">
+              Legal
+            </Link>
             <Link href="/privacy" className="hover:text-[var(--text-primary)]">
               Privacy
             </Link>
             <Link href="/terms" className="hover:text-[var(--text-primary)]">
               Terms
+            </Link>
+            <Link href="/eula" className="hover:text-[var(--text-primary)]">
+              EULA
             </Link>
             <Link href="/support" className="hover:text-[var(--text-primary)]">
               Support
@@ -42,12 +48,20 @@ export function LegalShell({
       </main>
       <footer className="border-t border-white/[0.06] py-6 text-center text-[0.65rem] text-[var(--text-faint)]">
         © {new Date().getFullYear()} {SITE_TITLE} ·{" "}
+        <Link href="/legal" className="hover:text-[var(--text-muted)]">
+          Legal
+        </Link>{" "}
+        ·{" "}
         <Link href="/privacy" className="hover:text-[var(--text-muted)]">
           Privacy
         </Link>{" "}
         ·{" "}
         <Link href="/terms" className="hover:text-[var(--text-muted)]">
           Terms
+        </Link>{" "}
+        ·{" "}
+        <Link href="/eula" className="hover:text-[var(--text-muted)]">
+          EULA
         </Link>{" "}
         ·{" "}
         <Link href="/support" className="hover:text-[var(--text-muted)]">

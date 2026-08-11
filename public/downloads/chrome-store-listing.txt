@@ -1,0 +1,74 @@
+FIGHURAI Colors — Chrome Web Store listing draft
+================================================
+
+Use this when submitting at https://chrome.google.com/webstore/devconsole
+
+Package
+-------
+Upload: https://fighur.ai/downloads/fighur-page-theme.zip
+(or rebuild with: bash scripts/pack-page-theme-extension.sh)
+
+Publisher
+---------
+Use your company / LLC name as publisher (not a personal nickname if selling commercially).
+
+Name
+----
+FIGHURAI Colors
+
+Short description (132 chars max — edit to fit)
+-----------------------------------------------
+Apply FIGHURAI Colors (background + text) on any website. Included with FIGHURAI Pro.
+
+Detailed description
+--------------------
+FIGHURAI Colors brings the same Colors controls from fighur.ai to any website.
+
+• Change background and text colors while you browse
+• Floating Colors button + toolbar popup
+• Synced with your FIGHURAI Pro plan (entitlement only — no email/name shared with the extension)
+• Pin the extension, open any site, click Colors
+
+Requires an active FIGHURAI Pro subscription. Sign in at https://fighur.ai then use the extension.
+
+Privacy policy URL
+------------------
+https://fighur.ai/privacy
+
+Homepage URL
+------------
+https://fighur.ai/extension
+
+Support URL
+-----------
+https://fighur.ai/support
+
+EULA / Terms
+------------
+https://fighur.ai/eula
+https://fighur.ai/terms
+
+Category
+--------
+Productivity (or Accessibility / Theming)
+
+Permissions justification (draft)
+---------------------------------
+storage — save color preferences locally
+tabs / host access — apply colors on pages you visit; sync Pro status only when you visit fighur.ai
+
+Single purpose
+--------------
+Apply user-chosen page background and text colors, gated to FIGHURAI Pro.
+
+Screenshots to capture
+----------------------
+1. Toolbar popup with Colors controls
+2. Floating Colors button on a sample website
+3. Colors panel open on a sample website
+4. fighur.ai /extension install page
+5. Pro unlock / upgrade context (optional)
+
+After approval
+--------------
+Replace the download CTA on https://fighur.ai/extension with your Chrome Web Store “Add to Chrome” URL.

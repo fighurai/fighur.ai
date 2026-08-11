@@ -126,6 +126,14 @@ function ExtensionContent() {
       </div>
 
       <p className="mt-8 text-center text-xs text-[var(--text-faint)]">
+        <Link href="/legal" className="underline-offset-2 hover:underline">
+          Own &amp; sell checklist
+        </Link>
+        {" · "}
+        <Link href="/eula" className="underline-offset-2 hover:underline">
+          EULA
+        </Link>
+        {" · "}
         <Link href="/settings?tab=apps" className="underline-offset-2 hover:underline">
           Settings → Apps
         </Link>

@@ -1,0 +1,34 @@
+INTELLECTUAL PROPERTY ASSIGNMENT AGREEMENT (TEMPLATE)
+
+This is a template for FIGHURAI / the founder to use with contractors or collaborators.
+Have an attorney adapt it for your state and situation before signing.
+
+Date: ______________
+
+Assignor (creator): _______________________________
+Email: ____________________________________________
+
+Assignee (owner): FIGHURAI / [Legal entity name]: _______________________________
+Address: __________________________________________
+
+1. Assignment. Assignor hereby irrevocably assigns to Assignee all right, title, and interest
+   worldwide in and to any work product created for Assignee related to FIGHURAI, fighur.ai,
+   the FIGHURAI Colors browser extension, branding, documentation, and related materials
+   (the "Work"), including copyrights, trade secrets, and all intellectual property rights.
+
+2. Work made for hire. To the extent permitted by law, the Work is a "work made for hire"
+   for Assignee. If any Work is not a work made for hire, the assignment in Section 1 applies.
+
+3. Moral rights. Assignor waives any moral rights to the extent permitted by applicable law.
+
+4. Further assurances. Assignor will sign documents reasonably requested to perfect Assignee's
+   ownership.
+
+5. Compensation. Consideration for this assignment is: $______ / other: ______________
+   (or as set out in a separate contractor agreement dated ________).
+
+6. Governing law. This agreement is governed by the laws of the State of ______________.
+
+Assignor signature: ______________________ Date: __________
+
+Assignee signature: ______________________ Date: __________
