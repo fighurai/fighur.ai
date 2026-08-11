@@ -105,7 +105,7 @@ export default function PrivacyPage() {
         not create an account if you are under that age.
       </p>
 
-      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">7. Contact</h2>
+      <h2 className="pt-2 text-base font-semibold text-[var(--text-primary)]">8. Contact</h2>
       <p>
         Questions:{" "}
         <a className="text-[var(--accent)] underline" href="mailto:hello@fighurai.com">
