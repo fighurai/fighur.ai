@@ -36,6 +36,17 @@ export function ThemeControls() {
   }, []);
 
   useEffect(() => {
+    const onTheme = (e: Event) => {
+      const detail = (e as CustomEvent<ThemePrefs>).detail;
+      if (!detail) return;
+      setPrefs(detail);
+      applyThemeVars(detail);
+    };
+    window.addEventListener("smile-theme-changed", onTheme);
+    return () => window.removeEventListener("smile-theme-changed", onTheme);
+  }, []);
+
+  useEffect(() => {
     const onDoc = (e: Event) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };

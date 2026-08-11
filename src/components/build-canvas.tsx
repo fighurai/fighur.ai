@@ -240,8 +240,17 @@ export function BuildCanvas({
     if (preview.doc) openPreviewInNewTab(preview.doc);
   }, [preview.doc]);
 
+  useEffect(() => {
+    if (!isSheet) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isSheet]);
+
   const shellClass = isSheet
-    ? "fixed inset-x-0 bottom-0 top-[3.25rem] z-[95] flex flex-col border-t border-white/[0.08] bg-[var(--bg-elevated)] md:hidden"
+    ? "fixed inset-0 z-[110] flex flex-col bg-[var(--bg-deep)] md:hidden"
     : `hidden shrink-0 bg-[var(--bg-elevated)]/90 backdrop-blur-md md:flex md:flex-col ${
         side === "left" ? "border-r border-white/[0.08]" : "border-l border-white/[0.08]"
       }`;
@@ -271,8 +280,16 @@ export function BuildCanvas({
       style={
         variant === "sidebar" && !fullscreen
           ? { width: "var(--canvas-w)", maxWidth: "100%", order: columnOrder }
-          : undefined
+          : isSheet
+            ? {
+                paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+                paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              }
+            : undefined
       }
+      {...(isSheet
+        ? { role: "dialog" as const, "aria-modal": true as const, "aria-label": "Canvas" }
+        : {})}
     >
       {variant === "sidebar" && onResizeWidth && !fullscreen ? (
         <div
@@ -286,13 +303,36 @@ export function BuildCanvas({
         />
       ) : null}
 
-      {/* Compact chrome — sheet gets a phone-first toolbar */}
+      {/* Compact chrome — sheet is a full-page canvas view on phones */}
       <div
-        className={`flex shrink-0 flex-col gap-2 border-b border-white/[0.08] ${
-          isSheet ? "px-3 py-2.5" : "px-2.5 py-2"
+        className={`flex shrink-0 flex-col border-b border-white/[0.08] bg-[var(--bg-elevated)] ${
+          isSheet ? "gap-2 px-3 py-2.5" : "gap-2 px-2.5 py-2"
         }`}
       >
         <div className="flex items-center gap-2">
+          {isSheet ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/[0.12] bg-white/[0.05] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)]"
+              aria-label="Back to chat"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3.5 w-3.5"
+                aria-hidden
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Chat
+            </button>
+          ) : null}
           <p className="shrink-0 text-sm font-semibold text-[var(--text-primary)]">Canvas</p>
           {artifact?.incomplete ? (
             <span
@@ -301,22 +341,24 @@ export function BuildCanvas({
             />
           ) : null}
 
-          <div className="ml-1 flex items-center rounded-lg bg-black/25 p-0.5">
-            {(["preview", "code"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onTabChange(t)}
-                className={`rounded-md px-2.5 py-1 text-[0.7rem] capitalize ${
-                  tab === t
-                    ? "bg-white/[0.1] font-medium text-[var(--text-primary)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+          {!isSheet ? (
+            <div className="ml-1 flex items-center rounded-lg bg-black/25 p-0.5">
+              {(["preview", "code"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onTabChange(t)}
+                  className={`rounded-md px-2.5 py-1 text-[0.7rem] capitalize ${
+                    tab === t
+                      ? "bg-white/[0.1] font-medium text-[var(--text-primary)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {/* Device picker stays desktop-sidebar only — phone sheet is already a phone */}
           {!isSheet && tab === "preview" && canPreviewInteractive ? (
@@ -508,17 +550,36 @@ export function BuildCanvas({
               </>
             )}
 
-            <button
-              type="button"
-              onClick={onClose}
-              className={`rounded-md text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] ${
-                isSheet ? "px-2.5 py-1.5 font-medium" : "px-2 py-1"
-              }`}
-            >
-              Close
-            </button>
+            {!isSheet ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06]"
+              >
+                Close
+              </button>
+            ) : null}
           </div>
         </div>
+
+        {isSheet ? (
+          <div className="flex w-full items-center rounded-lg bg-black/25 p-0.5">
+            {(["preview", "code"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => onTabChange(t)}
+                className={`min-w-0 flex-1 rounded-md px-2.5 py-1.5 text-center text-[0.7rem] capitalize ${
+                  tab === t
+                    ? "bg-white/[0.1] font-medium text-[var(--text-primary)]"
+                    : "text-[var(--text-muted)]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* Optional section strip — collapsed by default */}

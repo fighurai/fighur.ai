@@ -376,6 +376,15 @@ export function SmileChatGeneral() {
   const composerDockRef = useRef<HTMLDivElement>(null);
   const [composerInset, setComposerInset] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setCompactPhoneComposer(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const loadActiveAgent = async () => {
@@ -449,6 +458,10 @@ export function SmileChatGeneral() {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    if (buildSidebarOpen) setMobileSidebarOpen(false);
+  }, [buildSidebarOpen]);
 
   useEffect(() => {
     const p = readLayout();
@@ -1432,8 +1445,8 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
-            rows={showEmpty ? 3 : 2}
-            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none"
+            rows={compactPhoneComposer ? (showEmpty ? 2 : 1) : showEmpty ? 3 : 2}
+            className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
             disabled={busy || attachingFiles}
           />
           <input
@@ -1481,13 +1494,13 @@ export function SmileChatGeneral() {
               })}
             </div>
           ) : null}
-          <div className="flex min-w-0 flex-col gap-2 border-t border-white/[0.06] px-2 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className="flex min-w-0 flex-row flex-wrap items-center justify-between gap-1.5 border-t border-white/[0.06] px-2 py-2 max-md:gap-1 max-md:px-1.5 max-md:py-1 sm:gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
               <button
                 type="button"
                 onClick={toggleListen}
                 disabled={busy}
-                className="shrink-0 rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+                className="shrink-0 rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06] max-md:px-2 max-md:py-1"
               >
                 {listening ? "Stop" : "Speak"}
               </button>
@@ -1495,7 +1508,7 @@ export function SmileChatGeneral() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={busy || attachingFiles}
-                className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40"
+                className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 disabled:opacity-40 max-md:px-2 max-md:py-1"
               >
                 Attach
               </button>
@@ -1503,17 +1516,17 @@ export function SmileChatGeneral() {
                 <button
                   type="button"
                   onClick={() => setCanvasOpen((v) => !v)}
-                  className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40"
+                  className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]/40 max-md:hidden"
                 >
                   <span className="sm:hidden">Space</span>
                   <span className="hidden sm:inline">Workspace</span>
                 </button>
               ) : null}
             </div>
-            <div className="grid min-w-0 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+            <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:min-w-[9.5rem] max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
               {availableModels.length === 1 ? (
                 <span
-                  className="min-w-0 truncate rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] sm:px-4 sm:py-2"
+                  className="min-w-0 truncate rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:px-4 sm:py-2"
                   title={session?.userId && session.plan !== "pro" ? "Free plan includes Claude only" : undefined}
                 >
                   {availableModels[0].label}
@@ -1526,7 +1539,7 @@ export function SmileChatGeneral() {
                     setRoutedModelHint(null);
                   }}
                   disabled={busy || availableModels.length === 0}
-                  className="min-w-0 w-full max-w-full truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-[13rem] sm:px-4 sm:py-2"
+                  className="min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:max-w-[13rem] sm:px-4 sm:py-2"
                   aria-label="Select model"
                   title={routedModelHint ?? undefined}
                 >
@@ -1546,7 +1559,7 @@ export function SmileChatGeneral() {
                   {routedModelHint}
                 </span>
               ) : null}
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
                     type="button"
@@ -1554,7 +1567,7 @@ export function SmileChatGeneral() {
                       setCanvasOpen(true);
                       setBuildPanelTab("preview");
                     }}
-                    className="rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
+                    className="rounded-full border border-[var(--accent)]/35 bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20 max-md:px-2 max-md:py-1"
                   >
                     Canvas
                   </button>
@@ -1563,7 +1576,7 @@ export function SmileChatGeneral() {
                   <button
                     type="button"
                     onClick={stopAll}
-                    className="rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06]"
+                    className="rounded-full px-2.5 py-1.5 text-xs text-[var(--text-muted)] hover:bg-white/[0.06] max-md:px-2 max-md:py-1"
                   >
                     Stop
                   </button>
@@ -1571,7 +1584,7 @@ export function SmileChatGeneral() {
                 <button
                   type="submit"
                   disabled={busy || !input.trim()}
-                  className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 sm:px-4 sm:py-2"
+                  className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 max-md:px-3 max-md:py-1 sm:px-4 sm:py-2"
                 >
                   Send
                 </button>
@@ -1769,7 +1782,7 @@ export function SmileChatGeneral() {
       <div
         className={`flex min-h-0 flex-1 flex-col ${
           showEmpty ? "" : "h-full max-h-full overflow-hidden"
-        }`}
+        } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
         <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
@@ -1925,19 +1938,21 @@ export function SmileChatGeneral() {
         {!showEmpty ? (
           <div
             ref={composerDockRef}
-            className="composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 max-md:!left-0 max-md:!right-0"
+            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 max-md:!left-0 max-md:!right-0 ${
+              buildSidebarOpen ? "max-md:hidden" : ""
+            }`}
             style={{ left: dockInsets.left, right: dockInsets.right }}
           >
-            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
-              <div className="mb-1 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--bg-deep)]/90 py-1 md:hidden">
+            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
+              <div className="mb-0.5 flex flex-wrap items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-[var(--bg-deep)]/90 px-1.5 py-0.5 md:hidden">
                 {session ? (
                   <>
-                    <span className="max-w-[14rem] truncate text-xs text-[var(--text-muted)]">{session.email}</span>
+                    <span className="max-w-[10rem] truncate text-[0.65rem] text-[var(--text-muted)]">{session.email}</span>
                     {session.plan !== "pro" ? (
                       <>
                         <span className="text-[var(--text-faint)]">·</span>
-                        <Link href="/upgrade" className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline">
-                          Upgrade to Pro
+                        <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                          Upgrade
                         </Link>
                       </>
                     ) : null}
@@ -1946,29 +1961,29 @@ export function SmileChatGeneral() {
                       onClick={() => {
                         void clearSessionAndServer().then(() => setSession(null));
                       }}
-                      className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                      className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
                     >
                       Sign out
                     </button>
                   </>
                 ) : (
                   <>
-                    <Link href="/sign-in" className="text-xs font-semibold text-[var(--accent)]">
+                    <Link href="/sign-in" className="text-[0.65rem] font-semibold text-[var(--accent)]">
                       Sign in
                     </Link>
                     <span className="text-[var(--text-faint)]">·</span>
-                    <Link href="/sign-up" className="text-xs font-medium text-[var(--text-muted)]">
+                    <Link href="/sign-up" className="text-[0.65rem] font-medium text-[var(--text-muted)]">
                       Create account
                     </Link>
                     <span className="text-[var(--text-faint)]">·</span>
-                    <Link href="/upgrade" className="text-xs font-medium text-[var(--accent)] underline-offset-2 hover:underline">
-                      Upgrade to Pro
+                    <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                      Upgrade
                     </Link>
                   </>
                 )}
               </div>
               {composerPanel}
-              <p className="mt-1 pb-0.5 text-center text-[0.6rem] text-[var(--text-faint)]">
+              <p className="mt-0.5 pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] max-md:leading-tight md:mt-1 md:text-[0.6rem]">
                 © {new Date().getFullYear()} FIGHURAI ·{" "}
                 <Link href="/privacy" className="hover:text-[var(--text-muted)]">
                   Privacy

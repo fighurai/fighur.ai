@@ -96,6 +96,28 @@ body {
   touch-action: manipulation;
 }
 
+@media (max-width: 767px) {
+  #smile-chat-input {
+    max-height: 3.75rem;
+    min-height: 2.25rem;
+    line-height: 1.35;
+    overflow-y: auto;
+  }
+
+  .composer-float {
+    padding: 0.15rem;
+  }
+
+  .home-empty-hero {
+    justify-content: flex-end;
+    padding: 0.75rem 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .home-empty-hero .composer-column {
+    max-width: 100%;
+  }
+}
+
 .composer-dock select {
   font-size: 16px;
 }

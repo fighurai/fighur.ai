@@ -40,6 +40,9 @@ export function readTheme(): ThemePrefs {
 
 export function writeTheme(p: ThemePrefs) {
   localStorage.setItem(KEY, JSON.stringify(p));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("smile-theme-changed", { detail: p }));
+  }
 }
 
 export function mixHex(a: string, b: string, t: number): string {

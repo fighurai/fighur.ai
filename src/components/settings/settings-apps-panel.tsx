@@ -24,13 +24,16 @@ export function SettingsAppsPanel() {
   const [apps, setApps] = useState<AppRow[]>([]);
   const [builds, setBuilds] = useState<ConversationBuildRow[]>([]);
   const [appsError, setAppsError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<"free" | "pro" | null>(readSession()?.plan ?? null);
   const signedIn = Boolean(readSession()?.userId);
+  const isPro = plan === "pro";
 
   const refresh = useCallback(async () => {
     setBuilds(listConversationBuilds(readSession()?.userId));
     setAppsError(null);
-    const session = readSession();
-    if (!session?.userId) {
+    const local = readSession();
+    setPlan(local?.plan ?? null);
+    if (!local?.userId) {
       setApps([]);
       return;
     }
@@ -74,7 +77,7 @@ export function SettingsAppsPanel() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "publish", id }),
     });
-    const data = (await res.json()) as { error?: string };
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
       setAppsError(data.error ?? "Publish failed");
       return;
@@ -99,6 +102,72 @@ export function SettingsAppsPanel() {
 
   return (
     <div className="space-y-8">
+      <section>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Chrome extensions</h3>
+        <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
+          Desktop browser tools included with your plan.
+        </p>
+        <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[var(--text-primary)]">Page Theme</p>
+              <p className="mt-1 text-[0.65rem] leading-relaxed text-[var(--text-muted)]">
+                Click the extension on any site to open the same <strong>Colors</strong> panel as on
+                FIGHURAI — background and text, synced with your Pro account.
+              </p>
+              {isPro ? (
+                <ol className="mt-2 list-decimal space-y-1 pl-4 text-[0.65rem] text-[var(--text-faint)]">
+                  <li>
+                    Download{" "}
+                    <a
+                      href="/downloads/fighur-page-theme.zip"
+                      className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                    >
+                      fighur-page-theme.zip
+                    </a>
+                  </li>
+                  <li>
+                    Unzip, open <code className="text-[0.6rem]">chrome://extensions</code>, enable
+                    Developer mode
+                  </li>
+                  <li>Load unpacked → select the unzipped folder</li>
+                  <li>Keep this tab open once so Pro status syncs to the extension</li>
+                </ol>
+              ) : (
+                <p className="mt-2 text-[0.65rem] text-[var(--text-faint)]">
+                  Included with Pro.{" "}
+                  <Link
+                    href="/upgrade"
+                    className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                  >
+                    Upgrade to Pro
+                  </Link>{" "}
+                  to install.
+                </p>
+              )}
+            </div>
+            <span className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[0.6rem] font-semibold text-[var(--accent)]">
+              Pro
+            </span>
+          </div>
+          {isPro ? (
+            <a
+              href="/downloads/fighur-page-theme.zip"
+              className="mt-3 inline-flex rounded-full bg-[var(--accent)]/15 px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/30 hover:bg-[var(--accent)]/25"
+            >
+              Download extension
+            </a>
+          ) : (
+            <Link
+              href="/upgrade"
+              className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent-foreground)]"
+            >
+              Upgrade to Pro
+            </Link>
+          )}
+        </div>
+      </section>
+
       <section>
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">Saved apps</h3>
         <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">

@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "FIGHURAI Page Theme",
+  "version": "1.1.0",
+  "description": "Open FIGHURAI Colors on any website — the same background and text controls from the platform. Included with Pro.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "FIGHURAI Colors",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": [
+    "https://fighur.ai/*",
+    "https://www.fighur.ai/*",
+    "https://fighurai.ai/*",
+    "https://www.fighurai.ai/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://fighur.ai/*",
+        "https://www.fighur.ai/*",
+        "https://fighurai.ai/*",
+        "https://www.fighurai.ai/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "js": ["site-bridge.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}

@@ -20,6 +20,11 @@ export function hasAllModelsAccess(plan: UserPlan, roles: Role[]): boolean {
   return hasPermission(roles, "admin:users") || roles.includes("admin");
 }
 
+/** Pro feature: Chrome extension that restyles any website’s colors. */
+export function hasPageThemeExtensionAccess(plan: UserPlan, roles: Role[]): boolean {
+  return hasAllModelsAccess(plan, roles);
+}
+
 export function allowedModelIdsForPlan(plan: UserPlan, roles: Role[]): string[] {
   if (hasAllModelsAccess(plan, roles)) {
     return CHAT_MODEL_OPTIONS.map((m) => m.id);
