@@ -33,6 +33,9 @@ export async function POST(request: Request) {
   clear("smile_oauth_google_pending");
   clear("smile_oauth_microsoft_pending");
   clear("smile_oauth_slack_pending");
+  clear("smile_sso_google_pending");
+  clear("smile_sso_microsoft_pending");
+  clear("smile_sso_apple_pending");
   clear(COOKIE_ANON);
   return res;
 }

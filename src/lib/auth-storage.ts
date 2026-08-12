@@ -19,6 +19,18 @@ export type UsageSummary = {
 
 const STORAGE_KEY = "smile-ai-session-v1";
 
+/** Bumped on sign-out so in-flight session fetches cannot write the user back in. */
+let authGeneration = 0;
+
+export function getAuthGeneration(): number {
+  return authGeneration;
+}
+
+export function bumpAuthGeneration(): number {
+  authGeneration += 1;
+  return authGeneration;
+}
+
 export function readSession(): SmileSession | null {
   if (typeof window === "undefined") return null;
   try {
@@ -155,7 +167,9 @@ export async function fetchUsageSummary(): Promise<UsageSummary | null> {
 
 /** Sync httpOnly session cookie → localStorage (after SSO redirect or page load). */
 export async function hydrateServerSession(): Promise<boolean> {
+  const gen = authGeneration;
   const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+  if (gen !== authGeneration) return false;
   if (res.ok) {
     const data = (await res.json()) as {
       signedIn?: boolean;
@@ -164,6 +178,7 @@ export async function hydrateServerSession(): Promise<boolean> {
       name?: string;
       plan?: string;
     };
+    if (gen !== authGeneration) return false;
     if (data.signedIn && data.userId && data.email) {
       writeSession({
         userId: data.userId,
@@ -181,16 +196,20 @@ export async function hydrateServerSession(): Promise<boolean> {
       return true;
     }
   }
+  if (gen !== authGeneration) return false;
   clearSession();
   return false;
 }
 
 /** Cookie-backed user id only — never trust localStorage alone for chat ownership. */
 export async function readVerifiedServerUserId(): Promise<string | null> {
+  const gen = authGeneration;
   try {
     const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+    if (gen !== authGeneration) return null;
     if (!res.ok) return null;
     const data = (await res.json()) as { signedIn?: boolean; userId?: unknown };
+    if (gen !== authGeneration) return null;
     if (data.signedIn && typeof data.userId === "string" && data.userId.length > 0) {
       return data.userId;
     }
@@ -202,11 +221,14 @@ export async function readVerifiedServerUserId(): Promise<string | null> {
 
 export async function clearSessionAndServer(): Promise<void> {
   const { onLogoutClientSide } = await import("@/lib/client-auth-cleanup");
+  // Invalidate in-flight hydrates before touching network / localStorage.
+  bumpAuthGeneration();
   await onLogoutClientSide();
-  clearSession();
   try {
-    await fetch("/api/auth/sign-out", { method: "POST", credentials: "include" });
+    // Clear httpOnly cookie first so any concurrent session GET cannot revive it.
+    await fetch("/api/auth/sign-out", { method: "POST", credentials: "include", cache: "no-store" });
   } catch {
     /* ignore */
   }
+  clearSession();
 }

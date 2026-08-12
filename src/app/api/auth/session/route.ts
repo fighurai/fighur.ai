@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { appendAudit } from "@/lib/audit-log";
-import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
+import { sessionJsonBody, attachSessionCookie } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { readVerifiedSession } from "@/lib/session-cookie";
@@ -32,7 +32,9 @@ export async function GET(request: Request) {
   }
   await ensureComplimentaryEntitlements(session.userId, session.email);
   const profile = await readUserProfile(session.userId);
-  const res = NextResponse.json({
+  // Do not re-attach cookies on GET — that races with sign-out and can resurrect
+  // a session that the client just cleared.
+  return NextResponse.json({
     ok: true,
     signedIn: true,
     userId: session.userId,
@@ -42,12 +44,6 @@ export async function GET(request: Request) {
     environmentId: profile?.environmentId ?? session.environmentId ?? session.userId,
     plan: profile?.plan ?? session.plan ?? "free",
   });
-  const withCookies = await attachSessionCookie(res, {
-    userId: session.userId,
-    email: profile?.email ?? session.email,
-    name: profile?.name ?? session.name,
-  });
-  return withCookies ?? res;
 }
 
 export async function POST(request: Request) {
