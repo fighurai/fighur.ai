@@ -1,15 +1,20 @@
 import type { SavedConversation } from "@/lib/conversation-storage";
 
-export async function fetchServerConversations(): Promise<SavedConversation[] | null> {
+export type FetchConversationsResult =
+  | { status: "ok"; conversations: SavedConversation[] }
+  | { status: "unauthorized" }
+  | { status: "error" };
+
+export async function fetchServerConversations(): Promise<FetchConversationsResult> {
   try {
     const res = await fetch("/api/conversations", { credentials: "include", cache: "no-store" });
-    if (res.status === 401) return null;
-    if (!res.ok) return null;
+    if (res.status === 401) return { status: "unauthorized" };
+    if (!res.ok) return { status: "error" };
     const data = (await res.json()) as { conversations?: unknown };
-    if (!Array.isArray(data.conversations)) return [];
-    return data.conversations as SavedConversation[];
+    if (!Array.isArray(data.conversations)) return { status: "ok", conversations: [] };
+    return { status: "ok", conversations: data.conversations as SavedConversation[] };
   } catch {
-    return null;
+    return { status: "error" };
   }
 }
 

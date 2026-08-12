@@ -23,5 +23,5 @@ bash scripts/pack-page-theme-extension.sh
 - `manifest.json` — `action.default_popup` (real toolbar popup)
 - `popup.html` / `popup.js` — Colors UI
 - `content.js` + `panel.css` — apply theme + floating FAB + overlay panel
-- `background.js` — storage hub + post-install open `/extension?installed=1`
-- `site-bridge.js` — sync Pro entitlement + `smile-ai-theme` on fighur.ai
+- `background.js` — storage hub, broadcast theme to tabs, post-install open `/extension?installed=1`
+- `site-bridge.js` — Pro entitlement sync; extension theme → fighur.ai CSS vars (site edits still push back)

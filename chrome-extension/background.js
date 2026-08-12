@@ -7,6 +7,21 @@ const DEFAULT_THEME = {
   fg: "#1432F5",
 };
 
+function broadcastTheme(theme) {
+  chrome.tabs.query({}, (tabs) => {
+    for (const tab of tabs) {
+      if (!tab.id) continue;
+      chrome.tabs.sendMessage(
+        tab.id,
+        { type: "fighur-page-theme-apply", theme },
+        () => {
+          void chrome.runtime.lastError;
+        },
+      );
+    }
+  });
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   chrome.storage.sync.get([THEME_KEY], (data) => {
     if (!data?.[THEME_KEY]) {
@@ -32,11 +47,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg?.type === "fighur-save-theme") {
-    void chrome.storage.sync.set({ [THEME_KEY]: msg.theme }).then(() => {
+    const theme = msg.theme || DEFAULT_THEME;
+    void chrome.storage.sync.set({ [THEME_KEY]: theme }).then(() => {
+      broadcastTheme(theme);
       sendResponse({ ok: true });
     });
     return true;
   }
 
   return false;
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "sync" && changes.fighurPageTheme) {
+    broadcastTheme(changes.fighurPageTheme.newValue || DEFAULT_THEME);
+  }
 });

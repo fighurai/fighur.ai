@@ -17,6 +17,17 @@ export function conversationStorageUserId(userId?: string | null): string {
   return userId && userId.length > 0 ? userId : ANONYMOUS_STORAGE_USER;
 }
 
+export function isAnonymousStorageUser(storageUser: string): boolean {
+  return storageUser === ANONYMOUS_STORAGE_USER;
+}
+
+/** Storage bucket that matches the live local session (never trust a stale React userId alone). */
+export function liveConversationStorageUser(
+  readSessionFn: () => { userId?: string } | null,
+): string {
+  return conversationStorageUserId(readSessionFn()?.userId);
+}
+
 function storageKeys(scope: ConversationScope, storageUser: string) {
   const base =
     scope === "ask" ? "fighurai-conversations-v1" : "fighurai-assistant-conversations-v1";
@@ -110,6 +121,20 @@ export function persistConversations(
   }
 }
 
+export function clearConversations(
+  scope: ConversationScope = "ask",
+  storageUser: string = ANONYMOUS_STORAGE_USER,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const keys = storageKeys(scope, storageUser);
+    localStorage.removeItem(keys.list);
+    localStorage.removeItem(keys.active);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function upsertConversation(
   list: SavedConversation[],
   patch: SavedConversation,
@@ -130,7 +155,11 @@ export function removeConversation(
   return list.filter((c) => c.id !== id);
 }
 
-/** Copy anonymous local chats into the signed-in user's bucket once. */
+/**
+ * Copy anonymous local chats into the signed-in user's bucket once.
+ * Clears the anonymous bucket after a successful copy so a later sign-out
+ * cannot resurface account-bound chats under the guest list.
+ */
 export function migrateAnonymousConversationsToUser(
   userId: string,
   scope: ConversationScope = "assistant",
@@ -139,8 +168,13 @@ export function migrateAnonymousConversationsToUser(
   const anon = loadConversations(scope, ANONYMOUS_STORAGE_USER);
   if (anon.length === 0) return;
   const existing = loadConversations(scope, userId);
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    // Account already has chats — drop guest copies so they never mix identities.
+    clearConversations(scope, ANONYMOUS_STORAGE_USER);
+    return;
+  }
   persistConversations(anon, scope, userId);
+  clearConversations(scope, ANONYMOUS_STORAGE_USER);
 }
 
 export { deriveTitle };

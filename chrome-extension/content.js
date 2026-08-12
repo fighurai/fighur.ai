@@ -17,6 +17,19 @@
   };
 
   let panelOpen = false;
+  let lastTheme = DEFAULT_THEME;
+
+  function isFigHurHost() {
+    const h = location.hostname;
+    return (
+      h === "fighur.ai" ||
+      h === "www.fighur.ai" ||
+      h === "fighurai.ai" ||
+      h === "www.fighurai.ai" ||
+      h === "localhost" ||
+      h === "127.0.0.1"
+    );
+  }
 
   function normalizeTheme(raw) {
     const t = raw || {};
@@ -32,7 +45,8 @@
     if (!el) {
       el = document.createElement("style");
       el.id = STYLE_ID;
-      (document.documentElement || document.head || document).appendChild(el);
+      const parent = document.head || document.documentElement;
+      parent.appendChild(el);
     }
     return el;
   }
@@ -44,17 +58,41 @@
 
   function applyTheme(theme) {
     const t = normalizeTheme(theme);
+    lastTheme = t;
+
+    // fighur.ai uses CSS variables via site-bridge — don't fight with !important.
+    if (isFigHurHost()) {
+      clearTheme();
+      return;
+    }
+
     if (!t.enabled) {
       clearTheme();
       return;
     }
+
     const el = ensureStyle();
     document.documentElement?.setAttribute(ATTR, "on");
     el.textContent = `
-html[${ATTR}], html[${ATTR}] body {
+html[${ATTR}] {
   background-color: ${t.bg} !important;
-  color: ${t.fg} !important;
   background-image: none !important;
+  color: ${t.fg} !important;
+}
+html[${ATTR}] body {
+  background-color: ${t.bg} !important;
+  background-image: none !important;
+  color: ${t.fg} !important;
+}
+html[${ATTR}] #__next,
+html[${ATTR}] #root,
+html[${ATTR}] #app,
+html[${ATTR}] #__nuxt,
+html[${ATTR}] main,
+html[${ATTR}] [data-reactroot] {
+  background-color: ${t.bg} !important;
+  background-image: none !important;
+  color: ${t.fg} !important;
 }
 html[${ATTR}] p, html[${ATTR}] li, html[${ATTR}] span, html[${ATTR}] h1,
 html[${ATTR}] h2, html[${ATTR}] h3, html[${ATTR}] h4, html[${ATTR}] h5, html[${ATTR}] h6,
@@ -107,7 +145,7 @@ html[${ATTR}] header, html[${ATTR}] footer, html[${ATTR}] main, html[${ATTR}] as
       e.stopPropagation();
       void togglePanel();
     });
-    document.documentElement.appendChild(btn);
+    (document.body || document.documentElement).appendChild(btn);
   }
 
   function closePanel() {
@@ -223,7 +261,7 @@ html[${ATTR}] header, html[${ATTR}] footer, html[${ATTR}] main, html[${ATTR}] as
     closePanel();
     const host = document.createElement("div");
     host.id = ROOT_ID;
-    document.documentElement.appendChild(host);
+    (document.body || document.documentElement).appendChild(host);
     const state = await getState();
     if (!isPro(state.entitlement)) {
       renderGate(host, state.entitlement);
@@ -244,9 +282,13 @@ html[${ATTR}] header, html[${ATTR}] footer, html[${ATTR}] main, html[${ATTR}] as
     await openPanel();
   }
 
-  chrome.storage.sync.get(["fighurPageTheme"], (data) => {
-    applyTheme(data?.fighurPageTheme || DEFAULT_THEME);
-  });
+  function bootTheme() {
+    chrome.storage.sync.get(["fighurPageTheme"], (data) => {
+      applyTheme(data?.fighurPageTheme || DEFAULT_THEME);
+    });
+  }
+
+  bootTheme();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "sync" && changes.fighurPageTheme) {
@@ -266,5 +308,47 @@ html[${ATTR}] header, html[${ATTR}] footer, html[${ATTR}] main, html[${ATTR}] as
     return false;
   });
 
-  ensureFab();
+  // SPAs / aggressive sites sometimes strip injected <style> — put it back.
+  const reassertTheme = () => {
+    if (!lastTheme.enabled || isFigHurHost()) return;
+    if (!document.getElementById(STYLE_ID) || document.documentElement?.getAttribute(ATTR) !== "on") {
+      applyTheme(lastTheme);
+    }
+  };
+  const mo = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === "attributes" && m.attributeName === ATTR) {
+        reassertTheme();
+        return;
+      }
+      if (m.type === "childList") {
+        for (const n of m.removedNodes) {
+          if (n && n.id === STYLE_ID) {
+            reassertTheme();
+            return;
+          }
+        }
+      }
+    }
+  });
+  mo.observe(document.documentElement, {
+    childList: true,
+    attributes: true,
+    attributeFilter: [ATTR],
+  });
+  const watchHead = () => {
+    if (document.head) mo.observe(document.head, { childList: true });
+  };
+  watchHead();
+  if (!document.head) document.addEventListener("DOMContentLoaded", watchHead, { once: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && lastTheme.enabled) applyTheme(lastTheme);
+  });
+  window.addEventListener("pageshow", () => {
+    if (lastTheme.enabled) applyTheme(lastTheme);
+  });
+
+  if (document.body) ensureFab();
+  else document.addEventListener("DOMContentLoaded", ensureFab, { once: true });
 })();

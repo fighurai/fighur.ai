@@ -31,10 +31,12 @@ import {
   type ActiveAgentChangeDetail,
 } from "@/lib/agents/types";
 import {
+  clearSession,
   clearSessionAndServer,
   fetchUsageSummary,
   hydrateServerSession,
   readSession,
+  readVerifiedServerUserId,
   type SmileSession,
   type UsageSummary,
 } from "@/lib/auth-storage";
@@ -90,8 +92,11 @@ import {
 import { StreamLoadingDots } from "@/components/stream-loading-dots";
 import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
 import {
+  ANONYMOUS_STORAGE_USER,
   deriveTitle,
+  clearConversations,
   conversationStorageUserId,
+  liveConversationStorageUser,
   loadConversations,
   loadLastActiveId,
   migrateAnonymousConversationsToUser,
@@ -332,6 +337,12 @@ export function SmileChatGeneral() {
   const [listening, setListening] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const chatLoadGenRef = useRef(0);
+  /** Bucket currently allowed on screen / for writes — must match live session. */
+  const conversationOwnerRef = useRef<string>(ANONYMOUS_STORAGE_USER);
+  /** After a signed-out boot/sign-out wipe, don't re-clobber in-session guest drafts. */
+  const signedOutBootDoneRef = useRef(false);
   const [models, setModels] = useState<ChatModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [routedModelHint, setRoutedModelHint] = useState<string | null>(null);
@@ -521,6 +532,14 @@ export function SmileChatGeneral() {
   }, []);
 
   const applyConversationList = useCallback((list: SavedConversation[], storageUser: string) => {
+    // Hard gate: never paint another identity's chats into the UI.
+    const session = readSession();
+    const liveOwner = conversationStorageUserId(session?.userId);
+    if (storageUser !== liveOwner) return;
+    // Account bucket requires a live userId; guest bucket requires signed-out.
+    if (storageUser !== ANONYMOUS_STORAGE_USER && !session?.userId) return;
+    if (storageUser === ANONYMOUS_STORAGE_USER && session?.userId) return;
+    conversationOwnerRef.current = storageUser;
     setConversations(list);
     const last = loadLastActiveId("assistant", storageUser);
     if (last && list.some((c) => c.id === last)) {
@@ -550,19 +569,72 @@ export function SmileChatGeneral() {
     }
   }, [resolveCanvasOpen]);
 
+  const resetToEmptyChat = useCallback(() => {
+    setConversations([]);
+    setActiveId(null);
+    setMessages([]);
+    setLatestBuildArtifact(null);
+    setBuildSidebarOpen(resolveCanvasOpen(false));
+  }, [resolveCanvasOpen]);
+
+  const showSignedOutEmpty = useCallback(() => {
+    conversationOwnerRef.current = ANONYMOUS_STORAGE_USER;
+    // Purge guest bucket so leaked account copies cannot resurface.
+    clearConversations("assistant", ANONYMOUS_STORAGE_USER);
+    resetToEmptyChat();
+    applyConversationList([], ANONYMOUS_STORAGE_USER);
+    signedOutBootDoneRef.current = true;
+  }, [applyConversationList, resetToEmptyChat]);
+
   const loadAccountChats = useCallback(
-    async (userId?: string | null) => {
-      const storageUser = conversationStorageUserId(userId);
-      if (userId) {
+    async (_requestedUserId?: string | null) => {
+      const gen = ++chatLoadGenRef.current;
+
+      // Cookie is the only authority for whose chats may be shown.
+      const verifiedUserId = await readVerifiedServerUserId();
+      if (gen !== chatLoadGenRef.current) return;
+
+      if (verifiedUserId) {
+        signedOutBootDoneRef.current = false;
+        if (readSession()?.userId !== verifiedUserId) {
+          await hydrateServerSession();
+          if (gen !== chatLoadGenRef.current) return;
+          setSession(readSession());
+        }
+
+        const userId = verifiedUserId;
+        const storageUser = conversationStorageUserId(userId);
+
+        if (conversationOwnerRef.current !== storageUser) {
+          conversationOwnerRef.current = storageUser;
+          resetToEmptyChat();
+        }
+
         migrateAnonymousConversationsToUser(userId, "assistant");
         const local = loadConversations("assistant", storageUser);
-        const server = (await fetchServerConversations()) ?? [];
-        const merged = mergeConversations(local, server);
+        const serverResult = await fetchServerConversations();
+        if (gen !== chatLoadGenRef.current) return;
+        // Session must still be this verified user — never paint another bucket.
+        if (readSession()?.userId !== userId) return;
+
+        if (serverResult.status === "unauthorized") {
+          clearSession();
+          setSession(null);
+          if (gen !== chatLoadGenRef.current) return;
+          showSignedOutEmpty();
+          return;
+        }
+
+        const server = serverResult.status === "ok" ? serverResult.conversations : [];
+        const merged =
+          serverResult.status === "ok" ? mergeConversations(local, server) : local;
         persistConversations(merged, "assistant", storageUser);
         applyConversationList(merged, storageUser);
-        if (merged.length > 0) {
+        if (serverResult.status === "ok" && merged.length > 0) {
           void saveServerConversations(merged).then((r) => {
             if (!r.ok && r.status === 401) {
+              clearSession();
+              setSession(null);
               setError("Sign in again to sync chats to your account.");
             }
           });
@@ -570,9 +642,19 @@ export function SmileChatGeneral() {
         void syncConnectedServicesFromServer(userId);
         return;
       }
-      applyConversationList(loadConversations("assistant", storageUser), storageUser);
+
+      // No cookie → signed out. Never restore any stored chat history.
+      if (readSession()?.userId) {
+        clearSession();
+        setSession(null);
+      }
+      if (gen !== chatLoadGenRef.current) return;
+      const leavingAccount = conversationOwnerRef.current !== ANONYMOUS_STORAGE_USER;
+      if (leavingAccount || !signedOutBootDoneRef.current) {
+        showSignedOutEmpty();
+      }
     },
-    [applyConversationList],
+    [applyConversationList, resetToEmptyChat, showSignedOutEmpty],
   );
 
   useEffect(() => {
@@ -582,40 +664,50 @@ export function SmileChatGeneral() {
   }, []);
 
   useEffect(() => {
-    setSession(readSession());
     const onAuth = () => {
+      if (!authReady) return;
       const next = readSession();
       setSession(next);
       void fetchUsageSummary().then(setUsage);
       void loadAccountChats(next?.userId);
     };
     window.addEventListener("smile-auth-changed", onAuth);
-    void fetchUsageSummary().then(setUsage);
     return () => window.removeEventListener("smile-auth-changed", onAuth);
-  }, [loadAccountChats]);
+  }, [authReady, loadAccountChats]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromSso = params.has("signed_in");
-    void hydrateServerSession().then(async (ok) => {
-      const next = readSession();
-      setSession(next);
-      if (next?.userId) await loadAccountChats(next.userId);
-      if (fromSso) {
-        params.delete("signed_in");
-        const qs = params.toString();
-        const path = window.location.pathname + (qs ? `?${qs}` : "");
-        window.history.replaceState(null, "", path);
-        if (!ok && !readSession()) {
-          window.location.href = "/sign-in?error=session_sync";
+    void hydrateServerSession()
+      .then(async (ok) => {
+        const next = readSession();
+        setSession(next);
+        setAuthReady(true);
+        void fetchUsageSummary().then(setUsage);
+        await loadAccountChats(next?.userId);
+        setHydrated(true);
+        if (fromSso) {
+          params.delete("signed_in");
+          const qs = params.toString();
+          const path = window.location.pathname + (qs ? `?${qs}` : "");
+          window.history.replaceState(null, "", path);
+          if (!ok && !readSession()) {
+            window.location.href = "/sign-in?error=session_sync";
+          }
         }
-      }
-    });
+      })
+      .catch(() => {
+        clearSession();
+        setSession(null);
+        setAuthReady(true);
+        void loadAccountChats(null).finally(() => setHydrated(true));
+      });
   }, [loadAccountChats]);
 
   useEffect(() => {
-    void loadAccountChats(session?.userId).finally(() => setHydrated(true));
-  }, [session?.userId, loadAccountChats]);
+    if (!authReady) return;
+    void loadAccountChats(session?.userId);
+  }, [authReady, session?.userId, loadAccountChats]);
 
   useEffect(() => {
     void fetch("/api/chat/models", { credentials: "include" })
@@ -662,8 +754,12 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     if (!hydrated || !activeId || messages.length === 0) return;
-    const storageUser = conversationStorageUserId(session?.userId);
+    const liveOwner = liveConversationStorageUser(readSession);
+    // Never write chat content into another identity's bucket (e.g. sign-out mid-stream).
+    if (liveOwner !== conversationOwnerRef.current) return;
+    const storageUser = liveOwner;
     setConversations((prev) => {
+      if (conversationOwnerRef.current !== storageUser) return prev;
       const merged = upsertConversation(prev, {
         id: activeId,
         messages,
@@ -672,11 +768,16 @@ export function SmileChatGeneral() {
         buildArtifact: latestBuildArtifact,
       });
       persistConversations(merged, "assistant", storageUser);
-      if (session?.userId) {
+      const liveUserId = readSession()?.userId;
+      if (liveUserId && conversationStorageUserId(liveUserId) === storageUser) {
         if (serverSyncRef.current) clearTimeout(serverSyncRef.current);
         serverSyncRef.current = setTimeout(() => {
+          if (readSession()?.userId !== liveUserId) return;
+          if (conversationOwnerRef.current !== storageUser) return;
           void saveServerConversations(merged).then((r) => {
             if (!r.ok && r.status === 401) {
+              clearSession();
+              setSession(null);
               setError("Sign in again to sync chats to your account.");
             }
           });
@@ -709,9 +810,9 @@ export function SmileChatGeneral() {
     setSelectedCanvasSectionId(null);
     setCanvasOpen(false);
     setAttachments([]);
-    saveLastActiveId(null, "assistant", conversationStorageUserId(session?.userId));
+    saveLastActiveId(null, "assistant", liveConversationStorageUser(readSession));
     setMobileSidebarOpen(false);
-  }, [stopAll, session?.userId, setCanvasOpen]);
+  }, [stopAll, setCanvasOpen]);
 
   useEffect(() => {
     const onHome = () => newChat();
@@ -721,6 +822,8 @@ export function SmileChatGeneral() {
 
   const selectConversation = useCallback(
     (c: SavedConversation) => {
+      // Only open chats that are in the currently authorized list.
+      if (!conversations.some((x) => x.id === c.id)) return;
       stopAll();
       const fallbackArtifact =
         c.buildArtifact ??
@@ -731,10 +834,13 @@ export function SmileChatGeneral() {
       setError(null);
       setLatestBuildArtifact(fallbackArtifact);
       setBuildSidebarOpen(resolveCanvasOpen(Boolean(fallbackArtifact)));
-      saveLastActiveId(c.id, "assistant", conversationStorageUserId(session?.userId));
+      setAttachments([]);
+      const storageUser = liveConversationStorageUser(readSession);
+      if (storageUser !== conversationOwnerRef.current) return;
+      saveLastActiveId(c.id, "assistant", storageUser);
       setMobileSidebarOpen(false);
     },
-    [stopAll, session?.userId, resolveCanvasOpen],
+    [stopAll, conversations, resolveCanvasOpen],
   );
 
   useEffect(() => {
@@ -751,11 +857,20 @@ export function SmileChatGeneral() {
   const deleteConversation = useCallback(
     (ev: MouseEvent<HTMLButtonElement>, convId: string) => {
       ev.stopPropagation();
+      const liveOwner = liveConversationStorageUser(readSession);
+      if (liveOwner !== conversationOwnerRef.current) return;
       const next = removeConversation(conversations, convId);
       setConversations(next);
-      const storageUser = conversationStorageUserId(session?.userId);
-      persistConversations(next, "assistant", storageUser);
-      if (session?.userId) void saveServerConversations(next);
+      persistConversations(next, "assistant", liveOwner);
+      const liveUserId = readSession()?.userId;
+      if (liveUserId && conversationStorageUserId(liveUserId) === liveOwner) {
+        void saveServerConversations(next).then((r) => {
+          if (!r.ok && r.status === 401) {
+            clearSession();
+            setSession(null);
+          }
+        });
+      }
       if (activeId === convId) {
         if (next.length > 0) selectConversation(next[0]);
         else {
@@ -765,7 +880,7 @@ export function SmileChatGeneral() {
         }
       }
     },
-    [conversations, activeId, selectConversation, newChat, setCanvasOpen, session?.userId],
+    [conversations, activeId, selectConversation, newChat, setCanvasOpen],
   );
 
   const streamPromptify = useCallback(async (raw: string) => {
@@ -1681,7 +1796,10 @@ export function SmileChatGeneral() {
             <button
               type="button"
               onClick={() => {
-                void clearSessionAndServer().then(() => setSession(null));
+                void clearSessionAndServer().then(() => {
+                  setSession(null);
+                  showSignedOutEmpty();
+                });
               }}
               className="w-full rounded-lg border border-white/[0.1] py-2 text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
             >
@@ -1961,7 +2079,10 @@ export function SmileChatGeneral() {
                     <button
                       type="button"
                       onClick={() => {
-                        void clearSessionAndServer().then(() => setSession(null));
+                        void clearSessionAndServer().then(() => {
+                          setSession(null);
+                          showSignedOutEmpty();
+                        });
                       }}
                       className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
                     >

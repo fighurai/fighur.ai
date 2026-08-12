@@ -185,6 +185,21 @@ export async function hydrateServerSession(): Promise<boolean> {
   return false;
 }
 
+/** Cookie-backed user id only — never trust localStorage alone for chat ownership. */
+export async function readVerifiedServerUserId(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { signedIn?: boolean; userId?: unknown };
+    if (data.signedIn && typeof data.userId === "string" && data.userId.length > 0) {
+      return data.userId;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function clearSessionAndServer(): Promise<void> {
   const { onLogoutClientSide } = await import("@/lib/client-auth-cleanup");
   await onLogoutClientSide();
