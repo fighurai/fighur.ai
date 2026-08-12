@@ -59,6 +59,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1 1 auto;
   width: 100%;
   min-height: calc(100dvh - 3.25rem);
   padding: 1rem;
@@ -67,7 +68,11 @@ body {
 
 @media (max-width: 767px) {
   .home-empty-hero {
-    min-height: calc(100dvh - 3.25rem - 2.75rem);
+    /* Fill space under the Chats/New bar; don't re-subtract header height or the box sits low */
+    min-height: 0;
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 1rem;
   }
 }
 

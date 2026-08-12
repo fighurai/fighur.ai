@@ -1780,8 +1780,10 @@ export function SmileChatGeneral() {
       ) : null}
 
       <div
-        className={`flex min-h-0 flex-1 flex-col ${
-          showEmpty ? "" : "h-full max-h-full overflow-hidden"
+        className={`flex flex-1 flex-col ${
+          showEmpty
+            ? "min-h-[calc(100dvh-3.25rem)]"
+            : "h-full max-h-full min-h-0 overflow-hidden"
         } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
@@ -1803,7 +1805,7 @@ export function SmileChatGeneral() {
         </div>
 
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
           {chatReady === false ? (
             <div
