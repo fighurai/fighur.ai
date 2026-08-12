@@ -6,7 +6,7 @@ import {
 } from "@/lib/chat-models";
 import { FREE_TIER_MODEL_ID } from "@/lib/plan-access";
 
-/** Synthetic model id — Abacus RouteLLM-style automatic selection. */
+/** Synthetic model id — automatic provider selection. */
 export const AUTO_MODEL_ID = "auto";
 
 export type RouteBucket = "coding" | "research" | "creative" | "cheap-fast" | "chat";

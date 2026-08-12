@@ -23,12 +23,12 @@ export type UserPreferences = {
   workMode: WorkMode;
   /**
    * Legacy combined instructions. Kept for backward compatibility;
-   * new UI splits into behavior + response (Abacus-style).
+   * UI splits into behavior + response.
    */
   customInstructions: string;
-  /** How the model approaches problems (Abacus Behavior Instructions). */
+  /** How the model approaches problems. */
   behaviorInstructions: string;
-  /** Tone / format / persona of answers (Abacus Response Instructions). */
+  /** Tone / format / persona of answers. */
   responseInstructions: string;
   deepResearch: DeepResearchPrefs;
   /** Optional workspace layout (desktop columns) */

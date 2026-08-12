@@ -30,9 +30,8 @@ function ExtensionContent() {
         FIGHURAI Colors
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Like Simplify’s Copilot on job sites — except this brings up FIGHURAI’s{" "}
-        <strong className="text-[var(--text-primary)]">Colors</strong> settings on any website:
-        background and text, synced with Pro.
+        Bring FIGHURAI’s <strong className="text-[var(--text-primary)]">Colors</strong> settings to
+        any website: background and text, synced with Pro.
       </p>
 
       {justInstalled ? (
@@ -117,7 +116,7 @@ function ExtensionContent() {
           <p className="font-semibold text-[var(--text-primary)]">4. Sync Pro</p>
           <p className="mt-1 text-xs leading-relaxed">
             Keep this tab open while signed in on Pro. The extension reads your plan from FIGHURAI
-            (same idea as Simplify signing into your profile).
+            so Colors unlocks on other sites.
           </p>
         </li>
         <li className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
@@ -130,10 +129,11 @@ function ExtensionContent() {
       </ol>
 
       <div className="mt-8 rounded-xl border border-white/[0.08] px-4 py-3 text-xs leading-relaxed text-[var(--text-faint)]">
-        <p className="font-semibold text-[var(--text-muted)]">How this compares to Simplify</p>
+        <p className="font-semibold text-[var(--text-muted)]">What you get</p>
         <ul className="mt-2 list-disc space-y-1 pl-4">
-          <li>Simplify: Web Store → pin → icon/panel on job forms → autofill from profile</li>
-          <li>FIGHURAI: install → pin → Colors button on every site → color settings from Pro</li>
+          <li>Install → pin → Colors on any website</li>
+          <li>Same background and text controls as Colors on FIGHURAI</li>
+          <li>Pro entitlement only — no email or name shared with the extension</li>
         </ul>
       </div>
 

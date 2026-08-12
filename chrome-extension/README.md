@@ -1,14 +1,14 @@
 # FIGHURAI Colors (Chrome extension)
 
-Built like a normal Chrome extension (Manifest V3), inspired by [Simplify Copilot](https://simplify.jobs):
+Manifest V3 Chrome extension for FIGHURAI Pro.
 
-| Simplify | FIGHURAI Colors |
-|----------|-----------------|
-| Chrome Web Store → Add to Chrome | Install page → download → Load unpacked (Store soon) |
-| Pin toolbar icon | Pin **FIGHURAI Colors** |
-| Sign in to Simplify profile | Visit fighur.ai while Pro to sync |
-| Corner control on job forms | Floating **Colors** button on every site |
-| Popup / panel for autofill | Toolbar popup + on-page Colors panel |
+| Step | FIGHURAI Colors |
+|------|-----------------|
+| Install | Install page → download → Load unpacked (Chrome Web Store soon) |
+| Pin | Pin **FIGHURAI Colors** in the toolbar |
+| Sync Pro | Visit fighur.ai while signed in on Pro |
+| Use | Floating **Colors** button on every site |
+| Controls | Toolbar popup + on-page Colors panel |
 
 ## Install (developer / pre–Web Store)
 
@@ -18,7 +18,7 @@ See https://fighur.ai/extension
 bash scripts/pack-page-theme-extension.sh
 ```
 
-## Architecture (MV3)
+## Files
 
 - `manifest.json` — `action.default_popup` (real toolbar popup)
 - `popup.html` / `popup.js` — Colors UI

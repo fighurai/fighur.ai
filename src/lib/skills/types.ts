@@ -1,4 +1,4 @@
-/** Agent Skills — Abacus-compatible SKILL.md packs (agentskills.io-style). */
+/** Agent Skills — SKILL.md packs. */
 
 export type SkillSource = "builtin" | "custom";
 

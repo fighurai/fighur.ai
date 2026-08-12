@@ -270,8 +270,8 @@ export function SettingsMcpPanel() {
       <div>
         <p className="text-xs font-semibold text-[var(--text-primary)]">MCP servers</p>
         <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-          Add remote MCP servers the way Claude and Abacus do — name + URL, optional auth header,
-          then test tools. Hosted FigHur runs <strong>HTTP/SSE</strong> servers only. Stdio{" "}
+          Add remote MCP servers — name + URL, optional auth header, then test tools. Hosted FigHur
+          runs <strong>HTTP/SSE</strong> servers only. Stdio{" "}
           <code className="text-[0.6rem]">command</code> entries can be pasted in Advanced JSON for
           desktop hosts later.
         </p>
@@ -383,7 +383,7 @@ export function SettingsMcpPanel() {
         <ul className="space-y-2">
           {drafts.length === 0 ? (
             <p className="text-[0.7rem] text-[var(--text-faint)]">
-              No MCP servers yet. Add a remote URL, or paste OpenAI-style{" "}
+              No MCP servers yet. Add a remote URL, or paste{" "}
               <code className="text-[0.6rem]">mcpServers</code> JSON in Advanced.
             </p>
           ) : null}

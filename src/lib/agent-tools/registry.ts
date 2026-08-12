@@ -180,7 +180,7 @@ export async function availableAgentTools(
   tools.push({
     name: "create_agent",
     description:
-      "Create a custom FIGHURAI agent the user can talk to (like Abacus AI Engineer). Sets behavior + response instructions, optional deep research and effort. After creating, the agent becomes active for chat unless set_active_agent is used later. User must be signed in.",
+      "Create a custom FIGHURAI agent the user can talk to. Sets behavior + response instructions, optional deep research and effort. After creating, the agent becomes active for chat unless set_active_agent is used later. User must be signed in.",
     input_schema: {
       type: "object",
       properties: {

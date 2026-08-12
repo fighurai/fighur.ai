@@ -773,7 +773,7 @@ export function SettingsControls() {
               <div>
                 <p className="text-xs font-semibold text-[var(--text-primary)]">Customize AI</p>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Standing instructions applied to every chat. For Abacus-style{" "}
+                  Standing instructions applied to every chat. For{" "}
                   <strong>Behavior</strong> vs <strong>Response</strong> instructions, agents, and
                   deep research, use{" "}
                   <Link
@@ -855,7 +855,7 @@ export function SettingsControls() {
                   <div>
                     <p className="text-xs font-semibold text-[var(--text-primary)]">Agent Skills</p>
                     <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                      {enabledSkillCount} enabled · Abacus-style SKILL.md packs. Auto-activate from
+                      {enabledSkillCount} enabled · FIGHURAI skill packs. Auto-activate from
                       your prompt.
                     </p>
                   </div>

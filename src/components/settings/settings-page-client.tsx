@@ -620,8 +620,7 @@ export function SettingsPageClient() {
                   Behavior instructions
                 </h2>
                 <p className="mt-1 text-[0.7rem] text-[var(--text-faint)]">
-                  How FIGHURAI approaches problems — methods, tools to prefer, research depth (Abacus
-                  Behavior Instructions).
+                  How FIGHURAI approaches problems — methods, tools to prefer, and research depth.
                 </p>
                 <textarea
                   value={prefs.behaviorInstructions}
@@ -638,7 +637,7 @@ export function SettingsPageClient() {
                   Response instructions
                 </h2>
                 <p className="mt-1 text-[0.7rem] text-[var(--text-faint)]">
-                  Tone, persona, length, and structure of answers (Abacus Response Instructions).
+                  Tone, persona, length, and structure of answers.
                 </p>
                 <textarea
                   value={prefs.responseInstructions}
@@ -690,9 +689,8 @@ export function SettingsPageClient() {
               <div>
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Deep Research</h2>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Like Abacus Deep Research: prefer multi-source live web gathering, structured
-                  findings, and citations when answering research-heavy questions. Uses your
-                  deep-research skill and web tools.
+                  Prefer multi-source live web gathering, structured findings, and citations when
+                  answering research-heavy questions. Uses your deep-research skill and web tools.
                 </p>
               </div>
               <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-muted)]">
@@ -762,8 +760,8 @@ export function SettingsPageClient() {
               <div>
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Scheduled Tasks</h2>
                 <p className="mt-1 text-[0.7rem] text-[var(--text-faint)]">
-                  Recurring agent workflows (Abacus Tasks). Create, edit, run now, and inspect full
-                  results. Cron runs daily on Hobby; Pro can use higher frequency.
+                  Recurring agent workflows. Create, edit, run now, and inspect full results. Cron
+                  runs daily on Hobby; Pro can use higher frequency.
                 </p>
               </div>
               {tasksError ? (
@@ -907,9 +905,8 @@ export function SettingsPageClient() {
               <div>
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Custom Agents</h2>
                 <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-                  Build Abacus-style agents with behavior + response instructions, optional deep
-                  research, and effort. Set one as <strong>Active</strong> — chat uses it until you
-                  clear it.
+                  Build custom agents with behavior + response instructions, optional deep research,
+                  and effort. Set one as <strong>Active</strong> — chat uses it until you clear it.
                 </p>
               </div>
               {agentsError ? (

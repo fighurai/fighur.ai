@@ -85,7 +85,7 @@ const STEPS: Step[] = [
     id: "add-to-chrome",
     title: "3c. Point “Add to Chrome” at the Store",
     detail:
-      "After approval, replace the zip CTA on /extension with your Chrome Web Store URL so installs work like Simplify.",
+      "After approval, replace the zip CTA on /extension with your Chrome Web Store URL for one-click installs.",
     href: "/extension",
     hrefLabel: "Extension install page",
     youMustDo: true,

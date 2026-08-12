@@ -4,9 +4,9 @@ export type ManagedAgent = {
   id: string;
   name: string;
   description: string;
-  /** How the agent approaches problems (Abacus Behavior Instructions). */
+  /** How the agent approaches problems. */
   behaviorInstructions: string;
-  /** Tone / format / persona (Abacus Response Instructions). */
+  /** Tone / format / persona. */
   responseInstructions: string;
   /** Prefer deep-research skill + multi-source synthesis. */
   deepResearch: boolean;

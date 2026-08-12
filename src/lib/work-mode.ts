@@ -1,6 +1,5 @@
 /**
- * Work modes inspired by Anthropic Claude Cowork and OpenAI Codex.
- * @see docs/WORK_MODES.md
+ * FIGHURAI work modes for chat behavior.
  */
 
 export type WorkMode = "chat" | "cowork" | "codex";
@@ -10,7 +9,7 @@ export type WorkModeOption = {
   label: string;
   tagline: string;
   description: string;
-  /** Product this mode is modeled after (attribution, not integration). */
+  /** Short ownership label shown in Settings (FIGHURAI only). */
   inspiredBy: string;
 };
 
@@ -20,24 +19,24 @@ export const WORK_MODE_OPTIONS: WorkModeOption[] = [
     label: "Chat",
     tagline: "Default assistant",
     description:
-      "Balanced Q&A, writing, and light building—like a general ChatGPT or Claude chat.",
-    inspiredBy: "FIGHURAI default",
+      "Balanced Q&A, writing, and light building—FIGHURAI’s everyday assistant mode.",
+    inspiredBy: "FIGHURAI",
   },
   {
     id: "cowork",
     label: "CoWork",
     tagline: "Knowledge work & deliverables",
     description:
-      "Outcome-first: plans, organized files, memos, spreadsheets, and multi-step tasks you can walk away from—modeled on Anthropic Claude Cowork.",
-    inspiredBy: "Anthropic Claude Cowork",
+      "Outcome-first: plans, organized files, memos, spreadsheets, and multi-step tasks you can walk away from.",
+    inspiredBy: "FIGHURAI",
   },
   {
     id: "codex",
     label: "Codex",
     tagline: "Software engineering agent",
     description:
-      "Ship code: multi-file changes, tests, refactors, PR-style reviews, and runnable scaffolds—modeled on OpenAI Codex.",
-    inspiredBy: "OpenAI Codex",
+      "Ship code: multi-file changes, tests, refactors, PR-style reviews, and runnable scaffolds.",
+    inspiredBy: "FIGHURAI",
   },
 ];
 

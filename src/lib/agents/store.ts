@@ -196,7 +196,7 @@ export async function setActiveManagedAgent(
   return writeStore(userId, store);
 }
 
-/** System prompt block for an active custom agent (Abacus-style). */
+/** System prompt block for an active custom agent. */
 export function formatAgentSystemContext(agent: ManagedAgent | null | undefined): string {
   if (!agent || !agent.enabled) return "";
   const parts = [

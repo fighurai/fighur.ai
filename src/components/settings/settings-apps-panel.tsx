@@ -112,8 +112,8 @@ export function SettingsAppsPanel() {
             <div className="min-w-0">
               <p className="text-xs font-semibold text-[var(--text-primary)]">FIGHURAI Colors</p>
               <p className="mt-1 text-[0.65rem] leading-relaxed text-[var(--text-muted)]">
-                Chrome extension (Simplify-style): pin it, then open Colors on any website — same
-                background and text controls as on FIGHURAI.
+                Chrome extension: pin it, then open Colors on any website — same background and text
+                controls as on FIGHURAI.
               </p>
             </div>
             <span className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[0.6rem] font-semibold text-[var(--accent)]">

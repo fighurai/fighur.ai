@@ -9,7 +9,7 @@ function clip(code: string, max: number): string {
   return `${code.slice(0, max)}\n/* … truncated … */`;
 }
 
-/** Inject active Canvas project so the model can rewrite like Cursor (multi-file aware). */
+/** Inject active Canvas project so the model can rewrite multi-file projects. */
 export function buildCanvasEditSystemContext(ctx: ClientCanvasContextPayload | null): string {
   if (!ctx?.artifactCode?.trim()) return "";
 
@@ -53,7 +53,7 @@ ${clip(f.code, MAX_FILE_CHARS)}
 
   return `
 
-## Canvas — active project (engineer like Cursor)
+## Canvas — active project
 The user is iterating on a **multi-file site** in Canvas. Return the **complete updated project**—every file that changed, with paths on fences (\`\`\`html index.html\`, \`\`\`css styles.css\`, \`\`\`javascript main.js\`).
 
 **Sections**

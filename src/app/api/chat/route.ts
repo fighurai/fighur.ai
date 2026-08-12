@@ -369,7 +369,7 @@ export async function POST(request: Request) {
     userSession?: unknown;
     clientLocation?: unknown;
     canvasContext?: unknown;
-    /** Optional conversation-level skill allowlist (Abacus-style wrench preselect) */
+    /** Optional conversation-level skill allowlist */
     skillAllowlist?: unknown;
     /** Override which custom agent to use for this turn */
     agentId?: unknown;
@@ -638,7 +638,7 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
           : null;
   const matchedSkills = matchSkills(allSkills, lastUserText, effectiveSkillAllowlist);
 
-  // Always attach the tool loop when the provider can call tools — Abacus-style.
+  // Always attach the tool loop when the provider can call tools.
   // Keyword gating previously left most chats without web_search and told the model
   // it had no internet, so it refused to browse.
 

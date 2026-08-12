@@ -18,7 +18,7 @@ export function isWebBuildRequest(userText: string): boolean {
   return UI_BUILD_PATTERN.test(userText);
 }
 
-/** Cursor/Codex-style engineering rules for Canvas website builds. */
+/** Engineering rules for Canvas website builds. */
 export function buildOutputSystemContext(
   target: SmileBuilderTarget,
   userText: string,
@@ -30,7 +30,7 @@ export function buildOutputSystemContext(
   const intricate = wantsUi && (INTRICATE_PATTERN.test(userText) || (!siteClone && wantsUi));
 
   if (wantsUi) {
-    parts.push(`## Canvas — engineered website (Cursor / Codex quality bar)
+    parts.push(`## Canvas — engineered website
 You are a **senior front-end engineer** shipping real sites in Canvas—not a chatbot dumping a single generic div.
 
 **Architecture first (1 short paragraph outside fences)**
@@ -59,7 +59,7 @@ Optional: \`\`\`javascript components/nav.js\`, extra CSS modules, SVG assets in
 - Vanilla JS—no broken imports; keep self-contained for preview bundle
 
 **Quality bar**
-- Looks like a **real product site** (Stripe/Linear/Vercel tier layout quality)—not a tutorial page
+- Looks like a **real product site**—not a tutorial page
 - Rich sections: hero with visual depth, feature grid, social proof, pricing or comparison, FAQ, strong CTA
 - Accessible: contrast, \`aria-\` labels on icon buttons, focus rings, alt text
 
