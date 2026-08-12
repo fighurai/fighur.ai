@@ -140,6 +140,13 @@ export async function GET(request: Request) {
     return withCookie;
   } catch (e) {
     console.error("[google sso callback]", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/blob/i.test(msg) && /suspend/i.test(msg)) {
+      return NextResponse.redirect(new URL("/sign-in?error=storage_suspended", base));
+    }
+    if (/blob/i.test(msg)) {
+      return NextResponse.redirect(new URL("/sign-in?error=storage_unavailable", base));
+    }
     return NextResponse.redirect(new URL("/sign-in?error=sso_failed", base));
   }
 }

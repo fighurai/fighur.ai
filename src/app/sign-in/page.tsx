@@ -14,6 +14,10 @@ const SSO_ERRORS: Record<string, string> = {
   session: "Could not create a session. Contact support if this persists.",
   session_sync: "Signed in with Google but the app could not load your session. Try again.",
   sso_failed: "Sign-in failed on the server. Try again in a moment.",
+  storage_suspended:
+    "Account storage is suspended (Vercel Blob). Reactivate or recreate the Blob store, then update BLOB_READ_WRITE_TOKEN.",
+  storage_unavailable:
+    "Account storage is temporarily unavailable. Check Vercel Blob / BLOB_READ_WRITE_TOKEN, then try again.",
   access_denied: "Sign-in was cancelled or your account is not allowed.",
   apple_not_configured: "Sign in with Apple is not configured on the server yet.",
   apple_services_id: "Apple Services ID is missing. Set APPLE_SERVICES_ID.",
