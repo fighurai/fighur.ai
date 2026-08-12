@@ -108,11 +108,6 @@ body {
     padding: 0.15rem;
   }
 
-  .home-empty-hero {
-    justify-content: flex-end;
-    padding: 0.75rem 0.75rem max(0.75rem, env(safe-area-inset-bottom, 0px));
-  }
-
   .home-empty-hero .composer-column {
     max-width: 100%;
   }
