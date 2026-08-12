@@ -1527,7 +1527,7 @@ export function SmileChatGeneral() {
               {availableModels.length === 1 ? (
                 <span
                   className="min-w-0 truncate rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:px-4 sm:py-2"
-                  title={session?.userId && session.plan !== "pro" ? "Free plan includes Claude only" : undefined}
+                  title="Auto uses Claude Sonnet 4.5"
                 >
                   {availableModels[0].label}
                 </span>

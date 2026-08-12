@@ -20,35 +20,11 @@ export function isAutoModelId(id: string | undefined | null): boolean {
  * Override via env: SMILE_ROUTE_CODING, SMILE_ROUTE_RESEARCH, etc. (comma-separated ids).
  */
 const DEFAULT_PREFS: Record<RouteBucket, string[]> = {
-  coding: [
-    "anthropic:claude-sonnet-4-5-20250929",
-    "openai:gpt-4o",
-    "groq:openai/gpt-oss-120b",
-    "openrouter:qwen/qwen2.5-72b-instruct",
-  ],
-  research: [
-    "anthropic:claude-sonnet-4-5-20250929",
-    "openai:gpt-4o",
-    "openrouter:meta-llama/llama-3.3-70b-instruct",
-    "groq:llama-3.3-70b-versatile",
-  ],
-  creative: [
-    "openai:gpt-4o",
-    "anthropic:claude-sonnet-4-5-20250929",
-    "openrouter:meta-llama/llama-3.3-70b-instruct",
-  ],
-  "cheap-fast": [
-    "openai:gpt-4o-mini",
-    "groq:llama-3.3-70b-versatile",
-    "openrouter:nvidia-nemotron-3-super-free",
-    "anthropic:claude-sonnet-4-5-20250929",
-  ],
-  chat: [
-    "anthropic:claude-sonnet-4-5-20250929",
-    "openai:gpt-4o-mini",
-    "groq:llama-3.3-70b-versatile",
-    "openai:gpt-4o",
-  ],
+  coding: ["anthropic:claude-sonnet-4-5-20250929"],
+  research: ["anthropic:claude-sonnet-4-5-20250929"],
+  creative: ["anthropic:claude-sonnet-4-5-20250929"],
+  "cheap-fast": ["anthropic:claude-sonnet-4-5-20250929"],
+  chat: ["anthropic:claude-sonnet-4-5-20250929"],
 };
 
 function prefsForBucket(bucket: RouteBucket): string[] {

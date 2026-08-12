@@ -8,79 +8,13 @@ export type ChatModelOption = {
   apiModel: string;
 };
 
-/** Curated list — add keys in .env for each provider you use */
+/** Single production model — UI exposes it as Auto via /api/chat/models. */
 export const CHAT_MODEL_OPTIONS: ChatModelOption[] = [
   {
     id: "anthropic:claude-sonnet-4-5-20250929",
     label: "Claude Sonnet 4.5",
     provider: "anthropic",
     apiModel: "claude-sonnet-4-5-20250929",
-  },
-  {
-    id: "openai:gpt-4o-mini",
-    label: "GPT-4o mini (OpenAI)",
-    provider: "openai",
-    apiModel: "gpt-4o-mini",
-  },
-  {
-    id: "openai:gpt-4o",
-    label: "GPT-4o (OpenAI)",
-    provider: "openai",
-    apiModel: "gpt-4o",
-  },
-  {
-    id: "groq:llama-3.3-70b-versatile",
-    label: "Llama 3.3 70B (Groq)",
-    provider: "groq",
-    apiModel: "llama-3.3-70b-versatile",
-  },
-  {
-    id: "groq:openai/gpt-oss-120b",
-    label: "GPT-OSS 120B (Groq)",
-    provider: "groq",
-    apiModel: "openai/gpt-oss-120b",
-  },
-  {
-    id: "groq:mixtral-8x7b-32768",
-    label: "Mixtral 8x7B (Groq)",
-    provider: "groq",
-    apiModel: "mixtral-8x7b-32768",
-  },
-  {
-    id: "openrouter:nvidia-nemotron-3-super-free",
-    label: "Nemotron 3 Super (OpenRouter · free)",
-    provider: "openrouter",
-    apiModel: "nvidia/nemotron-3-super-120b-a12b:free",
-  },
-  {
-    id: "openrouter:nvidia-nemotron-3-super",
-    label: "Nemotron 3 Super (OpenRouter)",
-    provider: "openrouter",
-    apiModel: "nvidia/nemotron-3-super-120b-a12b",
-  },
-  {
-    id: "openrouter:qwen/qwen2.5-72b-instruct",
-    label: "Qwen 2.5 72B (OpenRouter)",
-    provider: "openrouter",
-    apiModel: "qwen/qwen2.5-72b-instruct",
-  },
-  {
-    id: "openrouter:meta-llama/llama-3.3-70b-instruct",
-    label: "Llama 3.3 70B (OpenRouter)",
-    provider: "openrouter",
-    apiModel: "meta-llama/llama-3.3-70b-instruct",
-  },
-  {
-    id: "nvidia:nvidia/nemotron-4-340b-instruct",
-    label: "Nemotron 4 340B (NVIDIA Spark / NIM)",
-    provider: "nvidia",
-    apiModel: "nvidia/nemotron-4-340b-instruct",
-  },
-  {
-    id: "nvidia:meta/llama-3.1-405b-instruct",
-    label: "Llama 3.1 405B (NVIDIA Spark / NIM)",
-    provider: "nvidia",
-    apiModel: "meta/llama-3.1-405b-instruct",
   },
 ];
 
@@ -153,8 +87,6 @@ export function listConfiguredProviders(): ChatProvider[] {
 export function noChatProvidersMessage(): string {
   return (
     "No model API keys are configured on the server. In Vercel → your project → Settings → " +
-    "Environment Variables, add at least one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, " +
-    "OPENROUTER_API_KEY, or NVIDIA_API_KEY — then redeploy. Optionally set SMILE_DEFAULT_CHAT_MODEL " +
-    "to a model id from /api/chat/models."
+    "Environment Variables, add ANTHROPIC_API_KEY, then redeploy."
   );
 }

@@ -91,13 +91,12 @@ function UpgradeContent() {
         FIGHURAI Pro
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Pro unlocks every configured AI model — GPT-4o, Groq, OpenRouter, NVIDIA, and Claude — plus
-        the Page Theme Chrome extension. Free accounts include unlimited chat with Claude Sonnet
-        only.
+        Pro unlocks the Colors Chrome extension and keeps your private data environment &amp; audit
+        logs. Free accounts include unlimited chat with Auto (Claude Sonnet 4.5).
       </p>
 
       <ul className="mt-6 space-y-2 text-sm text-[var(--text-muted)]">
-        <li>✓ All models in the model picker</li>
+        <li>✓ Auto chat powered by Claude Sonnet 4.5</li>
         <li>
           ✓{" "}
           <Link href="/extension" className="text-[var(--accent)] underline-offset-2 hover:underline">

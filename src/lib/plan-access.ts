@@ -1,5 +1,4 @@
 import {
-  CHAT_MODEL_OPTIONS,
   getChatModelById,
   resolveChatModelOption,
   type ChatModelOption,
@@ -25,10 +24,7 @@ export function hasPageThemeExtensionAccess(plan: UserPlan, roles: Role[]): bool
   return hasAllModelsAccess(plan, roles);
 }
 
-export function allowedModelIdsForPlan(plan: UserPlan, roles: Role[]): string[] {
-  if (hasAllModelsAccess(plan, roles)) {
-    return CHAT_MODEL_OPTIONS.map((m) => m.id);
-  }
+export function allowedModelIdsForPlan(_plan: UserPlan, _roles: Role[]): string[] {
   return [FREE_TIER_MODEL_ID];
 }
 
