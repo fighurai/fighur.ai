@@ -28,31 +28,38 @@ const STEPS = [
 type SiteTutorialProps = {
   open: boolean;
   onClose: () => void;
+  /** Fired when the user finishes or skips the tutorial. */
+  onFinished?: () => void;
 };
 
-export function SiteTutorial({ open, onClose }: SiteTutorialProps) {
+export function SiteTutorial({ open, onClose, onFinished }: SiteTutorialProps) {
   const titleId = useId();
   const [step, setStep] = useState(0);
+
+  const finish = useCallback(() => {
+    onFinished?.();
+    onClose();
+  }, [onClose, onFinished]);
 
   useEffect(() => {
     if (!open) return;
     setStep(0);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") finish();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, finish]);
 
   const next = useCallback(() => {
     setStep((s) => {
       if (s >= STEPS.length - 1) {
-        onClose();
+        finish();
         return s;
       }
       return s + 1;
     });
-  }, [onClose]);
+  }, [finish]);
 
   if (!open) return null;
 
@@ -65,7 +72,7 @@ export function SiteTutorial({ open, onClose }: SiteTutorialProps) {
         type="button"
         className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
         aria-label="Close tutorial"
-        onClick={onClose}
+        onClick={finish}
       />
       <div
         role="dialog"
@@ -97,7 +104,7 @@ export function SiteTutorial({ open, onClose }: SiteTutorialProps) {
             <button
               type="button"
               className="rounded-full border border-white/[0.12] px-3 py-2 text-xs font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
-              onClick={onClose}
+              onClick={finish}
             >
               Skip
             </button>

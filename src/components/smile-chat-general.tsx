@@ -395,6 +395,7 @@ export function SmileChatGeneral() {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialCorner, setTutorialCorner] = useState(false);
   const [customThemeOn, setCustomThemeOn] = useState(false);
 
   useEffect(() => {
@@ -403,6 +404,25 @@ export function SmileChatGeneral() {
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("fighur-quick-tutorial-done") === "1") {
+        setTutorialCorner(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const markTutorialDone = useCallback(() => {
+    setTutorialCorner(true);
+    try {
+      localStorage.setItem("fighur-quick-tutorial-done", "1");
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -1206,13 +1226,16 @@ export function SmileChatGeneral() {
       }
 
       const routedId = res.headers.get("X-FigHur-Model");
-      const routeBucket = res.headers.get("X-FigHur-Route");
       if (selectedModel === "auto" && routedId) {
-        const label =
+        const raw =
           models.find((m) => m.id === routedId)?.label ?? routedId.replace(/^[^:]+:/, "");
-        setRoutedModelHint(
-          routeBucket ? `Routed · ${label} (${routeBucket})` : `Routed · ${label}`,
-        );
+        // Short, readable label for the Auto pill (avoid truncation of long model ids).
+        const short = raw
+          .replace(/^anthropic:/i, "")
+          .replace(/^claude\s+/i, "")
+          .replace(/(\d{4})-\d{2}-\d{2}.*$/i, "")
+          .trim();
+        setRoutedModelHint(short || "Sonnet 4.5");
       } else {
         setRoutedModelHint(null);
       }
@@ -1389,6 +1412,11 @@ export function SmileChatGeneral() {
   }, [listening, stopAll, streamPromptify]);
 
   const showEmpty = messages.length === 0;
+  const showTutorialCorner = tutorialCorner || !showEmpty;
+
+  useEffect(() => {
+    if (!showEmpty) markTutorialDone();
+  }, [showEmpty, markTutorialDone]);
   const busy = pending || translatingSpeech;
   const showStreamWaitingDots = Boolean(pending && streamingMessageId && !streamOutputStarted);
 
@@ -1656,10 +1684,24 @@ export function SmileChatGeneral() {
             <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:min-w-[9.5rem] max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
               {availableModels.length === 1 ? (
                 <span
-                  className="min-w-0 truncate rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:px-4 sm:py-2"
-                  title="Auto uses Claude Sonnet 4.5"
+                  className="min-w-0 max-w-[min(100%,14rem)] rounded-full bg-[var(--accent)] px-3 py-1.5 text-left text-xs font-semibold leading-snug text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[11rem] max-md:px-2.5 max-md:py-1 sm:max-w-[16rem] sm:px-4 sm:py-2"
+                  title={
+                    routedModelHint
+                      ? `Auto → Claude ${routedModelHint}`
+                      : "Auto uses Claude Sonnet 4.5"
+                  }
                 >
-                  {availableModels[0].label}
+                  {routedModelHint && selectedModel === "auto" ? (
+                    <span className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-1">
+                      <span className="shrink-0">Auto</span>
+                      <span className="truncate font-medium opacity-90">
+                        <span className="hidden sm:inline">· </span>
+                        {routedModelHint}
+                      </span>
+                    </span>
+                  ) : (
+                    availableModels[0].label
+                  )}
                 </span>
               ) : (
                 <select
@@ -1684,11 +1726,6 @@ export function SmileChatGeneral() {
                   )}
                 </select>
               )}
-              {routedModelHint && selectedModel === "auto" ? (
-                <span className="hidden max-w-[10rem] truncate text-[0.65rem] text-[var(--text-faint)] sm:inline">
-                  {routedModelHint}
-                </span>
-              ) : null}
               <div className="flex shrink-0 items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
@@ -1935,7 +1972,7 @@ export function SmileChatGeneral() {
           >
             New
           </button>
-          {!showEmpty ? (
+          {!showEmpty || showTutorialCorner ? (
             <button
               type="button"
               onClick={() => setTutorialOpen(true)}
@@ -1946,7 +1983,7 @@ export function SmileChatGeneral() {
           ) : null}
         </div>
 
-        {!showEmpty ? (
+        {showTutorialCorner ? (
           <div className="hidden shrink-0 items-center justify-end border-b border-white/[0.06] px-4 py-2 sm:px-6 md:flex md:px-8">
             <button
               type="button"
@@ -1980,7 +2017,9 @@ export function SmileChatGeneral() {
           {showEmpty ? (
             <div className="home-empty-hero">
               <AmbientOmbreBackground active={!customThemeOn} />
-              <HomeLandingIntro onStartTutorial={() => setTutorialOpen(true)} />
+              {!showTutorialCorner ? (
+                <HomeLandingIntro onStartTutorial={() => setTutorialOpen(true)} />
+              ) : null}
               <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
@@ -2274,7 +2313,11 @@ export function SmileChatGeneral() {
           })();
         }}
       />
-      <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+      <SiteTutorial
+        open={tutorialOpen}
+        onClose={() => setTutorialOpen(false)}
+        onFinished={markTutorialDone}
+      />
     </div>
   );
 }
