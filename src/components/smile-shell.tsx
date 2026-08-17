@@ -8,7 +8,6 @@ import { usePathname } from "next/navigation";
 import { HeaderControls } from "@/components/header-controls";
 import { SiteTutorial } from "@/components/site-tutorial";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
-import { HEADER_TRIGGER_CLASS } from "@/lib/header-panel";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -51,9 +50,10 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={openTutorial}
-              className={`${HEADER_TRIGGER_CLASS} shrink-0 !px-2 !text-[var(--accent)] hover:!text-[var(--accent)] sm:!px-3`}
+              aria-label="Quick tutorial"
+              className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2.5 text-[0.65rem] font-semibold leading-none text-[var(--accent)] shadow-[0_0_16px_var(--accent-glow)] transition hover:bg-[var(--accent)]/25 active:scale-95 sm:h-8 sm:px-3 sm:text-xs"
             >
-              <span className="sm:hidden">Tutorial</span>
+              <span className="sm:hidden">Tips</span>
               <span className="hidden sm:inline">Quick tutorial</span>
             </button>
           </div>
