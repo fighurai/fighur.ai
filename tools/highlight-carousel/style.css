@@ -1,0 +1,459 @@
+/* ── tokens ─────────────────────────────────────────────── */
+:root {
+  --slide-w: 1080px;
+  --slide-h: 1920px;
+  --loop: 2.5s;
+  /* Tight highlighter padding like the reference */
+  --highlight-pad-y: 6px;
+  --highlight-pad-x: 10px;
+  --line-gap: 4px;
+  /*
+   * Thin + wide via variable font axes (NOT fake scaleX — that fattens strokes).
+   * Roboto Flex: wght ~360 (light), wdth ~145 (extended)
+   */
+  --font: "Roboto Flex", "Inter", system-ui, sans-serif;
+  --font-weight: 320;
+  --font-width: 148;
+  --letter-spacing: 0.02em;
+}
+
+html[data-font="roboto-flex"] {
+  --font: "Roboto Flex", "Inter", system-ui, sans-serif;
+  --font-weight: 320;
+  --font-width: 148;
+}
+
+html[data-font="general-sans"] {
+  --font: "General Sans", "Inter", system-ui, sans-serif;
+  --font-weight: 300;
+  --font-width: 100;
+}
+
+html[data-font="inter"] {
+  --font: "Inter", system-ui, sans-serif;
+  --font-weight: 300;
+  --font-width: 100;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background: #0c0c0e;
+  color: #f2f2f4;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+body.export-mode,
+html.export-mode body {
+  background: #000;
+  overflow: hidden;
+}
+
+html.export-mode .chrome,
+body.export-mode .chrome {
+  display: none !important;
+}
+
+html.export-mode .stage,
+body.export-mode .stage {
+  width: var(--slide-w);
+  height: var(--slide-h);
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+html.export-mode .carousel,
+body.export-mode .carousel {
+  width: var(--slide-w);
+  height: var(--slide-h);
+  overflow: hidden;
+  scroll-snap-type: none;
+}
+
+html.export-mode .slide,
+body.export-mode .slide {
+  display: none;
+  width: var(--slide-w);
+  height: var(--slide-h);
+  flex: none;
+  transform: none !important;
+}
+
+html.export-mode .slide.export-active,
+body.export-mode .slide.export-active {
+  display: block;
+}
+
+html.export-mode .slide-artboard,
+body.export-mode .slide-artboard {
+  transform: none;
+}
+
+/* ── preview chrome ─────────────────────────────────────── */
+.chrome {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(12, 12, 14, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chrome-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 20px 14px;
+}
+
+.chrome h1 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.chrome p {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.4;
+}
+
+.chrome code {
+  font-size: 11px;
+  color: #a8e6ff;
+}
+
+.chrome-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.chrome-actions button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.chrome-actions button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#chrome-pos {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  min-width: 48px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.font-toggle {
+  display: inline-flex;
+  margin-left: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.font-toggle button {
+  width: auto;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+}
+
+.font-toggle button.is-active {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Mark the closer letterform match in the compare strip */
+html[data-font="general-sans"] .font-sample--general,
+html[data-font="inter"] .font-sample--inter {
+  border-color: rgba(168, 230, 255, 0.55);
+}
+
+.font-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.font-sample {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.font-sample-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 4px;
+}
+
+.font-sample-glyphs {
+  font-size: 42px;
+  line-height: 1;
+  color: #fff;
+}
+
+.font-sample--inter .font-sample-glyphs {
+  font-family: "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.font-sample--general .font-sample-glyphs {
+  font-family: "General Sans", "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── stage / carousel ───────────────────────────────────── */
+.stage {
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px 48px;
+}
+
+.carousel {
+  display: flex;
+  width: min(100vw - 32px, calc(var(--slide-w) * 0.42));
+  height: calc(min(100vw - 32px, calc(var(--slide-w) * 0.42)) * 1920 / 1080);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+
+.carousel::-webkit-scrollbar {
+  height: 0;
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow: hidden;
+  container-type: size;
+}
+
+.slide-artboard {
+  position: absolute;
+  inset: 0;
+  width: var(--slide-w);
+  height: var(--slide-h);
+  transform-origin: top left;
+  /* Set by ResizeObserver — cqw in transform is unreliable across engines */
+  transform: scale(var(--preview-scale, 0.42));
+}
+
+.slide-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--bg);
+  animation: bg-breathe 2.5s ease-in-out infinite;
+  will-change: filter;
+}
+
+@keyframes bg-breathe {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    filter: brightness(1.04) saturate(1.03);
+  }
+}
+
+/* ── chrome overlays on slide ───────────────────────────── */
+.page-pill {
+  position: absolute;
+  top: 48px;
+  right: 40px;
+  z-index: 5;
+  min-width: 64px;
+  height: 40px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  animation: pill-breathe 2.5s ease-in-out infinite;
+}
+
+@keyframes pill-breathe {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.mute-btn {
+  position: absolute;
+  right: 40px;
+  bottom: 56px;
+  z-index: 5;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.38);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.mute-btn svg {
+  width: 26px;
+  height: 26px;
+  fill: #fff;
+}
+
+.brand-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 64px;
+  z-index: 5;
+  text-align: center;
+  font-family: "Roboto Flex", Inter, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+  text-transform: lowercase;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* ── copy block — middle 60% of frame ───────────────────── */
+.slide-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 72px;
+  gap: var(--line-gap);
+}
+
+.line {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+
+/*
+ * Exact working animation pattern (user-specified).
+ * Both animations on ONE node so settle → breathe hands off cleanly.
+ */
+.highlight-line {
+  display: inline-block;
+  padding: var(--highlight-pad-y) var(--highlight-pad-x);
+  background: var(--hl);
+  transform-origin: left center;
+  will-change: transform, opacity;
+  animation:
+    settle-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    breathe 2s ease-in-out infinite;
+  animation-delay:
+    calc(var(--line-index) * 80ms),
+    calc(var(--line-index) * 80ms + 0.5s);
+}
+
+@keyframes settle-in {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.005);
+  }
+}
+
+.highlight-line .text {
+  display: block;
+  font-family: var(--font);
+  font-weight: var(--font-weight);
+  font-variation-settings:
+    "wght" var(--font-weight),
+    "wdth" var(--font-width),
+    "opsz" 48;
+  font-size: 64px;
+  line-height: 0.92;
+  letter-spacing: var(--letter-spacing);
+  text-transform: lowercase;
+  color: var(--fg);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  /* No scaleX — that fattens stems. Width comes from wdth axis. */
+  transform: none !important;
+  animation: none !important;
+  white-space: nowrap;
+}
+
+/* Export uses the same settle + breathe as preview (entrance is in the MP4) */
+html.export-mode .highlight-line,
+body.export-mode .highlight-line {
+  animation:
+    settle-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    breathe 2s ease-in-out infinite;
+  animation-delay:
+    calc(var(--line-index) * 80ms),
+    calc(var(--line-index) * 80ms + 0.5s);
+}

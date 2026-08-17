@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <title>Consistency Grid</title>
+    <style>
+      :root {
+        --bg: #3ec4c4; /* lighter teal */
+        --ink: #ff8c00; /* orange base text */
+        --line-count: 42;
+        --font-size: 11px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        background: var(--bg);
+        overflow: hidden;
+        /* Reference look: Helvetica Bold / Neue */
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .stage {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        perspective: 1400px;
+        overflow: hidden;
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0;
+        transform-style: preserve-3d;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .line {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: calc(100% / var(--line-count));
+        /* Tiny inset so glyphs don't clip at the absolute edge */
+        padding: 0 1px;
+        transform-style: preserve-3d;
+      }
+
+      /* Equal flex gaps → even word spacing, flush left/right */
+      .gap {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 1px;
+      }
+
+      .word {
+        display: inline-block;
+        flex: 0 0 auto;
+        font-weight: 700;
+        font-size: var(--font-size);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--ink);
+        line-height: 1;
+        white-space: nowrap;
+        transform-origin: 50% 50%;
+        transform-style: preserve-3d;
+        backface-visibility: hidden;
+        will-change: transform, color;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="grid" id="grid" aria-hidden="true"></div>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const EXPORT = params.get("export") === "1";
+
+      const PHRASE =
+        "CONSISTENCY LOOKS LIKE NOTHING IS HAPPENING — UNTIL EVERYTHING CHANGES";
+      const WORDS = PHRASE.split(/\s+/);
+
+      const COLORS = [
+        "#FF8C00", // orange
+        "#EFFF00", // yellow
+        "#1E90FF", // blue
+        "#FF1493", // pink
+        "#9D00FF", // purple
+        "#FF0000", // red
+        "#FFFFFF", // white
+      ];
+
+      const FLIP_MS = EXPORT ? 420 : 480;
+      const STAGGER_MS = EXPORT ? 18 : 50;
+      const HOLD_AFTER_WAVE_MS = EXPORT ? 900 : 1800;
+      const LINE_COUNT = 42;
+      const EXPORT_COLOR_COUNT = 5; // orange → yellow → blue → pink → purple
+
+      document.documentElement.style.setProperty("--line-count", String(LINE_COUNT));
+
+      const grid = document.getElementById("grid");
+      const wordEls = [];
+
+      for (let row = 0; row < LINE_COUNT; row++) {
+        const line = document.createElement("div");
+        line.className = "line";
+        WORDS.forEach((w, wi) => {
+          if (wi > 0) {
+            const gap = document.createElement("span");
+            gap.className = "gap";
+            gap.setAttribute("aria-hidden", "true");
+            line.appendChild(gap);
+          }
+          const span = document.createElement("span");
+          span.className = "word";
+          span.textContent = w;
+          span.style.color = "#FF8C00";
+          line.appendChild(span);
+          wordEls.push(span);
+        });
+        grid.appendChild(line);
+      }
+
+      /**
+       * Size type so the phrase fills the width with even gutters
+       * (target gap ≈ 0.55× font-size — close to the reference wall).
+       */
+      function fitWordSpacing() {
+        const sample = grid.querySelector(".line");
+        if (!sample) return;
+        const words = [...sample.querySelectorAll(".word")];
+        const gaps = words.length - 1;
+        const avail = sample.clientWidth - 2;
+
+        let lo = 6;
+        let hi = Math.max(12, (avail / 55) * 2);
+        let best = 10;
+
+        for (let i = 0; i < 24; i++) {
+          const mid = (lo + hi) / 2;
+          document.documentElement.style.setProperty("--font-size", `${mid}px`);
+          // force layout
+          const totalW = words.reduce((s, w) => s + w.getBoundingClientRect().width, 0);
+          const gapW = (avail - totalW) / gaps;
+          const target = mid * 0.55;
+
+          if (totalW >= avail * 0.98 || gapW < mid * 0.28) {
+            hi = mid;
+          } else if (gapW > mid * 0.85) {
+            lo = mid;
+          } else if (Math.abs(gapW - target) < mid * 0.08) {
+            best = mid;
+            break;
+          } else if (gapW > target) {
+            lo = mid;
+          } else {
+            hi = mid;
+          }
+          best = mid;
+        }
+
+        document.documentElement.style.setProperty("--font-size", `${best.toFixed(2)}px`);
+      }
+
+      function flipWordToColor(el, color) {
+        return new Promise((resolve) => {
+          const start = performance.now();
+          let swapped = false;
+
+          const tick = (now) => {
+            const t = Math.min(1, (now - start) / FLIP_MS);
+            const angle = t < 0.5 ? t * 2 * 90 : (1 - (t - 0.5) * 2) * 90;
+            el.style.transform = `rotateX(${angle}deg)`;
+
+            if (t >= 0.5 && !swapped) {
+              el.style.color = color;
+              swapped = true;
+            }
+
+            if (t < 1) {
+              requestAnimationFrame(tick);
+            } else {
+              el.style.transform = "rotateX(0deg)";
+              resolve();
+            }
+          };
+
+          requestAnimationFrame(tick);
+        });
+      }
+
+      function sleep(ms) {
+        return new Promise((r) => setTimeout(r, ms));
+      }
+
+      async function runWave(color) {
+        const flips = wordEls.map((el, i) =>
+          sleep(i * STAGGER_MS).then(() => flipWordToColor(el, color))
+        );
+        await Promise.all(flips);
+      }
+
+      async function loop() {
+        fitWordSpacing();
+        window.addEventListener("resize", fitWordSpacing);
+        document.documentElement.classList.add("ready");
+
+        if (EXPORT) {
+          for (let i = 0; i < EXPORT_COLOR_COUNT; i++) {
+            await runWave(COLORS[i % COLORS.length]);
+            if (i < EXPORT_COLOR_COUNT - 1) await sleep(HOLD_AFTER_WAVE_MS);
+          }
+          document.documentElement.classList.add("export-done");
+          return;
+        }
+
+        let colorIndex = 0;
+        while (true) {
+          await runWave(COLORS[colorIndex % COLORS.length]);
+          colorIndex += 1;
+          await sleep(HOLD_AFTER_WAVE_MS);
+        }
+      }
+
+      window.__CONSISTENCY_GRID__ = {
+        wordCount: wordEls.length,
+        staggerMs: STAGGER_MS,
+        flipMs: FLIP_MS,
+        holdMs: HOLD_AFTER_WAVE_MS,
+        colorCount: EXPORT ? EXPORT_COLOR_COUNT : Infinity,
+        durationMs() {
+          const n = wordEls.length;
+          const wave = (n - 1) * STAGGER_MS + FLIP_MS;
+          const colors = EXPORT ? EXPORT_COLOR_COUNT : 7;
+          return colors * wave + (colors - 1) * HOLD_AFTER_WAVE_MS;
+        },
+      };
+
+      loop();
+    </script>
+  </body>
+</html>

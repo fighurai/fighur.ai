@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-font="roboto-flex">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Highlight Carousel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Roboto Flex: real width axis (thin stroke + wide glyphs) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,100..151,300..700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="chrome" id="chrome">
+      <div class="chrome-inner">
+        <h1>Highlight Carousel</h1>
+        <p>
+          Swipe the slides · edit <code>slides</code> in <code>script.js</code> ·
+          <code>npm run export</code> → <code>output/slide-*.mp4</code>
+        </p>
+        <div class="chrome-actions">
+          <button type="button" id="btn-prev" aria-label="Previous slide">←</button>
+          <span id="chrome-pos">1 / 4</span>
+          <button type="button" id="btn-next" aria-label="Next slide">→</button>
+          <div class="font-toggle" role="group" aria-label="Slide font">
+            <button type="button" data-font="roboto-flex" class="is-active">Roboto Flex wide</button>
+            <button type="button" data-font="general-sans">General Sans</button>
+            <button type="button" data-font="inter">Inter</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage" class="stage">
+      <div id="carousel" class="carousel" aria-label="Carousel preview"></div>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

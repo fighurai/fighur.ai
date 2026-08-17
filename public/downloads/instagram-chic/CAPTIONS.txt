@@ -1,0 +1,37 @@
+FIGHURAI · Prompts Worth Stealing
+Same font on every slide (Helvetica Neue).
+Colors: pink, teal, orange, purple, green, cream, blue, yellow.
+
+1. prompt-01-pink.png
+Build me an agent that checks [my industry] news every morning and texts me a 3-bullet summary
+
+2. prompt-02-teal.png
+Turn this messy voice memo into a client-ready email
+
+3. prompt-03-orange.png
+Recolor this whole screen to something easier on my eyes — walk me through why
+
+4. prompt-04-purple.png
+Make a tracker that logs my expenses and sends me a Sunday recap
+
+5. prompt-05-green.png
+Turn this photo into a boxed collectible figure
+
+6. prompt-06-cream.png
+Draft 3 versions of this text — one blunt, one soft, one funny
+
+7. prompt-07-blue.png
+Build me a landing page for this idea, no code
+
+8. prompt-08-yellow.png
+Summarize this 40-page PDF into 5 bullets I can actually use
+
+9. prompt-09-pink.png
+Set up an agent that watches this competitor's site and pings me when something changes
+
+10. prompt-10-purple.png
+Turn my rambling notes into a clean outline I can present tomorrow
+
+Carousel caption:
+prompts worth stealing. drop one in fighur.ai →
+fighur.ai

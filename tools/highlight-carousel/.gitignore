@@ -1,0 +1,5 @@
+node_modules/
+output/
+frames/
+_ref/
+.DS_Store

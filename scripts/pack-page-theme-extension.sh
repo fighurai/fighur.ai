@@ -7,6 +7,6 @@ mkdir -p "$ROOT/public/downloads"
 rm -f "$OUT"
 (
   cd "$ROOT/chrome-extension"
-  zip -r "$OUT" . -x '*.DS_Store' -x '*README.md'
+  zip -r "$OUT" . -x '*.DS_Store' -x '*README.md' -x '*CHROME_WEB_STORE.md'
 )
 echo "Wrote $OUT"

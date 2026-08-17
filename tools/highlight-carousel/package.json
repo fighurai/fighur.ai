@@ -1,0 +1,15 @@
+{
+  "name": "highlight-carousel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bold highlighter Instagram carousel — live preview + looping MP4 export",
+  "scripts": {
+    "preview": "npx --yes serve . -l 5179",
+    "export": "node export.js"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "pngjs": "^7.0.0",
+    "puppeteer": "^24.2.0"
+  }
+}

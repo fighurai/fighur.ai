@@ -1,0 +1,20 @@
+FIGHURAI · Why screen color isn't just a vibe
+Slide 1 = cover VIDEO (mp4) — Colors cycle through real Fighur pairs + product UI.
+Slides 2–6 = essay stills. Feed 4:5 (1080×1350).
+
+1. 01-cover.png
+
+2. 02-not-a-vibe.png
+
+3. 03-irlen.png
+
+4. 04-precision.png
+
+5. 05-product.png
+
+6. 06-close.png
+
+Caption:
+Most color-customization apps treat screen color like a preference — pick your favorite, move on. The research says otherwise. Studies on visual stress and Irlen Syndrome, a condition affecting roughly a third of people with dyslexia, show that black text on a white background can cause real physical distortion — letters that appear to move, glare, and reading fatigue that builds throughout the day. Colored overlays are a documented intervention for this, but precision colorimetry research is clear on one point: the color that actually helps is different for every person, down to a specific point in the color spectrum. A generic filter helps some people and does nothing for others.
+
+That's the gap Fighur.ai is built to close — full text and background color customization across the platform, tuned to what actually works for your eyes, not a preset. We just extended that to a Chrome extension that applies the same customization to any website you browse, not just ours. If screen fatigue, light sensitivity, or visual stress is something you deal with, this isn't a cosmetic feature — it's built on the same principle the research points to: the right color is personal, so the tool should be too.

@@ -1,0 +1,13 @@
+{
+  "name": "consistency-grid",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "preview": "npx --yes serve . -l 5180",
+    "export": "node export.js"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "puppeteer": "^24.2.0"
+  }
+}

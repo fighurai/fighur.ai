@@ -1,0 +1,54 @@
+FIGHURAI · Why does dark mode exist?
+Same font (Helvetica Neue). Prompt-box carousel.
+
+1. why-01-pink.png
+Why does dark mode exist?
+(Most people can't actually answer.)
+
+2. why-02-cream.png
+Most people think it's just an aesthetic option. It's not.
+(There's peer-reviewed research behind the colors on your screen.)
+
+3. why-03-teal.png
+About a third of people with dyslexia also have Irlen Syndrome — visual stress.
+(A real, documented condition.)
+
+4. why-04-orange.png
+Black text on white can make letters move. Glare. Rivers of white space. Reading gets exhausting.
+(Not a metaphor — a measurable visual effect.)
+
+5. why-05-purple.png
+Colored overlays are a real tool reading specialists use.
+(A tinted sheet or screen filter over the text.)
+
+6. why-06-green.png
+The color that actually helps is different for every single person.
+(Precision colorimetry. Not “blue helps everyone.”)
+
+7. why-07-blue.png
+If the app can't dial in your exact shade, you're just using someone else's color.
+(You're not getting the benefit.)
+
+8. why-08-yellow.png
+Light-green backgrounds reduced how tired eyes got.
+(2025 eye-tracking study.)
+
+9. why-09-pink.png
+Blue light suppresses melatonin more than other colors.
+(Harvard. That's why night mode exists.)
+
+10. why-10-orange.png
+Color doesn't just change how a screen looks. It affects your body chemically.
+(Whether you notice it or not.)
+
+11. why-11-purple.png
+A generic filter — one preset for every user — works against the research.
+(The helpful shade is personal.)
+
+12. why-12-teal.png
+Fighur.ai: your exact text and background color. Platform + any website.
+(The right color is personal, so the tool has to be too.)
+
+Carousel caption:
+why does dark mode exist? not an aesthetic. swipe →
+fighur.ai
