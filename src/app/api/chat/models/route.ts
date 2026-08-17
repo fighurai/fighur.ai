@@ -49,8 +49,6 @@ export async function GET(request: Request) {
     plan: clientPlan,
     freeTierModelId: FREE_TIER_MODEL_ID,
     autoModelId: AUTO_MODEL_ID,
-    setupHint: chatReady
-      ? undefined
-      : "Add ANTHROPIC_API_KEY in Vercel for Claude, then redeploy.",
+    setupHint: undefined,
   });
 }

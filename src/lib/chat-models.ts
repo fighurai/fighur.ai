@@ -85,8 +85,5 @@ export function listConfiguredProviders(): ChatProvider[] {
 }
 
 export function noChatProvidersMessage(): string {
-  return (
-    "No model API keys are configured on the server. In Vercel → your project → Settings → " +
-    "Environment Variables, add ANTHROPIC_API_KEY, then redeploy."
-  );
+  return "Chat is temporarily unavailable. Try again in a moment.";
 }

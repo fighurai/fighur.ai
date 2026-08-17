@@ -228,21 +228,19 @@ function apiKeyFor(provider: ChatProvider): string | null {
 }
 
 function missingKeyMessage(provider: ChatProvider): string {
-  const envHint =
-    " Add it in Vercel → Project → Settings → Environment Variables (Production), then redeploy.";
   switch (provider) {
     case "anthropic":
-      return `Add ANTHROPIC_API_KEY to use Claude.${envHint}`;
+      return "Claude is temporarily unavailable. Try again in a moment.";
     case "openai":
-      return `Add OPENAI_API_KEY for OpenAI models.${envHint}`;
+      return "OpenAI models are temporarily unavailable. Try again in a moment.";
     case "groq":
-      return `Add GROQ_API_KEY for Groq models.${envHint}`;
+      return "Groq models are temporarily unavailable. Try again in a moment.";
     case "openrouter":
-      return `Add OPENROUTER_API_KEY for OpenRouter models.${envHint}`;
+      return "OpenRouter models are temporarily unavailable. Try again in a moment.";
     case "nvidia":
-      return `Add NVIDIA_API_KEY for NVIDIA models.${envHint}`;
+      return "NVIDIA models are temporarily unavailable. Try again in a moment.";
     default:
-      return `Missing API key for this provider.${envHint}`;
+      return "Chat is temporarily unavailable. Try again in a moment.";
   }
 }
 

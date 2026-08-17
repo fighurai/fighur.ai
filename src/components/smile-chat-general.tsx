@@ -66,6 +66,7 @@ import {
   prepareDeviceWriteAccessFromClick,
   type DeviceOpsPayload,
 } from "@/lib/device-file-ops";
+import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
 import { detectBrowserLocation } from "@/lib/browser-geolocation";
@@ -82,6 +83,7 @@ import {
   filesFromDataTransfer,
   processFileForChatAttachment,
 } from "@/lib/chat-attachments";
+import { HomeLandingIntro } from "@/components/home-landing-intro";
 import { videoPreviewDataUrl } from "@/lib/video-attachment";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import {
@@ -89,8 +91,10 @@ import {
   extractAllImagePreviewUrls,
   resolveImagePreviewUrl,
 } from "@/lib/workspace-download";
+import { SiteTutorial } from "@/components/site-tutorial";
 import { StreamLoadingDots } from "@/components/stream-loading-dots";
 import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
+import { readTheme, type ThemePrefs } from "@/lib/theme-storage";
 import {
   ANONYMOUS_STORAGE_USER,
   deriveTitle,
@@ -149,6 +153,9 @@ function friendlyChatError(e: unknown): string {
     lower.includes("network error")
   ) {
     return "Connection lost before the reply finished. Check your network and send again.";
+  }
+  if (/anthropic|api_key|redeploy|vercel/i.test(e.message)) {
+    return "Chat is temporarily unavailable. Try again in a moment.";
   }
   return e.message;
 }
@@ -346,7 +353,6 @@ export function SmileChatGeneral() {
   const [models, setModels] = useState<ChatModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [routedModelHint, setRoutedModelHint] = useState<string | null>(null);
-  const [chatReady, setChatReady] = useState<boolean | null>(null);
   const [buildSidebarOpen, setBuildSidebarOpen] = useState(false);
   const [layoutPrefs, setLayoutPrefs] = useState<LayoutPrefs>(() => defaultLayoutPrefs());
   const layoutPrefsRef = useRef(layoutPrefs);
@@ -388,6 +394,8 @@ export function SmileChatGeneral() {
   const [composerInset, setComposerInset] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [customThemeOn, setCustomThemeOn] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -395,6 +403,17 @@ export function SmileChatGeneral() {
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    setCustomThemeOn(readTheme().enabled);
+    const onTheme = (e: Event) => {
+      const detail = (e as CustomEvent<ThemePrefs>).detail;
+      if (detail) setCustomThemeOn(Boolean(detail.enabled));
+      else setCustomThemeOn(readTheme().enabled);
+    };
+    window.addEventListener("smile-theme-changed", onTheme);
+    return () => window.removeEventListener("smile-theme-changed", onTheme);
   }, []);
 
   useEffect(() => {
@@ -715,34 +734,34 @@ export function SmileChatGeneral() {
       .then((data: {
         models?: ChatModelInfo[];
         defaultModel?: string | null;
-        chatReady?: boolean;
-        setupHint?: string;
       }) => {
         const next = Array.isArray(data.models) ? data.models : [];
         setModels(next);
-        setChatReady(data.chatReady === true);
         const available = next.filter((m) => m.available);
+        const auto = next.find((m) => m.id === "auto") ?? available.find((m) => m.id === "auto");
         const claude = available.find((m) => m.id === DEFAULT_CHAT_MODEL_ID);
         const def = data.defaultModel;
-        const defOk = def && available.some((m) => m.id === def);
-        setSelectedModel(defOk ? def! : claude?.id ?? available[0]?.id ?? "");
-        if (available.length === 0) {
-          setError(
-            data.setupHint ??
-              "Chat is not configured: add ANTHROPIC_API_KEY in Vercel for the fighur.ai project and redeploy.",
-          );
-        } else {
-          setError((prev) =>
-            prev?.includes("not configured") || prev?.includes("unavailable") ? null : prev,
-          );
-        }
+        const defOk = def && next.some((m) => m.id === def);
+        // Prefer Auto → Claude Sonnet; never surface API-key setup copy in the UI.
+        setSelectedModel(defOk ? def! : auto?.id ?? claude?.id ?? available[0]?.id ?? "auto");
+        setError((prev) =>
+          prev && /ANTHROPIC|API_KEY|redeploy|Vercel/i.test(prev) ? null : prev,
+        );
       })
       .catch(() => {
-        setError("Could not load model list.");
+        // Keep Auto as the default label; don't block the landing with setup errors.
+        setSelectedModel((prev) => prev || "auto");
       });
   }, []);
 
-  const availableModels = useMemo(() => models.filter((m) => m.available), [models]);
+  const availableModels = useMemo(() => {
+    const ready = models.filter((m) => m.available);
+    if (ready.length > 0) return ready;
+    // Always expose Auto in the UI — it routes to Claude Sonnet 4.5 under the hood.
+    const auto = models.find((m) => m.id === "auto");
+    if (auto) return [{ ...auto, available: true, label: "Auto" }];
+    return [{ id: "auto", label: "Auto", provider: "auto", available: true }];
+  }, [models]);
 
   useEffect(() => {
     if (availableModels.length === 0) return;
@@ -1039,11 +1058,7 @@ export function SmileChatGeneral() {
 
     const modelMeta = availableModels.find((m) => m.id === selectedModel);
     if (!modelMeta?.available) {
-      setError(
-        modelMeta
-          ? `${modelMeta.label} is unavailable — add its API key in Vercel Environment Variables and redeploy, or choose another model.`
-          : "No model is available. Add at least one API key in Vercel (e.g. ANTHROPIC_API_KEY) and redeploy.",
-      );
+      setError("Chat is temporarily unavailable. Try again in a moment.");
       return;
     }
 
@@ -1920,25 +1935,32 @@ export function SmileChatGeneral() {
           >
             New
           </button>
+          {!showEmpty ? (
+            <button
+              type="button"
+              onClick={() => setTutorialOpen(true)}
+              className="ml-auto shrink-0 rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)]"
+            >
+              Quick tutorial
+            </button>
+          ) : null}
         </div>
+
+        {!showEmpty ? (
+          <div className="hidden shrink-0 items-center justify-end border-b border-white/[0.06] px-4 py-2 sm:px-6 md:flex md:px-8">
+            <button
+              type="button"
+              onClick={() => setTutorialOpen(true)}
+              className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] transition hover:brightness-110"
+            >
+              Quick tutorial
+            </button>
+          </div>
+        ) : null}
 
         <div
           className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
-          {chatReady === false ? (
-            <div
-              className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
-              role="status"
-            >
-              <p className="font-semibold text-amber-50">Claude is not available on this server</p>
-              <p className="mt-1.5 text-amber-100/90">
-                Add <code className="text-[0.65rem]">ANTHROPIC_API_KEY</code> to the{" "}
-                <strong>fighur.ai</strong> Vercel project (Production), redeploy, then refresh. Keys on other
-                sites do not apply here.
-              </p>
-            </div>
-          ) : null}
-
           {!session?.userId && usage?.signupRequired ? (
             <div
               className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3 text-xs leading-relaxed text-amber-100/95"
@@ -1957,6 +1979,8 @@ export function SmileChatGeneral() {
 
           {showEmpty ? (
             <div className="home-empty-hero">
+              <AmbientOmbreBackground active={!customThemeOn} />
+              <HomeLandingIntro onStartTutorial={() => setTutorialOpen(true)} />
               <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
@@ -2250,6 +2274,7 @@ export function SmileChatGeneral() {
           })();
         }}
       />
+      <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
   );
 }
