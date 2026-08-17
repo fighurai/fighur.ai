@@ -31,6 +31,7 @@ export async function PUT(request: Request) {
     responseInstructions?: unknown;
     deepResearch?: unknown;
     layout?: unknown;
+    quickTutorialDone?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -54,6 +55,9 @@ export async function PUT(request: Request) {
   }
   if (body.layout !== undefined && body.layout !== null && typeof body.layout === "object") {
     patch.layout = normalizeLayoutPrefs(body.layout as Parameters<typeof normalizeLayoutPrefs>[0]);
+  }
+  if (typeof body.quickTutorialDone === "boolean") {
+    patch.quickTutorialDone = body.quickTutorialDone;
   }
 
   const prefs = await writeUserPreferences(session.userId, patch);

@@ -33,6 +33,8 @@ export type UserPreferences = {
   deepResearch: DeepResearchPrefs;
   /** Optional workspace layout (desktop columns) */
   layout?: LayoutPrefs;
+  /** User finished or skipped the Quick tutorial (don't show center CTA again). */
+  quickTutorialDone?: boolean;
   updatedAt: string;
 };
 
@@ -87,6 +89,7 @@ export async function readUserPreferences(userId: string): Promise<UserPreferenc
       responseInstructions,
       deepResearch: normalizeDeepResearch(parsed.deepResearch),
       layout: parsed.layout ? normalizeLayoutPrefs(parsed.layout) : undefined,
+      quickTutorialDone: Boolean(parsed.quickTutorialDone),
       updatedAt:
         typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
     };
@@ -125,6 +128,10 @@ export async function writeUserPreferences(
         ? normalizeDeepResearch(prefs.deepResearch)
         : existing.deepResearch,
     layout: prefs.layout !== undefined ? normalizeLayoutPrefs(prefs.layout) : existing.layout,
+    quickTutorialDone:
+      prefs.quickTutorialDone !== undefined
+        ? Boolean(prefs.quickTutorialDone)
+        : existing.quickTutorialDone,
     updatedAt: new Date().toISOString(),
   };
   if (next.layout && JSON.stringify(next.layout) === JSON.stringify(defaultLayoutPrefs())) {

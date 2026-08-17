@@ -96,6 +96,11 @@ import { StreamLoadingDots } from "@/components/stream-loading-dots";
 import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
 import { readTheme, type ThemePrefs } from "@/lib/theme-storage";
 import {
+  hydrateQuickTutorialDoneFromServer,
+  persistQuickTutorialDone,
+  readQuickTutorialDone,
+} from "@/lib/quick-tutorial-storage";
+import {
   ANONYMOUS_STORAGE_USER,
   deriveTitle,
   clearConversations,
@@ -395,7 +400,7 @@ export function SmileChatGeneral() {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [tutorialCorner, setTutorialCorner] = useState(false);
+  const [tutorialCorner, setTutorialCorner] = useState(() => readQuickTutorialDone());
   const [customThemeOn, setCustomThemeOn] = useState(false);
 
   useEffect(() => {
@@ -407,23 +412,24 @@ export function SmileChatGeneral() {
   }, []);
 
   useEffect(() => {
-    try {
-      if (localStorage.getItem("fighur-quick-tutorial-done") === "1") {
-        setTutorialCorner(true);
-      }
-    } catch {
-      /* ignore */
-    }
+    if (readQuickTutorialDone()) setTutorialCorner(true);
   }, []);
 
   const markTutorialDone = useCallback(() => {
     setTutorialCorner(true);
-    try {
-      localStorage.setItem("fighur-quick-tutorial-done", "1");
-    } catch {
-      /* ignore */
-    }
+    persistQuickTutorialDone();
   }, []);
+
+  useEffect(() => {
+    if (!session?.userId) return;
+    let cancelled = false;
+    void hydrateQuickTutorialDoneFromServer().then((done) => {
+      if (!cancelled && done) setTutorialCorner(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.userId]);
 
   useEffect(() => {
     setCustomThemeOn(readTheme().enabled);
@@ -2018,7 +2024,12 @@ export function SmileChatGeneral() {
             <div className="home-empty-hero">
               <AmbientOmbreBackground active={!customThemeOn} />
               {!showTutorialCorner ? (
-                <HomeLandingIntro onStartTutorial={() => setTutorialOpen(true)} />
+                <HomeLandingIntro
+                  onStartTutorial={() => {
+                    markTutorialDone();
+                    setTutorialOpen(true);
+                  }}
+                />
               ) : null}
               <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
