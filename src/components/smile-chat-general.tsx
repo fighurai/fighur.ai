@@ -83,7 +83,6 @@ import {
   filesFromDataTransfer,
   processFileForChatAttachment,
 } from "@/lib/chat-attachments";
-import { HomeLandingIntro } from "@/components/home-landing-intro";
 import { videoPreviewDataUrl } from "@/lib/video-attachment";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import {
@@ -91,15 +90,9 @@ import {
   extractAllImagePreviewUrls,
   resolveImagePreviewUrl,
 } from "@/lib/workspace-download";
-import { SiteTutorial } from "@/components/site-tutorial";
 import { StreamLoadingDots } from "@/components/stream-loading-dots";
 import { StreamingText, type StreamingTextHandle } from "@/components/streaming-text";
 import { readTheme, type ThemePrefs } from "@/lib/theme-storage";
-import {
-  hydrateQuickTutorialDoneFromServer,
-  persistQuickTutorialDone,
-  readQuickTutorialDone,
-} from "@/lib/quick-tutorial-storage";
 import {
   ANONYMOUS_STORAGE_USER,
   deriveTitle,
@@ -399,8 +392,6 @@ export function SmileChatGeneral() {
   const [composerInset, setComposerInset] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
-  const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [tutorialCorner, setTutorialCorner] = useState(() => readQuickTutorialDone());
   const [customThemeOn, setCustomThemeOn] = useState(false);
 
   useEffect(() => {
@@ -410,26 +401,6 @@ export function SmileChatGeneral() {
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
-
-  useEffect(() => {
-    if (readQuickTutorialDone()) setTutorialCorner(true);
-  }, []);
-
-  const markTutorialDone = useCallback(() => {
-    setTutorialCorner(true);
-    persistQuickTutorialDone();
-  }, []);
-
-  useEffect(() => {
-    if (!session?.userId) return;
-    let cancelled = false;
-    void hydrateQuickTutorialDoneFromServer().then((done) => {
-      if (!cancelled && done) setTutorialCorner(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.userId]);
 
   useEffect(() => {
     setCustomThemeOn(readTheme().enabled);
@@ -1418,11 +1389,6 @@ export function SmileChatGeneral() {
   }, [listening, stopAll, streamPromptify]);
 
   const showEmpty = messages.length === 0;
-  const showTutorialCorner = tutorialCorner || !showEmpty;
-
-  useEffect(() => {
-    if (!showEmpty) markTutorialDone();
-  }, [showEmpty, markTutorialDone]);
   const busy = pending || translatingSpeech;
   const showStreamWaitingDots = Boolean(pending && streamingMessageId && !streamOutputStarted);
 
@@ -1978,28 +1944,7 @@ export function SmileChatGeneral() {
           >
             New
           </button>
-          {!showEmpty || showTutorialCorner ? (
-            <button
-              type="button"
-              onClick={() => setTutorialOpen(true)}
-              className="ml-auto shrink-0 rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)]"
-            >
-              Quick tutorial
-            </button>
-          ) : null}
         </div>
-
-        {showTutorialCorner ? (
-          <div className="hidden shrink-0 items-center justify-end border-b border-white/[0.06] px-4 py-2 sm:px-6 md:flex md:px-8">
-            <button
-              type="button"
-              onClick={() => setTutorialOpen(true)}
-              className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] transition hover:brightness-110"
-            >
-              Quick tutorial
-            </button>
-          </div>
-        ) : null}
 
         <div
           className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
@@ -2023,14 +1968,6 @@ export function SmileChatGeneral() {
           {showEmpty ? (
             <div className="home-empty-hero">
               <AmbientOmbreBackground active={!customThemeOn} />
-              {!showTutorialCorner ? (
-                <HomeLandingIntro
-                  onStartTutorial={() => {
-                    markTutorialDone();
-                    setTutorialOpen(true);
-                  }}
-                />
-              ) : null}
               <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
@@ -2323,11 +2260,6 @@ export function SmileChatGeneral() {
             }
           })();
         }}
-      />
-      <SiteTutorial
-        open={tutorialOpen}
-        onClose={() => setTutorialOpen(false)}
-        onFinished={markTutorialDone}
       />
     </div>
   );
