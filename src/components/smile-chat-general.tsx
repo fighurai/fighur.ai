@@ -674,9 +674,19 @@ export function SmileChatGeneral() {
   );
 
   useEffect(() => {
-    void detectBrowserLocation().then((loc) => {
-      clientLocationRef.current = loc;
-    });
+    // Warm cache only if permission was already granted — never prompt on page load
+    // (browsers suppress / ignore geolocation prompts without a user gesture).
+    void (async () => {
+      try {
+        const status = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
+        if (status?.state === "granted") {
+          const loc = await detectBrowserLocation();
+          if (loc) clientLocationRef.current = loc;
+        }
+      } catch {
+        /* Permissions API unsupported — wait for Send */
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -1154,12 +1164,10 @@ export function SmileChatGeneral() {
       mcpConfig = undefined;
     }
 
-    // Refresh GPS before send when missing or city-less — don't race the first reply.
-    if (
-      !clientLocationRef.current?.city ||
-      clientLocationRef.current.latitude === undefined
-    ) {
-      const loc = await detectBrowserLocation({ timeoutMs: 8_000 });
+    // Request GPS from this Send click (user gesture → permission popup can appear).
+    // Always force when we don't already have a browser-sourced fix.
+    if (clientLocationRef.current?.source !== "browser") {
+      const loc = await detectBrowserLocation({ force: true, timeoutMs: 12_000 });
       if (loc) clientLocationRef.current = loc;
     }
 

@@ -35,7 +35,6 @@ import {
 } from "@/lib/tasks/store";
 import { isTaskSchedulePreset } from "@/lib/tasks/schedule";
 import { taskSummary } from "@/lib/tasks/run";
-import { formatUserLocationLabel } from "@/lib/client-location";
 import type { AgentToolContext, AgentToolResult } from "@/lib/agent-tools/types";
 import { deviceOpsFromToolInput } from "@/lib/device-ops-parse";
 import { manifestSummary } from "@/lib/device-manifest";
@@ -60,21 +59,22 @@ export async function executeAgentTool(
         const useHere = !location || /^(here|my\s*(city|location|area)|local|current\s*location)$/i.test(location);
 
         if (useHere && ctx.userLocation) {
-          const { latitude, longitude, city } = ctx.userLocation;
-          if (latitude !== undefined && longitude !== undefined) {
-            const res = await fetchWeatherAtCoordinates(latitude, longitude);
-            if (!res.ok) return { content: res.error, isError: true };
-            return { content: JSON.stringify({ detectedFrom: "coordinates", ...res }, null, 2) };
+          const { latitude, longitude, city, source } = ctx.userLocation;
+          // Only trust browser GPS for "here" — IP/CDN metros (e.g. Atlanta) are often wrong.
+          if (source === "browser") {
+            if (latitude !== undefined && longitude !== undefined) {
+              const res = await fetchWeatherAtCoordinates(latitude, longitude);
+              if (!res.ok) return { content: res.error, isError: true };
+              return { content: JSON.stringify({ detectedFrom: "coordinates", ...res }, null, 2) };
+            }
+            if (city) location = city;
           }
-          if (city) location = city;
         }
 
         if (useHere && !location) {
-          const label = ctx.userLocation ? formatUserLocationLabel(ctx.userLocation) : null;
           return {
-            content: label
-              ? `Could not resolve weather for detected area (${label}). Ask the user for their city or enable location in the browser.`
-              : "User location unknown. Ask which city or enable location permission in the browser.",
+            content:
+              "Precise location unknown (browser GPS not granted). Ask the user which city, or ask them to Allow Location in the browser — do not guess a metro from IP.",
             isError: true,
           };
         }

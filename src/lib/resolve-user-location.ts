@@ -106,21 +106,41 @@ export async function resolveUserLocation(
 }
 
 export function userLocationSystemContext(loc: UserLocationHint | null): string {
-  if (!loc) return "";
+  if (!loc) {
+    return `
+
+## User location
+Precise location is **unknown** (browser GPS not granted yet, or unavailable).
+- For "weather here" / "my weather" / local asks: **ask which city** (one short question). Do not invent a metro like Atlanta from guesswork.
+- Do not claim the user is in a specific city.`;
+  }
+
   const label = [loc.city, loc.region, loc.country].filter(Boolean).join(", ");
   const coords =
     loc.latitude !== undefined && loc.longitude !== undefined
       ? ` (${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)})`
       : "";
   if (!label && !coords) return "";
+
+  const isPrecise = loc.source === "browser";
   const placeForTools =
     loc.city || label || `${loc.latitude?.toFixed(4)}, ${loc.longitude?.toFixed(4)}`;
+
+  if (!isPrecise) {
+    return `
+
+## User location (LOW CONFIDENCE — IP/CDN guess only)
+A rough network estimate says **${label || "unknown"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: ${loc.source}).
+This is often wrong (VPN, ISP routing, edge POP). **Do not treat it as the user's real city.**
+- For "weather here" / "my location": ask which city they mean (or tell them to Allow Location in the browser), then use that answer.
+- Never confidently say they are in ${loc.city || "that metro"} unless they confirm.`;
+  }
+
   return `
 
-## User location (detected)
-The user is approximately in **${label || "their area"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: ${loc.source}).
+## User location (precise — browser GPS)
+The user is approximately in **${label || "their area"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: browser).
 - For "weather here" / "my weather" / "what's it like outside" — call **get_weather** with location **"${placeForTools}"** or use the coordinates above.
-- Prefer coordinates over city name when both are available (more accurate).
-- Do not ask which city unless detection failed.
-- Do not substitute a different metro from IP/CDN if browser GPS coordinates are present.`;
+- Prefer coordinates over city name when both are available.
+- Do not ask which city unless they say the place is wrong.`;
 }

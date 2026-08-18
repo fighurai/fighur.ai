@@ -8,7 +8,8 @@ export function middleware(request: NextRequest) {
   // Hosted user apps set their own frame policy on /a/*
   if (!request.nextUrl.pathname.startsWith("/a/")) {
     res.headers.set("X-Frame-Options", "DENY");
-    res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    // Allow Speak (mic) + precise location; keep camera off.
+    res.headers.set("Permissions-Policy", "camera=(), microphone=(self), geolocation=(self)");
   }
   if (request.nextUrl.protocol === "https:") {
     res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");

@@ -3,8 +3,8 @@
 import type { UserLocationHint } from "@/lib/client-location";
 import { reverseGeocodePlace } from "@/lib/reverse-geocode";
 
-/** Bump when reverse-geocode provider changes so stale/wrong caches are dropped. */
-const STORAGE_KEY = "fighurai-client-location-v2";
+/** Bump when reverse-geocode / permission policy changes so stale caches drop. */
+const STORAGE_KEY = "fighurai-client-location-v3";
 
 export type BrowserLocationResult = UserLocationHint | null;
 
@@ -15,8 +15,10 @@ export function readCachedBrowserLocation(): BrowserLocationResult {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as UserLocationHint;
-    // Require a place label or usable coordinates — never trust empty shells.
-    if (parsed?.city || (parsed?.latitude !== undefined && parsed?.longitude !== undefined)) {
+    if (
+      parsed?.source === "browser" &&
+      (parsed.city || (parsed.latitude !== undefined && parsed.longitude !== undefined))
+    ) {
       return parsed;
     }
   } catch {
@@ -33,36 +35,50 @@ function cacheLocation(loc: UserLocationHint): void {
   }
 }
 
-function clearLegacyCache(): void {
+function clearLegacyCaches(): void {
   try {
     sessionStorage.removeItem("fighurai-client-location-v1");
+    sessionStorage.removeItem("fighurai-client-location-v2");
   } catch {
     /* ignore */
   }
 }
 
+async function permissionState(): Promise<PermissionState | "unknown"> {
+  try {
+    if (!navigator.permissions?.query) return "unknown";
+    const status = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+    return status.state;
+  } catch {
+    return "unknown";
+  }
+}
+
 /**
  * Request browser geolocation (GPS) and reverse-geocode to a city label.
- * Uses cache when present; pass `{ force: true }` to refresh.
+ * Must run from a user gesture (e.g. Send) for the permission popup to appear.
+ * Pass `{ force: true }` to re-prompt / refresh even if cached.
  */
-export function detectBrowserLocation(opts?: {
+export async function detectBrowserLocation(opts?: {
   force?: boolean;
   timeoutMs?: number;
 }): Promise<BrowserLocationResult> {
   if (typeof window === "undefined" || !navigator.geolocation) {
-    return Promise.resolve(readCachedBrowserLocation());
+    return readCachedBrowserLocation();
   }
 
-  clearLegacyCache();
+  clearLegacyCaches();
 
   if (!opts?.force) {
     const cached = readCachedBrowserLocation();
-    if (cached?.city || (cached?.latitude !== undefined && cached?.longitude !== undefined)) {
-      return Promise.resolve(cached);
-    }
+    if (cached) return cached;
   }
 
-  const timeoutMs = opts?.timeoutMs ?? 12_000;
+  const state = await permissionState();
+  // Already permanently denied — don't burn time waiting on a silent failure.
+  if (state === "denied") return null;
+
+  const timeoutMs = opts?.timeoutMs ?? 15_000;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -72,9 +88,7 @@ export function detectBrowserLocation(opts?: {
       resolve(loc);
     };
 
-    const timer = window.setTimeout(() => {
-      finish(readCachedBrowserLocation());
-    }, timeoutMs + 500);
+    const timer = window.setTimeout(() => finish(null), timeoutMs + 800);
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -95,12 +109,12 @@ export function detectBrowserLocation(opts?: {
       },
       () => {
         window.clearTimeout(timer);
-        finish(readCachedBrowserLocation());
+        finish(null);
       },
       {
         enableHighAccuracy: true,
         timeout: timeoutMs,
-        maximumAge: opts?.force ? 0 : 120_000,
+        maximumAge: opts?.force ? 0 : 60_000,
       },
     );
   });
