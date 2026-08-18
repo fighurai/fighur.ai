@@ -69,7 +69,7 @@ import {
 import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
-import { detectBrowserLocation } from "@/lib/browser-geolocation";
+import { detectBrowserLocation, isMobileClient, requestBrowserLocationFromGesture } from "@/lib/browser-geolocation";
 import type { UserLocationHint } from "@/lib/client-location";
 import { BuildCanvas } from "@/components/build-canvas";
 import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
@@ -1088,6 +1088,12 @@ export function SmileChatGeneral() {
 
     sendInFlightRef.current = true;
 
+    // Mobile: start GPS in this same tap turn (before any await) or iOS never shows the prompt.
+    const mobileLocationPromise =
+      isMobileClient() && clientLocationRef.current?.source !== "browser"
+        ? requestBrowserLocationFromGesture({ timeoutMs: 20_000 })
+        : null;
+
     let convId = activeId;
     if (!convId) {
       convId = id();
@@ -1174,7 +1180,10 @@ export function SmileChatGeneral() {
 
     // Request GPS from this Send click (user gesture → permission popup can appear).
     // Always force when we don't already have a browser-sourced fix.
-    if (clientLocationRef.current?.source !== "browser") {
+    if (mobileLocationPromise) {
+      const loc = await mobileLocationPromise;
+      if (loc) clientLocationRef.current = loc;
+    } else if (clientLocationRef.current?.source !== "browser") {
       const loc = await detectBrowserLocation({ force: true, timeoutMs: 12_000 });
       if (loc) clientLocationRef.current = loc;
     }

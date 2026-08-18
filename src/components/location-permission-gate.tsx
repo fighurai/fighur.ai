@@ -2,13 +2,24 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 
-import { detectBrowserLocation } from "@/lib/browser-geolocation";
+import {
+  detectBrowserLocation,
+  isMobileClient,
+  readCachedBrowserLocation,
+  requestBrowserLocationFromGesture,
+} from "@/lib/browser-geolocation";
 
-const PROMPT_KEY = "fighurai-location-prompt-v2";
+const PROMPT_KEY_DESKTOP = "fighurai-location-prompt-v2";
+/** Separate key so mobile users who got stuck without a popup see the gate again. */
+const PROMPT_KEY_MOBILE = "fighurai-location-prompt-mobile-v3";
+
+function promptKey(): string {
+  return isMobileClient() ? PROMPT_KEY_MOBILE : PROMPT_KEY_DESKTOP;
+}
 
 function promptAlreadyHandled(): boolean {
   try {
-    return localStorage.getItem(PROMPT_KEY) === "done";
+    return localStorage.getItem(promptKey()) === "done";
   } catch {
     return false;
   }
@@ -16,7 +27,7 @@ function promptAlreadyHandled(): boolean {
 
 function markPromptHandled(): void {
   try {
-    localStorage.setItem(PROMPT_KEY, "done");
+    localStorage.setItem(promptKey(), "done");
   } catch {
     /* ignore */
   }
@@ -31,38 +42,51 @@ export function LocationPermissionGate() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const onMobile = isMobileClient();
+    setMobile(onMobile);
 
     void (async () => {
       if (typeof window === "undefined") return;
-      if (promptAlreadyHandled()) return;
       if (!navigator.geolocation) {
         markPromptHandled();
         return;
       }
 
-      try {
-        const status = await navigator.permissions?.query({
-          name: "geolocation" as PermissionName,
-        });
-        if (cancelled) return;
-        if (status?.state === "granted") {
-          const loc = await detectBrowserLocation({ force: true, timeoutMs: 8_000 });
-          if (loc) {
-            window.dispatchEvent(new CustomEvent("fighur-location-ready", { detail: loc }));
+      // Already have GPS this session — skip.
+      if (readCachedBrowserLocation()) {
+        markPromptHandled();
+        return;
+      }
+
+      if (promptAlreadyHandled()) return;
+
+      // Desktop: skip gate if Permissions API says granted/denied.
+      // Mobile: do NOT trust "denied" — Safari/Chrome often misreport; always show the gate.
+      if (!onMobile) {
+        try {
+          const status = await navigator.permissions?.query({
+            name: "geolocation" as PermissionName,
+          });
+          if (cancelled) return;
+          if (status?.state === "granted") {
+            const loc = await detectBrowserLocation({ force: true, timeoutMs: 8_000 });
+            if (loc) {
+              window.dispatchEvent(new CustomEvent("fighur-location-ready", { detail: loc }));
+            }
+            markPromptHandled();
+            return;
           }
-          markPromptHandled();
-          return;
+          if (status?.state === "denied") {
+            markPromptHandled();
+            return;
+          }
+        } catch {
+          /* still show gate */
         }
-        if (status?.state === "denied") {
-          // Permanently blocked in browser settings — nothing we can prompt for.
-          markPromptHandled();
-          return;
-        }
-      } catch {
-        /* Permissions API missing — still show our gate */
       }
 
       if (!cancelled) setOpen(true);
@@ -78,24 +102,32 @@ export function LocationPermissionGate() {
     setOpen(false);
   }, []);
 
-  const allow = useCallback(async () => {
+  const allow = useCallback(() => {
     setBusy(true);
     setError(null);
-    try {
-      const loc = await detectBrowserLocation({ force: true, timeoutMs: 20_000 });
-      if (loc) {
-        window.dispatchEvent(new CustomEvent("fighur-location-ready", { detail: loc }));
-        close();
-        return;
-      }
-      setError(
-        "Location wasn’t shared. Check the address bar for a blocked pin, set Location to Allow for fighur.ai, then try again.",
-      );
-    } catch {
-      setError("Couldn’t request location. You can still type your city in chat.");
-    } finally {
-      setBusy(false);
-    }
+
+    // Mobile: call getCurrentPosition in this same turn (no prior awaits).
+    const request = isMobileClient()
+      ? requestBrowserLocationFromGesture({ timeoutMs: 25_000 })
+      : detectBrowserLocation({ force: true, timeoutMs: 20_000 });
+
+    void request
+      .then((loc) => {
+        if (loc) {
+          window.dispatchEvent(new CustomEvent("fighur-location-ready", { detail: loc }));
+          close();
+          return;
+        }
+        setError(
+          isMobileClient()
+            ? "Location wasn’t shared. In Safari/Chrome: tap Aa or the lock icon → Website Settings → Location → Allow, then try again."
+            : "Location wasn’t shared. Check the address bar for a blocked pin, set Location to Allow for fighur.ai, then try again.",
+        );
+      })
+      .catch(() => {
+        setError("Couldn’t request location. You can still type your city in chat.");
+      })
+      .finally(() => setBusy(false));
   }, [close]);
 
   if (!open) return null;
@@ -129,8 +161,17 @@ export function LocationPermissionGate() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => void allow()}
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--bg-deep)] transition hover:brightness-110 disabled:opacity-60"
+            // pointerup keeps the iOS user-gesture chain more reliably than click alone
+            onPointerUp={(e) => {
+              if (e.pointerType === "touch" || mobile) {
+                e.preventDefault();
+                if (!busy) allow();
+              }
+            }}
+            onClick={() => {
+              if (!mobile && !busy) allow();
+            }}
+            className="inline-flex h-12 flex-1 touch-manipulation items-center justify-center rounded-full bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--bg-deep)] transition hover:brightness-110 disabled:opacity-60 sm:h-11"
           >
             {busy ? "Waiting for browser…" : "Allow location"}
           </button>
@@ -138,14 +179,15 @@ export function LocationPermissionGate() {
             type="button"
             disabled={busy}
             onClick={close}
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-white/[0.12] px-4 text-sm font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] disabled:opacity-60"
+            className="inline-flex h-12 flex-1 touch-manipulation items-center justify-center rounded-full border border-white/[0.12] px-4 text-sm font-medium text-[var(--text-muted)] transition hover:bg-white/[0.06] disabled:opacity-60 sm:h-11"
           >
             Not now
           </button>
         </div>
         <p className="mt-3 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-          Tap Allow location, then choose Allow in the browser popup. You can change this later in
-          your browser’s site settings.
+          {mobile
+            ? "Tap Allow location, then Allow on the system prompt. This only needs to happen once."
+            : "Tap Allow location, then choose Allow in the browser popup. You can change this later in your browser’s site settings."}
         </p>
       </div>
     </div>
