@@ -6,6 +6,9 @@ export type SavedConversation = {
   updatedAt: number;
   messages: ChatMessage[];
   buildArtifact?: ChatBuildArtifact | null;
+  /** Agent this chat belongs to (from header Agents picker). Null = default FIGHURAI. */
+  agentId?: string | null;
+  agentName?: string | null;
 };
 
 export type ConversationScope = "ask" | "assistant";
@@ -41,6 +44,73 @@ function storageKeys(scope: ConversationScope, storageUser: string) {
 
 const MAX_CONVERSATIONS = 80;
 
+export const DEFAULT_AGENT_GROUP_KEY = "__default__";
+
+export type AgentChatGroup = {
+  key: string;
+  label: string;
+  agentId: string | null;
+  chats: SavedConversation[];
+};
+
+/** Group chats into agent folders for the Chats sidebar. */
+export function groupConversationsByAgent(
+  conversations: SavedConversation[],
+  agents: Array<{ id: string; name: string }>,
+  activeAgentId?: string | null,
+): AgentChatGroup[] {
+  const nameById = new Map(agents.map((a) => [a.id, a.name]));
+  const groups = new Map<string, AgentChatGroup>();
+
+  const ensure = (key: string, label: string, agentId: string | null) => {
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, label, agentId, chats: [] };
+      groups.set(key, g);
+    } else if (label && g.label !== label && agentId) {
+      g.label = label;
+    }
+    return g;
+  };
+
+  ensure(DEFAULT_AGENT_GROUP_KEY, "FIGHURAI", null);
+  for (const a of agents) {
+    ensure(a.id, a.name, a.id);
+  }
+
+  for (const c of conversations) {
+    const aid = c.agentId?.trim() || null;
+    if (aid) {
+      const label = c.agentName?.trim() || nameById.get(aid) || "Agent";
+      ensure(aid, label, aid).chats.push(c);
+    } else {
+      ensure(DEFAULT_AGENT_GROUP_KEY, "FIGHURAI", null).chats.push(c);
+    }
+  }
+
+  for (const g of groups.values()) {
+    g.chats.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  const list = [...groups.values()].filter((g) => {
+    if (g.chats.length > 0) return true;
+    if (activeAgentId && g.agentId === activeAgentId) return true;
+    return false;
+  });
+
+  list.sort((a, b) => {
+    if (a.key === DEFAULT_AGENT_GROUP_KEY) return 1;
+    if (b.key === DEFAULT_AGENT_GROUP_KEY) return -1;
+    if (activeAgentId && a.agentId === activeAgentId) return -1;
+    if (activeAgentId && b.agentId === activeAgentId) return 1;
+    const aT = a.chats[0]?.updatedAt ?? 0;
+    const bT = b.chats[0]?.updatedAt ?? 0;
+    return bT - aT;
+  });
+
+  return list;
+}
+
 function deriveTitle(messages: ChatMessage[]): string {
   const firstUser = messages.find((m) => m.role === "user");
   if (!firstUser?.content?.trim()) return "New chat";
@@ -71,6 +141,12 @@ export function loadConversations(
               typeof (c.buildArtifact as { language?: unknown }).language === "string" &&
               typeof (c.buildArtifact as { code?: unknown }).code === "string")),
       )
+      .map((c) => ({
+        ...c,
+        agentId: typeof c.agentId === "string" ? c.agentId : c.agentId === null ? null : undefined,
+        agentName:
+          typeof c.agentName === "string" ? c.agentName : c.agentName === null ? null : undefined,
+      }))
       .sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
@@ -139,9 +215,13 @@ export function upsertConversation(
   list: SavedConversation[],
   patch: SavedConversation,
 ): SavedConversation[] {
+  const prev = list.find((c) => c.id === patch.id);
   const next = list.filter((c) => c.id !== patch.id);
   next.push({
     ...patch,
+    // Keep the agent folder sticky once a chat is created.
+    agentId: prev?.agentId !== undefined ? prev.agentId : patch.agentId,
+    agentName: prev?.agentName !== undefined ? prev.agentName : patch.agentName,
     title: patch.title || deriveTitle(patch.messages),
     updatedAt: patch.updatedAt,
   });

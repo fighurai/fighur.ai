@@ -28,6 +28,7 @@ import {
 import { syncLayoutToServer } from "@/lib/layout-sync";
 import {
   ACTIVE_AGENT_CHANGE_EVENT,
+  emitActiveAgentChange,
   type ActiveAgentChangeDetail,
 } from "@/lib/agents/types";
 import {
@@ -100,9 +101,11 @@ import { StreamingText, type StreamingTextHandle } from "@/components/streaming-
 import { readTheme, type ThemePrefs } from "@/lib/theme-storage";
 import {
   ANONYMOUS_STORAGE_USER,
+  DEFAULT_AGENT_GROUP_KEY,
   deriveTitle,
   clearConversations,
   conversationStorageUserId,
+  groupConversationsByAgent,
   liveConversationStorageUser,
   loadConversations,
   loadLastActiveId,
@@ -365,6 +368,10 @@ export function SmileChatGeneral() {
     name: string;
     description?: string;
   } | null>(null);
+  const [agentsList, setAgentsList] = useState<Array<{ id: string; name: string }>>([]);
+  const [expandedAgentFolders, setExpandedAgentFolders] = useState<Record<string, boolean>>({
+    [DEFAULT_AGENT_GROUP_KEY]: true,
+  });
   const [buildPanelTab, setBuildPanelTab] = useState<BuildPanelTab>("preview");
   const [selectedBuildFilePath, setSelectedBuildFilePath] = useState<string | null>(null);
   const [selectedCanvasSectionId, setSelectedCanvasSectionId] = useState<string | null>(null);
@@ -422,6 +429,7 @@ export function SmileChatGeneral() {
     const loadActiveAgent = async () => {
       if (!readSession()?.userId) {
         setActiveAgent(null);
+        setAgentsList([]);
         return;
       }
       try {
@@ -431,9 +439,14 @@ export function SmileChatGeneral() {
           agents?: Array<{ id: string; name: string; description?: string; enabled?: boolean }>;
           activeAgentId?: string | null;
         };
+        const enabled = (data.agents ?? []).filter((a) => a.enabled !== false);
+        setAgentsList(enabled.map((a) => ({ id: a.id, name: a.name })));
         const id = data.activeAgentId;
-        const agent = id ? data.agents?.find((a) => a.id === id && a.enabled !== false) : null;
+        const agent = id ? enabled.find((a) => a.id === id) : null;
         setActiveAgent(agent ? { id: agent.id, name: agent.name, description: agent.description } : null);
+        if (id) {
+          setExpandedAgentFolders((prev) => ({ ...prev, [id]: true }));
+        }
       } catch {
         /* ignore */
       }
@@ -455,6 +468,15 @@ export function SmileChatGeneral() {
           name: detail.agent.name,
           description: detail.agent.description,
         });
+        setAgentsList((prev) => {
+          if (prev.some((a) => a.id === detail.agent!.id)) {
+            return prev.map((a) =>
+              a.id === detail.agent!.id ? { id: a.id, name: detail.agent!.name } : a,
+            );
+          }
+          return [...prev, { id: detail.agent!.id, name: detail.agent!.name }];
+        });
+        setExpandedAgentFolders((prev) => ({ ...prev, [detail.agent!.id]: true }));
         return;
       }
       void loadActiveAgent();
@@ -788,6 +810,8 @@ export function SmileChatGeneral() {
         title: deriveTitle(messages),
         updatedAt: Date.now(),
         buildArtifact: latestBuildArtifact,
+        agentId: activeAgent?.id ?? null,
+        agentName: activeAgent?.name ?? null,
       });
       persistConversations(merged, "assistant", storageUser);
       const liveUserId = readSession()?.userId;
@@ -808,7 +832,7 @@ export function SmileChatGeneral() {
       return merged;
     });
     saveLastActiveId(activeId, "assistant", storageUser);
-  }, [messages, activeId, hydrated, latestBuildArtifact, session?.userId]);
+  }, [messages, activeId, hydrated, latestBuildArtifact, session?.userId, activeAgent?.id, activeAgent?.name]);
 
   const stopAll = useCallback(() => {
     abortRef.current?.abort();
@@ -861,8 +885,48 @@ export function SmileChatGeneral() {
       if (storageUser !== conversationOwnerRef.current) return;
       saveLastActiveId(c.id, "assistant", storageUser);
       setMobileSidebarOpen(false);
+
+      // Expand this chat's agent folder and sync the header agent to match.
+      const folderKey = c.agentId?.trim() || DEFAULT_AGENT_GROUP_KEY;
+      setExpandedAgentFolders((prev) => ({ ...prev, [folderKey]: true }));
+      if (readSession()?.userId) {
+        const nextAgentId = c.agentId?.trim() || null;
+        if ((activeAgent?.id ?? null) !== nextAgentId) {
+          void fetch("/api/agents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "setActive", activeAgentId: nextAgentId }),
+          })
+            .then(async (res) => {
+              if (!res.ok) return;
+              const data = (await res.json()) as {
+                activeAgentId?: string | null;
+                agents?: Array<{ id: string; name: string; description?: string; enabled?: boolean }>;
+              };
+              const agent =
+                data.activeAgentId && data.agents
+                  ? data.agents.find((a) => a.id === data.activeAgentId)
+                  : null;
+              emitActiveAgentChange({
+                activeAgentId: data.activeAgentId ?? null,
+                agent: agent
+                  ? {
+                      id: agent.id,
+                      name: agent.name,
+                      description: agent.description ?? "",
+                      deepResearch: false,
+                      effort: "auto",
+                    }
+                  : null,
+              });
+            })
+            .catch(() => {
+              /* ignore */
+            });
+        }
+      }
     },
-    [stopAll, conversations, resolveCanvasOpen],
+    [stopAll, conversations, resolveCanvasOpen, activeAgent?.id],
   );
 
   useEffect(() => {
@@ -1764,6 +1828,15 @@ export function SmileChatGeneral() {
     </>
   );
 
+  const agentChatGroups = useMemo(
+    () => groupConversationsByAgent(conversations, agentsList, activeAgent?.id ?? null),
+    [conversations, agentsList, activeAgent?.id],
+  );
+
+  const toggleAgentFolder = useCallback((key: string) => {
+    setExpandedAgentFolders((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
   const sidebarContent = (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-white/[0.06] p-3">
@@ -1774,50 +1847,101 @@ export function SmileChatGeneral() {
         >
           + New chat
         </button>
+        {activeAgent ? (
+          <p className="mt-2 px-0.5 text-[0.65rem] leading-relaxed text-[var(--text-faint)]">
+            New chats go in <span className="font-medium text-[var(--text-muted)]">{activeAgent.name}</span>
+          </p>
+        ) : (
+          <p className="mt-2 px-0.5 text-[0.65rem] leading-relaxed text-[var(--text-faint)]">
+            New chats go in <span className="font-medium text-[var(--text-muted)]">FIGHURAI</span>
+          </p>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-2">
         <p className="px-2 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
-          Previous chats
+          Chats by agent
         </p>
-        {conversations.length === 0 ? (
+        {conversations.length === 0 && agentsList.length === 0 ? (
           <p className="px-2 text-xs leading-relaxed text-[var(--text-faint)]">
             Saved on this device. Start a message to create your first chat.
           </p>
         ) : (
-          <ul className="space-y-1">
-            {conversations.map((c) => (
-              <li key={c.id}>
-                <div
-                  className={`group flex items-start gap-1 rounded-xl transition ${
-                    activeId === c.id
-                      ? "bg-white/[0.08] ring-1 ring-white/[0.1]"
-                      : "hover:bg-white/[0.04]"
-                  }`}
-                >
+          <ul className="space-y-1.5">
+            {agentChatGroups.map((group) => {
+              const open =
+                expandedAgentFolders[group.key] !== undefined
+                  ? Boolean(expandedAgentFolders[group.key])
+                  : group.agentId === (activeAgent?.id ?? null) ||
+                    group.chats.some((c) => c.id === activeId);
+              return (
+                <li key={group.key} className="rounded-xl bg-white/[0.02] ring-1 ring-white/[0.05]">
                   <button
                     type="button"
-                    onClick={() => selectConversation(c)}
-                    className="min-w-0 flex-1 px-2.5 py-2 text-left"
+                    onClick={() => toggleAgentFolder(group.key)}
+                    className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition hover:bg-white/[0.05] ${
+                      group.agentId === activeAgent?.id ? "bg-[var(--accent)]/10" : ""
+                    }`}
+                    aria-expanded={open}
                   >
-                    <span className="line-clamp-2 text-xs font-medium text-[var(--text-primary)]">
-                      {c.title || deriveTitle(c.messages)}
+                    <span
+                      className={`shrink-0 text-[0.65rem] text-[var(--text-faint)] transition ${open ? "rotate-90" : ""}`}
+                      aria-hidden
+                    >
+                      ▸
                     </span>
-                    <span className="mt-0.5 block text-[0.65rem] text-[var(--text-faint)]">
-                      {formatTime(c.updatedAt)}
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--text-primary)]">
+                      {group.label}
+                    </span>
+                    <span className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[0.6rem] tabular-nums text-[var(--text-faint)]">
+                      {group.chats.length}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => deleteConversation(e, c.id)}
-                    className="shrink-0 rounded-lg p-2 text-[var(--text-faint)] opacity-70 transition hover:bg-white/[0.08] hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
-                    aria-label="Delete chat"
-                    title="Delete"
-                  >
-                    ×
-                  </button>
-                </div>
-              </li>
-            ))}
+                  {open ? (
+                    group.chats.length === 0 ? (
+                      <p className="px-3 pb-2.5 pl-7 text-[0.65rem] text-[var(--text-faint)]">
+                        No chats yet — send a message to start one here.
+                      </p>
+                    ) : (
+                      <ul className="space-y-0.5 px-1 pb-1.5">
+                        {group.chats.map((c) => (
+                          <li key={c.id}>
+                            <div
+                              className={`group flex items-start gap-1 rounded-lg transition ${
+                                activeId === c.id
+                                  ? "bg-white/[0.08] ring-1 ring-white/[0.1]"
+                                  : "hover:bg-white/[0.04]"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => selectConversation(c)}
+                                className="min-w-0 flex-1 px-2 py-1.5 pl-6 text-left"
+                              >
+                                <span className="line-clamp-2 text-xs font-medium text-[var(--text-primary)]">
+                                  {c.title || deriveTitle(c.messages)}
+                                </span>
+                                <span className="mt-0.5 block text-[0.65rem] text-[var(--text-faint)]">
+                                  {formatTime(c.updatedAt)}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => deleteConversation(e, c.id)}
+                                className="shrink-0 rounded-lg p-2 text-[var(--text-faint)] opacity-70 transition hover:bg-white/[0.08] hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
+                                aria-label="Delete chat"
+                                title="Delete"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
