@@ -85,6 +85,7 @@ import {
 } from "@/lib/chat-attachments";
 import { videoPreviewDataUrl } from "@/lib/video-attachment";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
+import { formatRoutedModelLabel } from "@/lib/chat-models";
 import {
   downloadImageUrl,
   extractAllImagePreviewUrls,
@@ -1237,15 +1238,8 @@ export function SmileChatGeneral() {
 
       const routedId = res.headers.get("X-FigHur-Model");
       if (selectedModel === "auto" && routedId) {
-        const raw =
-          models.find((m) => m.id === routedId)?.label ?? routedId.replace(/^[^:]+:/, "");
-        // Short, readable label for the Auto pill (avoid truncation of long model ids).
-        const short = raw
-          .replace(/^anthropic:/i, "")
-          .replace(/^claude\s+/i, "")
-          .replace(/(\d{4})-\d{2}-\d{2}.*$/i, "")
-          .trim();
-        setRoutedModelHint(short || "Sonnet 4.5");
+        const fromCatalog = models.find((m) => m.id === routedId)?.label;
+        setRoutedModelHint(fromCatalog || formatRoutedModelLabel(routedId));
       } else {
         setRoutedModelHint(null);
       }
@@ -1694,7 +1688,7 @@ export function SmileChatGeneral() {
                   className="min-w-0 max-w-[min(100%,14rem)] rounded-full bg-[var(--accent)] px-3 py-1.5 text-left text-xs font-semibold leading-snug text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[11rem] max-md:px-2.5 max-md:py-1 sm:max-w-[16rem] sm:px-4 sm:py-2"
                   title={
                     routedModelHint
-                      ? `Auto → Claude ${routedModelHint}`
+                      ? `Auto → ${routedModelHint}`
                       : "Auto uses Claude Sonnet 4.5"
                   }
                 >

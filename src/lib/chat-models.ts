@@ -87,3 +87,41 @@ export function listConfiguredProviders(): ChatProvider[] {
 export function noChatProvidersMessage(): string {
   return "Chat is temporarily unavailable. Try again in a moment.";
 }
+
+/**
+ * Friendly Auto-pill label from an API / catalog model id.
+ * e.g. anthropic:claude-sonnet-4-5-20250929 → "Claude Sonnet 4.5"
+ */
+export function formatRoutedModelLabel(rawId: string | null | undefined): string {
+  if (!rawId) return "Claude Sonnet 4.5";
+
+  const catalog = CHAT_MODEL_OPTIONS.find(
+    (m) => m.id === rawId || m.apiModel === rawId || m.id.endsWith(`:${rawId}`),
+  );
+  if (catalog?.label) return catalog.label;
+
+  let s = rawId.replace(/^[^:]+:/, "").trim();
+  // Drop dated Anthropic suffixes: ...-20250929
+  s = s.replace(/-\d{8}(?:-[\w-]+)?$/i, "");
+
+  // claude-sonnet-4-5 → Claude Sonnet 4.5
+  const claude = /^claude-([a-z]+)-(\d+)(?:-(\d+))?$/i.exec(s);
+  if (claude) {
+    const family = claude[1].charAt(0).toUpperCase() + claude[1].slice(1).toLowerCase();
+    const ver = claude[3] ? `${claude[2]}.${claude[3]}` : claude[2];
+    return `Claude ${family} ${ver}`;
+  }
+
+  // gpt-4o / o3-mini style leftovers — title-case hyphens lightly
+  s = s
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (/^\d+(\.\d+)?$/.test(part)) return part;
+      if (/^[a-z]+\d/i.test(part)) return part.toUpperCase();
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join(" ");
+
+  return s || "Claude Sonnet 4.5";
+}
