@@ -27,7 +27,7 @@ function ExtensionContent() {
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-faint)]">
         Chrome extension
       </p>
-      <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
         FIGHURAI Colors
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
