@@ -1038,6 +1038,15 @@ export function SmileChatGeneral() {
     }
   }, []);
 
+  const followStreamScrollRaf = useRef(0);
+  const scheduleFollowStreamScroll = useCallback(() => {
+    if (followStreamScrollRaf.current) return;
+    followStreamScrollRaf.current = requestAnimationFrame(() => {
+      followStreamScrollRaf.current = 0;
+      followStreamScroll();
+    });
+  }, [followStreamScroll]);
+
   const markStreamOutputStarted = useCallback(() => {
     setStreamOutputStarted(true);
   }, []);
@@ -1145,6 +1154,15 @@ export function SmileChatGeneral() {
       mcpConfig = undefined;
     }
 
+    // Refresh GPS before send when missing or city-less — don't race the first reply.
+    if (
+      !clientLocationRef.current?.city ||
+      clientLocationRef.current.latitude === undefined
+    ) {
+      const loc = await detectBrowserLocation({ timeoutMs: 8_000 });
+      if (loc) clientLocationRef.current = loc;
+    }
+
     const chatPayload = JSON.stringify({
       messages: history,
       model: selectedModel,
@@ -1246,14 +1264,14 @@ export function SmileChatGeneral() {
           if (!chunk) continue;
           fullText += chunk;
           streamTextRef.current?.push(chunk);
-          followStreamScroll();
+          scheduleFollowStreamScroll();
           checkArtifacts(fullText);
         }
         const tail = decoder.decode();
         if (tail) {
           fullText += tail;
           streamTextRef.current?.push(tail);
-          followStreamScroll();
+          scheduleFollowStreamScroll();
           checkArtifacts(fullText);
         }
         streamFinished = true;
@@ -1264,6 +1282,7 @@ export function SmileChatGeneral() {
       if (streamFinished) {
         applyBuildArtifact(fullText, true);
         const finalContent = finalizeAssistantContent(fullText);
+        streamTextRef.current?.flush();
         flushSync(() => {
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, content: finalContent } : m)),
@@ -1346,6 +1365,7 @@ export function SmileChatGeneral() {
     selectedBuildFilePath,
     selectedCanvasSectionId,
     followStreamScroll,
+    scheduleFollowStreamScroll,
     markStreamOutputStarted,
     setCanvasOpen,
     activeAgent?.id,
@@ -2017,7 +2037,7 @@ export function SmileChatGeneral() {
                             isStreaming={isStreaming}
                             imageFallback={imageFallback}
                             streamTextRef={isStreaming ? streamTextRef : undefined}
-                            onStreamUpdate={isStreaming ? followStreamScroll : undefined}
+                            onStreamUpdate={isStreaming ? scheduleFollowStreamScroll : undefined}
                             onStreamFirstOutput={isStreaming ? markStreamOutputStarted : undefined}
                           />
                         </div>

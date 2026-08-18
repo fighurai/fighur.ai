@@ -1,3 +1,5 @@
+import { reverseGeocodePlace } from "@/lib/reverse-geocode";
+
 export type WeatherResult =
   | {
       ok: true;
@@ -85,25 +87,16 @@ async function reverseGeocode(lat: number, lon: number): Promise<
   | { name: string; lat: number; lon: number; timezone: string }
   | { error: string }
 > {
-  const url = new URL("https://geocoding-api.open-meteo.com/v1/reverse");
-  url.searchParams.set("latitude", String(lat));
-  url.searchParams.set("longitude", String(lon));
-  url.searchParams.set("language", "en");
-  url.searchParams.set("format", "json");
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return { error: `Reverse geocoding failed (${res.status})` };
-  const data = (await res.json()) as {
-    results?: Array<{ name: string; latitude: number; longitude: number; timezone?: string; admin1?: string; country?: string }>;
-  };
-  const hit = data.results?.[0];
-  if (!hit) return { error: "Could not resolve coordinates to a place name." };
-  const label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(", ");
+  const place = await reverseGeocodePlace(lat, lon);
+  if (!place || (!place.city && !place.region && !place.country)) {
+    return { error: "Could not resolve coordinates to a place name." };
+  }
+  const label = [place.city, place.region, place.country].filter(Boolean).join(", ");
   return {
     name: label,
-    lat: hit.latitude,
-    lon: hit.longitude,
-    timezone: hit.timezone ?? "auto",
+    lat,
+    lon,
+    timezone: "auto",
   };
 }
 

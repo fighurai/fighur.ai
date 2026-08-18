@@ -717,7 +717,7 @@ Prefer thorough multi-source research with live web tools when the question need
     system += await buildPrefetchedUrlContext(linkedUrls);
   }
   // Server-side web grounding — search + optional page fetch before the model answers.
-  system += await buildLiveWebContext(lastUserText);
+  system += await buildLiveWebContext(lastUserText, userLocation);
   if (!runtimeAgentTools) {
     system += await buildIntegrationSnapshot(request, integrationFlags);
   }

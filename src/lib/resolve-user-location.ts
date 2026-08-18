@@ -1,5 +1,6 @@
 import type { UserLocationHint } from "@/lib/client-location";
 import { clientIp } from "@/lib/request-context";
+import { reverseGeocodePlace } from "@/lib/reverse-geocode";
 
 function header(request: Request, name: string): string | undefined {
   const v = request.headers.get(name)?.trim();
@@ -68,19 +69,40 @@ async function locationFromIp(ip: string): Promise<UserLocationHint | null> {
   }
 }
 
+/** Fill city/region when the client only sent GPS coordinates. */
+async function enrichWithReverseGeocode(loc: UserLocationHint): Promise<UserLocationHint> {
+  if (loc.city) return loc;
+  if (loc.latitude === undefined || loc.longitude === undefined) return loc;
+  const place = await reverseGeocodePlace(loc.latitude, loc.longitude);
+  if (!place) return loc;
+  return {
+    ...loc,
+    city: place.city || loc.city,
+    region: place.region || loc.region,
+    country: place.country || loc.country,
+    countryCode: place.countryCode || loc.countryCode,
+  };
+}
+
 export async function resolveUserLocation(
   request: Request,
   clientHint: UserLocationHint | null,
 ): Promise<UserLocationHint | null> {
-  if (clientHint?.city || (clientHint?.latitude !== undefined && clientHint?.longitude !== undefined)) {
-    return clientHint;
+  // Browser GPS always wins over CDN/IP guesses (those are often a wrong metro).
+  if (
+    clientHint &&
+    (clientHint.city ||
+      (clientHint.latitude !== undefined && clientHint.longitude !== undefined))
+  ) {
+    return enrichWithReverseGeocode(clientHint);
   }
 
   const vercel = locationFromVercelHeaders(request);
-  if (vercel) return vercel;
+  if (vercel) return enrichWithReverseGeocode(vercel);
 
   const ip = clientIp(request);
-  return locationFromIp(ip);
+  const fromIp = await locationFromIp(ip);
+  return fromIp ? enrichWithReverseGeocode(fromIp) : null;
 }
 
 export function userLocationSystemContext(loc: UserLocationHint | null): string {
@@ -88,13 +110,17 @@ export function userLocationSystemContext(loc: UserLocationHint | null): string 
   const label = [loc.city, loc.region, loc.country].filter(Boolean).join(", ");
   const coords =
     loc.latitude !== undefined && loc.longitude !== undefined
-      ? ` (${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)})`
+      ? ` (${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)})`
       : "";
   if (!label && !coords) return "";
+  const placeForTools =
+    loc.city || label || `${loc.latitude?.toFixed(4)}, ${loc.longitude?.toFixed(4)}`;
   return `
 
 ## User location (detected)
 The user is approximately in **${label || "their area"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: ${loc.source}).
-- For "weather here" / "my weather" / "what's it like outside" — call **get_weather** with location **"${loc.city || label}"** (or use coordinates if the tool accepts them).
-- Do not ask which city unless detection failed.`;
+- For "weather here" / "my weather" / "what's it like outside" — call **get_weather** with location **"${placeForTools}"** or use the coordinates above.
+- Prefer coordinates over city name when both are available (more accurate).
+- Do not ask which city unless detection failed.
+- Do not substitute a different metro from IP/CDN if browser GPS coordinates are present.`;
 }

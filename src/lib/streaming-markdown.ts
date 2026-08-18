@@ -85,12 +85,13 @@ export function streamingNarration(raw: string): string {
 
 /**
  * Markdown string for the live bubble — same visual language as the finalized reply.
+ * Avoid auto-closing bold/fences mid-stream (that causes choppy flash); only hold
+ * incomplete trailing markers until the next tokens arrive.
  */
 export function streamingMarkdownView(raw: string): string {
   if (!raw) return "";
   let text = stripStreamingFences(raw);
   text = holdIncompleteMarkdownTokens(text);
-  text = stabilizeStreamingMarkdown(text);
   return text.replace(/\n{3,}/g, "\n\n");
 }
 

@@ -1,4 +1,4 @@
-import { fetchWeather } from "@/lib/integrations/weather-api";
+import { fetchWeather, fetchWeatherAtCoordinates } from "@/lib/integrations/weather-api";
 import { searchWeb, simplifySearchQuery } from "@/lib/integrations/web-search-api";
 
 const GREETING_RE =
@@ -53,7 +53,10 @@ async function withBudget<T>(promise: Promise<T>, ms: number): Promise<T | null>
  * Fast server-side live web grounding (search snippets only — no deep page fetch).
  * Deep reads stay on fetch_url tools so the HTTP response can start sooner.
  */
-export async function buildLiveWebContext(userText: string): Promise<string> {
+export async function buildLiveWebContext(
+  userText: string,
+  userLocation?: { city?: string; latitude?: number; longitude?: number } | null,
+): Promise<string> {
   if (!shouldAutoGroundWeb(userText)) return "";
 
   const sections: string[] = [];
@@ -65,21 +68,38 @@ export async function buildLiveWebContext(userText: string): Promise<string> {
   const work = (async () => {
     if (looksLikeWeather(userText)) {
       const city = extractCityHint(userText);
-      if (city) {
-        try {
-          const weather = await fetchWeather(city);
+      try {
+        let weather;
+        if (city) {
+          weather = await fetchWeather(city);
+        } else if (
+          userLocation?.latitude !== undefined &&
+          userLocation?.longitude !== undefined
+        ) {
+          weather = await fetchWeatherAtCoordinates(
+            userLocation.latitude,
+            userLocation.longitude,
+          );
+        } else if (userLocation?.city) {
+          weather = await fetchWeather(userLocation.city);
+        }
+
+        if (weather) {
           if (weather.ok) {
+            const label = city || weather.location || userLocation?.city || "here";
             sections.push(
-              `### Live weather (${city})\n\`\`\`json\n${JSON.stringify(weather, null, 2).slice(0, 3500)}\n\`\`\``,
+              `### Live weather (${label})\n\`\`\`json\n${JSON.stringify(weather, null, 2).slice(0, 3500)}\n\`\`\``,
             );
           } else {
-            sections.push(`### Live weather\nCould not fetch weather for ${city}: ${weather.error}`);
+            sections.push(
+              `### Live weather\nCould not fetch weather: ${weather.error}`,
+            );
           }
-        } catch (e) {
-          sections.push(
-            `### Live weather\nWeather lookup failed: ${e instanceof Error ? e.message : "error"}`,
-          );
         }
+      } catch (e) {
+        sections.push(
+          `### Live weather\nWeather lookup failed: ${e instanceof Error ? e.message : "error"}`,
+        );
       }
     }
 

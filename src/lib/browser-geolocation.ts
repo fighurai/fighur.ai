@@ -1,8 +1,10 @@
 "use client";
 
 import type { UserLocationHint } from "@/lib/client-location";
+import { reverseGeocodePlace } from "@/lib/reverse-geocode";
 
-const STORAGE_KEY = "fighurai-client-location-v1";
+/** Bump when reverse-geocode provider changes so stale/wrong caches are dropped. */
+const STORAGE_KEY = "fighurai-client-location-v2";
 
 export type BrowserLocationResult = UserLocationHint | null;
 
@@ -13,7 +15,10 @@ export function readCachedBrowserLocation(): BrowserLocationResult {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as UserLocationHint;
-    if (parsed && (parsed.city || parsed.latitude !== undefined)) return parsed;
+    // Require a place label or usable coordinates — never trust empty shells.
+    if (parsed?.city || (parsed?.latitude !== undefined && parsed?.longitude !== undefined)) {
+      return parsed;
+    }
   } catch {
     /* ignore */
   }
@@ -28,52 +33,75 @@ function cacheLocation(loc: UserLocationHint): void {
   }
 }
 
-async function reverseGeocodeClient(lat: number, lon: number): Promise<{ city?: string; region?: string; country?: string }> {
+function clearLegacyCache(): void {
   try {
-    const url = new URL("https://geocoding-api.open-meteo.com/v1/reverse");
-    url.searchParams.set("latitude", String(lat));
-    url.searchParams.set("longitude", String(lon));
-    url.searchParams.set("language", "en");
-    const res = await fetch(url);
-    if (!res.ok) return {};
-    const data = (await res.json()) as {
-      results?: Array<{ name?: string; admin1?: string; country?: string }>;
-    };
-    const hit = data.results?.[0];
-    if (!hit) return {};
-    return { city: hit.name, region: hit.admin1, country: hit.country };
+    sessionStorage.removeItem("fighurai-client-location-v1");
   } catch {
-    return {};
+    /* ignore */
   }
 }
 
-/** Request browser geolocation once (with Open-Meteo reverse geocode). */
-export function detectBrowserLocation(): Promise<BrowserLocationResult> {
+/**
+ * Request browser geolocation (GPS) and reverse-geocode to a city label.
+ * Uses cache when present; pass `{ force: true }` to refresh.
+ */
+export function detectBrowserLocation(opts?: {
+  force?: boolean;
+  timeoutMs?: number;
+}): Promise<BrowserLocationResult> {
   if (typeof window === "undefined" || !navigator.geolocation) {
     return Promise.resolve(readCachedBrowserLocation());
   }
 
-  const cached = readCachedBrowserLocation();
-  if (cached) return Promise.resolve(cached);
+  clearLegacyCache();
+
+  if (!opts?.force) {
+    const cached = readCachedBrowserLocation();
+    if (cached?.city || (cached?.latitude !== undefined && cached?.longitude !== undefined)) {
+      return Promise.resolve(cached);
+    }
+  }
+
+  const timeoutMs = opts?.timeoutMs ?? 12_000;
 
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (loc: BrowserLocationResult) => {
+      if (settled) return;
+      settled = true;
+      resolve(loc);
+    };
+
+    const timer = window.setTimeout(() => {
+      finish(readCachedBrowserLocation());
+    }, timeoutMs + 500);
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        window.clearTimeout(timer);
         const { latitude, longitude } = pos.coords;
-        const place = await reverseGeocodeClient(latitude, longitude);
+        const place = await reverseGeocodePlace(latitude, longitude);
         const loc: UserLocationHint = {
-          city: place.city,
-          region: place.region,
-          country: place.country,
+          city: place?.city,
+          region: place?.region,
+          country: place?.country,
+          countryCode: place?.countryCode,
           latitude,
           longitude,
           source: "browser",
         };
         cacheLocation(loc);
-        resolve(loc);
+        finish(loc);
       },
-      () => resolve(null),
-      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 300_000 },
+      () => {
+        window.clearTimeout(timer);
+        finish(readCachedBrowserLocation());
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: timeoutMs,
+        maximumAge: opts?.force ? 0 : 120_000,
+      },
     );
   });
 }
