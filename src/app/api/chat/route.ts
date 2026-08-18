@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
 /** Allow long streaming replies on Vercel (Pro: up to 300s; Hobby: max 60s). */
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 import {
   noChatProvidersMessage,
@@ -12,9 +12,14 @@ import {
 import { resolveChatModelForAccessDetailed } from "@/lib/plan-access";
 import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import { normalizeRoles } from "@/lib/rbac";
-import { openAIStreamToTextStream } from "@/lib/openai-stream";
+import { pipeOpenAIStream } from "@/lib/openai-stream";
 import { inferSmileBuilderTargetFromPrompt, lastUserMessageText, isDocumentWritingPrompt } from "@/lib/infer-builder-target";
 import { isIntricateWebBuild, isWebBuildRequest } from "@/lib/build-output-context";
+import {
+  CONTINUE_OUTPUT_PROMPT,
+  isOutputTruncated,
+  MAX_OUTPUT_CONTINUES,
+} from "@/lib/stream-continue";
 import {
   buildBrochureRedesignContext,
   isBrochureRedesignRequest,
@@ -110,6 +115,11 @@ const BUILD_OUTPUT_MAX_TOKENS = 16_384;
 const DEFAULT_OUTPUT_MAX_TOKENS = 8_192;
 
 function resolveOutputMaxTokens(builderTarget: SmileBuilderTarget, userText: string): number {
+  // Long writing (scripts, reports, multi-reel packs) needs the full build budget —
+  // the general 8k cap was cutting documents mid-sentence.
+  if (isDocumentWritingPrompt(userText)) {
+    return BUILD_OUTPUT_MAX_TOKENS;
+  }
   if (builderTarget === "application" && (isWebBuildRequest(userText) || isIntricateWebBuild(userText))) {
     return BUILD_OUTPUT_MAX_TOKENS;
   }
@@ -253,48 +263,82 @@ async function streamOpenAICompatible(
   extraHeaders: Record<string, string>,
   maxTokens: number,
 ): Promise<Response> {
-  const openaiMessages = [
-    { role: "system" as const, content: system },
-    ...messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content as string | Array<Record<string, unknown>>,
-      })),
-  ];
+  const baseMessages = messages
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content as string | Array<Record<string, unknown>>,
+    }));
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      ...extraHeaders,
-    },
-    body: JSON.stringify({
-      model: option.apiModel,
-      messages: openaiMessages,
-      stream: true,
-      max_tokens: maxTokens,
-      // Slightly warmer than 0.7 — more natural ChatGPT-like prose without chaos.
-      temperature: 0.9,
+  const encoder = new TextEncoder();
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        try {
+          let fullAssistant = "";
+          for (let round = 0; round <= MAX_OUTPUT_CONTINUES; round++) {
+            const openaiMessages = [
+              { role: "system" as const, content: system },
+              ...baseMessages,
+              ...(fullAssistant
+                ? ([
+                    { role: "assistant" as const, content: fullAssistant },
+                    { role: "user" as const, content: CONTINUE_OUTPUT_PROMPT },
+                  ] as const)
+                : []),
+            ];
+
+            const res = await fetch(url, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                ...extraHeaders,
+              },
+              body: JSON.stringify({
+                model: option.apiModel,
+                messages: openaiMessages,
+                stream: true,
+                max_tokens: maxTokens,
+                temperature: 0.9,
+              }),
+            });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => "");
+              if (round === 0) {
+                controller.enqueue(
+                  encoder.encode(`\n\n_${formatFriendlyUpstreamError(res.status, errText)}_\n`),
+                );
+              }
+              break;
+            }
+
+            let piece = "";
+            const { finishReason } = await pipeOpenAIStream(res, controller, encoder, (chunk) => {
+              piece += chunk;
+            });
+            fullAssistant += piece;
+            if (!isOutputTruncated(finishReason)) break;
+          }
+        } catch (err) {
+          if ((err as Error).name === "AbortError") return;
+          const message = err instanceof Error ? err.message : "Streaming failed.";
+          controller.enqueue(encoder.encode(`\n\n_${message}_`));
+        } finally {
+          controller.close();
+        }
+      },
     }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    return NextResponse.json(
-      { error: formatFriendlyUpstreamError(res.status, errText) },
-      { status: 502 },
-    );
-  }
-
-  return new Response(openAIStreamToTextStream(res), {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store",
-      "X-Accel-Buffering": "no",
+    {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+        "X-Accel-Buffering": "no",
+      },
     },
-  });
+  );
 }
 
 async function streamAnthropic(
@@ -307,33 +351,50 @@ async function streamAnthropic(
 ): Promise<Response> {
   const anthropic = new Anthropic({ apiKey });
   const encoder = new TextEncoder();
+  const baseMessages = messages
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content as any,
+    }));
 
   return new Response(
     new ReadableStream({
       async start(controller) {
         try {
-          const stream = anthropic.messages.stream(
-            {
-              model: process.env.ANTHROPIC_MODEL?.trim() || model,
-              max_tokens: maxTokens,
-              // Claude’s natural conversational default.
-              temperature: 1,
-              system,
-              messages: messages
-                .filter((m) => m.role === "user" || m.role === "assistant")
-                .map((m) => ({
-                  role: m.role as "user" | "assistant",
-                  content: m.content as any,
-                })) as any,
-            },
-            { signal },
-          );
+          let fullAssistant = "";
+          for (let round = 0; round <= MAX_OUTPUT_CONTINUES; round++) {
+            const turnMessages = [
+              ...baseMessages,
+              ...(fullAssistant
+                ? [
+                    { role: "assistant" as const, content: fullAssistant },
+                    { role: "user" as const, content: CONTINUE_OUTPUT_PROMPT },
+                  ]
+                : []),
+            ];
 
-          stream.on("text", (delta: string) => {
-            controller.enqueue(encoder.encode(delta));
-          });
+            const stream = anthropic.messages.stream(
+              {
+                model: process.env.ANTHROPIC_MODEL?.trim() || model,
+                max_tokens: maxTokens,
+                temperature: 1,
+                system,
+                messages: turnMessages as any,
+              },
+              { signal },
+            );
 
-          await stream.finalMessage();
+            let piece = "";
+            stream.on("text", (delta: string) => {
+              piece += delta;
+              controller.enqueue(encoder.encode(delta));
+            });
+
+            const final = await stream.finalMessage();
+            fullAssistant += piece;
+            if (!isOutputTruncated(final.stop_reason)) break;
+          }
         } catch (err) {
           if ((err as Error).name === "AbortError") return;
           const message = err instanceof Error ? err.message : "Streaming failed.";

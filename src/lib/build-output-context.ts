@@ -47,6 +47,11 @@ Use language tag \`markdown\` (or \`md\`) and path \`document.md\` (or a clear t
 - For screenplays / video / Instagram Reels / TikTok scripts: hooks, timed beats, on-screen text, CTA — talkable out loud.
 - For research: structured findings with sources when available — no fake citations.
 
+**Completeness (critical)**
+- Never claim the scripts/document are "done" or "all complete" until every requested piece is fully written in the fence.
+- If the user asks for N scripts at ~W words, deliver all N at that length — do not stop mid-script or summarize the rest.
+- Prefer one continuous \`\`\`markdown\`\`\` fence for the whole pack so Workspace Document stays complete.
+
 **Do not**
 - Ship HTML/CSS/JS app scaffolds for writing tasks.
 - Put only a summary in chat and omit the full body from the fence.

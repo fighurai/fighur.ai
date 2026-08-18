@@ -3,7 +3,12 @@ import { executeAgentTool } from "@/lib/agent-tools/execute";
 import type { AgentToolContext, AgentToolDefinition } from "@/lib/agent-tools/types";
 import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
 import { formatDeviceOpsFence } from "@/lib/device-ops-parse";
-import { openAIStreamToTextStream } from "@/lib/openai-stream";
+import { pipeOpenAIStream } from "@/lib/openai-stream";
+import {
+  CONTINUE_OUTPUT_PROMPT,
+  isOutputTruncated,
+  MAX_OUTPUT_CONTINUES,
+} from "@/lib/stream-continue";
 import { formatFriendlyUpstreamError } from "@/lib/upstream-errors";
 
 const MAX_TOOL_ROUNDS = 8;
@@ -179,15 +184,50 @@ export async function streamOpenAIWithTools(opts: {
 
             const toolCalls = message.tool_calls ?? [];
             if (toolCalls.length === 0) {
-              const text = typeof message.content === "string" ? message.content : "";
-              // Yield between slices so the client paints live markdown (no empty→wall dump).
-              if (text) {
+              let fullText = typeof message.content === "string" ? message.content : "";
+              let finishReason = json.choices?.[0]?.finish_reason ?? null;
+
+              const emitText = async (text: string) => {
                 const step = 40;
                 for (let i = 0; i < text.length; i += step) {
                   controller.enqueue(encoder.encode(text.slice(i, i + step)));
                   await new Promise((r) => setTimeout(r, 12));
                 }
+              };
+              if (fullText) await emitText(fullText);
+
+              for (let c = 0; c < MAX_OUTPUT_CONTINUES && isOutputTruncated(finishReason); c++) {
+                const contRes = await chatCompletion(
+                  opts.url,
+                  opts.apiKey,
+                  {
+                    model: opts.model,
+                    messages: [
+                      ...conversation,
+                      { role: "assistant", content: fullText },
+                      { role: "user", content: CONTINUE_OUTPUT_PROMPT },
+                    ],
+                    stream: false,
+                    max_tokens: maxTokens,
+                    temperature: 0.85,
+                  },
+                  extraHeaders,
+                  opts.signal,
+                );
+                if (!contRes.ok) break;
+                const contJson = (await contRes.json()) as {
+                  choices?: Array<{
+                    message?: { content?: string | null };
+                    finish_reason?: string;
+                  }>;
+                };
+                const piece = contJson.choices?.[0]?.message?.content ?? "";
+                finishReason = contJson.choices?.[0]?.finish_reason ?? null;
+                if (!piece) break;
+                fullText += piece;
+                await emitText(piece);
               }
+
               if (pendingDeviceOps) {
                 controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
               }
@@ -232,31 +272,43 @@ export async function streamOpenAIWithTools(opts: {
             }
           }
 
-          const finalRes = await chatCompletion(
-            opts.url,
-            opts.apiKey,
-            {
-              model: opts.model,
-              messages: conversation,
-              stream: true,
-              max_tokens: maxTokens,
-              temperature: 0.85,
-            },
-            extraHeaders,
-            opts.signal,
-          );
-          if (finalRes.ok && finalRes.body) {
-            const textStream = openAIStreamToTextStream(finalRes);
-            const reader = textStream.getReader();
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              if (value) controller.enqueue(value);
-            }
-          } else {
-            controller.enqueue(
-              encoder.encode("\n\n_Reached tool round limit; answer may be incomplete._"),
+          let fullAssistant = "";
+          for (let c = 0; c <= MAX_OUTPUT_CONTINUES; c++) {
+            const finalRes = await chatCompletion(
+              opts.url,
+              opts.apiKey,
+              {
+                model: opts.model,
+                messages: [
+                  ...conversation,
+                  ...(fullAssistant
+                    ? [
+                        { role: "assistant", content: fullAssistant },
+                        { role: "user", content: CONTINUE_OUTPUT_PROMPT },
+                      ]
+                    : []),
+                ],
+                stream: true,
+                max_tokens: maxTokens,
+                temperature: 0.85,
+              },
+              extraHeaders,
+              opts.signal,
             );
+            if (!finalRes.ok || !finalRes.body) {
+              if (c === 0) {
+                controller.enqueue(
+                  encoder.encode("\n\n_Reached tool round limit; answer may be incomplete._"),
+                );
+              }
+              break;
+            }
+            let piece = "";
+            const { finishReason } = await pipeOpenAIStream(finalRes, controller, encoder, (chunk) => {
+              piece += chunk;
+            });
+            fullAssistant += piece;
+            if (!isOutputTruncated(finishReason)) break;
           }
           if (pendingDeviceOps) {
             controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));

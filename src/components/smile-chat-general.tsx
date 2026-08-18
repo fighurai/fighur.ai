@@ -1190,7 +1190,10 @@ export function SmileChatGeneral() {
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const reqTid = window.setTimeout(() => controller.abort(), 180_000);
+    const reqTid = window.setTimeout(
+      () => controller.abort(),
+      preferDocument ? 300_000 : 180_000,
+    );
     const history = nextMessages
       .filter((m) => m.id !== assistantId)
       .map(({ role, content }) => ({ role, content }));

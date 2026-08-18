@@ -5,6 +5,11 @@ import { executeAgentTool } from "@/lib/agent-tools/execute";
 import type { AgentToolContext, AgentToolDefinition } from "@/lib/agent-tools/types";
 import type { DeviceOpsPayload } from "@/lib/device-ops-parse";
 import { formatDeviceOpsFence } from "@/lib/device-ops-parse";
+import {
+  CONTINUE_OUTPUT_PROMPT,
+  isOutputTruncated,
+  MAX_OUTPUT_CONTINUES,
+} from "@/lib/stream-continue";
 
 const MAX_TOOL_ROUNDS = 8;
 
@@ -99,7 +104,9 @@ export async function streamAnthropicWithTools(
               { signal },
             );
 
+            let roundText = "";
             stream.on("text", (delta: string) => {
+              roundText += delta;
               controller.enqueue(encoder.encode(delta));
             });
 
@@ -109,6 +116,37 @@ export async function streamAnthropicWithTools(
             );
 
             if (final.stop_reason !== "tool_use" || toolUses.length === 0) {
+              // Hit output ceiling mid-document — keep generating without tools.
+              let fullAssistant = roundText;
+              let stopReason = final.stop_reason;
+              for (
+                let c = 0;
+                c < MAX_OUTPUT_CONTINUES && isOutputTruncated(stopReason);
+                c++
+              ) {
+                const contStream = anthropic.messages.stream(
+                  {
+                    model: resolvedModel,
+                    max_tokens: maxTokens,
+                    temperature: 1,
+                    system,
+                    messages: [
+                      ...conversation,
+                      { role: "assistant", content: fullAssistant },
+                      { role: "user", content: CONTINUE_OUTPUT_PROMPT },
+                    ],
+                  },
+                  { signal },
+                );
+                let piece = "";
+                contStream.on("text", (delta: string) => {
+                  piece += delta;
+                  controller.enqueue(encoder.encode(delta));
+                });
+                const contFinal = await contStream.finalMessage();
+                fullAssistant += piece;
+                stopReason = contFinal.stop_reason;
+              }
               if (pendingDeviceOps) {
                 controller.enqueue(encoder.encode(formatDeviceOpsFence(pendingDeviceOps)));
               }
