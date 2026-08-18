@@ -684,9 +684,16 @@ export function SmileChatGeneral() {
           if (loc) clientLocationRef.current = loc;
         }
       } catch {
-        /* Permissions API unsupported — wait for Send */
+        /* Permissions API unsupported — wait for Send / gate */
       }
     })();
+
+    const onReady = (e: Event) => {
+      const detail = (e as CustomEvent<UserLocationHint>).detail;
+      if (detail?.source === "browser") clientLocationRef.current = detail;
+    };
+    window.addEventListener("fighur-location-ready", onReady);
+    return () => window.removeEventListener("fighur-location-ready", onReady);
   }, []);
 
   useEffect(() => {

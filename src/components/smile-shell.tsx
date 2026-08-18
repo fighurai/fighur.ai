@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
+import { LocationPermissionGate } from "@/components/location-permission-gate";
 import { SiteTutorial } from "@/components/site-tutorial";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
 
@@ -63,6 +64,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
       <main className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto pt-[3.25rem]">
         {children}
       </main>
+      <LocationPermissionGate />
       <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
   );
