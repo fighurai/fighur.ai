@@ -13,7 +13,7 @@ import { resolveChatModelForAccessDetailed } from "@/lib/plan-access";
 import { resolveUserPlan, resolveUserRoles } from "@/lib/auth-guard";
 import { normalizeRoles } from "@/lib/rbac";
 import { openAIStreamToTextStream } from "@/lib/openai-stream";
-import { inferSmileBuilderTargetFromPrompt, lastUserMessageText } from "@/lib/infer-builder-target";
+import { inferSmileBuilderTargetFromPrompt, lastUserMessageText, isDocumentWritingPrompt } from "@/lib/infer-builder-target";
 import { isIntricateWebBuild, isWebBuildRequest } from "@/lib/build-output-context";
 import {
   buildBrochureRedesignContext,
@@ -617,7 +617,11 @@ The user attached ${visionImages.length} visual sample(s). **Look at each image 
   const toolsSupported = providerSupportsToolLoop(option.provider);
   // Load once — agent loops reuse this list (avoids a second MCP listTools wait).
   const preloadedAgentTools = toolsSupported ? await availableAgentTools(agentCtx) : [];
-  const runtimeAgentTools = preloadedAgentTools.length > 0;
+  // Writing/scripts belong in Workspace Document fences — don't offer generate_artifact.
+  const agentToolsForTurn = isDocumentWritingPrompt(lastUserText)
+    ? preloadedAgentTools.filter((t) => t.name !== "generate_artifact")
+    : preloadedAgentTools;
+  const runtimeAgentTools = agentToolsForTurn.length > 0;
 
   const skillAllowlist = Array.isArray(b.skillAllowlist)
     ? b.skillAllowlist.filter((x): x is string => typeof x === "string")
@@ -777,7 +781,7 @@ Prefer thorough multi-source research with live web tools when the question need
               agentCtx,
               request.signal,
               outputMaxTokens,
-              preloadedAgentTools,
+              agentToolsForTurn,
             ),
           );
         }
@@ -801,7 +805,7 @@ Prefer thorough multi-source research with live web tools when the question need
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
-              tools: preloadedAgentTools,
+              tools: agentToolsForTurn,
               signal: request.signal,
               maxTokens: outputMaxTokens,
             }),
@@ -828,7 +832,7 @@ Prefer thorough multi-source research with live web tools when the question need
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
-              tools: preloadedAgentTools,
+              tools: agentToolsForTurn,
               signal: request.signal,
               maxTokens: outputMaxTokens,
             }),
@@ -855,7 +859,7 @@ Prefer thorough multi-source research with live web tools when the question need
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
-              tools: preloadedAgentTools,
+              tools: agentToolsForTurn,
               signal: request.signal,
               maxTokens: outputMaxTokens,
               extraHeaders: {
@@ -889,7 +893,7 @@ Prefer thorough multi-source research with live web tools when the question need
               system,
               messages: budgetedMessages,
               ctx: agentCtx,
-              tools: preloadedAgentTools,
+              tools: agentToolsForTurn,
               signal: request.signal,
               maxTokens: outputMaxTokens,
             }),

@@ -73,14 +73,31 @@ const STREAM_HEADERS = {
 function toolStatusLine(name: string): string {
   switch (name) {
     case "web_search":
-      return "\n_Searching the web…_\n";
+      return "\n_Searching…_\n";
     case "fetch_url":
-      return "\n_Reading page…_\n";
+      return "\n_Reading…_\n";
     case "get_weather":
       return "\n_Checking weather…_\n";
+    case "generate_artifact":
+      return "";
     default:
       return `\n_Using ${name}…_\n`;
   }
+}
+
+function enqueueToolStatus(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  name: string,
+  announced: Set<string>,
+) {
+  // Collapse noisy research loops to one line each.
+  const key =
+    name === "web_search" || name === "fetch_url" ? `research:${name}` : name;
+  if (announced.has(key)) return;
+  announced.add(key);
+  const line = toolStatusLine(name);
+  if (line) controller.enqueue(encoder.encode(line));
 }
 
 /**
@@ -111,6 +128,7 @@ export async function streamOpenAIWithTools(opts: {
   let pendingDeviceOps: DeviceOpsPayload | null = null;
   const maxTokens = opts.maxTokens ?? 8192;
   const extraHeaders = opts.extraHeaders ?? {};
+  const announcedTools = new Set<string>();
 
   return new Response(
     new ReadableStream({
@@ -186,7 +204,7 @@ export async function streamOpenAIWithTools(opts: {
             ];
 
             for (const tc of toolCalls) {
-              controller.enqueue(encoder.encode(toolStatusLine(tc.function.name)));
+              enqueueToolStatus(controller, encoder, tc.function.name, announcedTools);
               let args: Record<string, unknown> = {};
               try {
                 args = JSON.parse(tc.function.arguments || "{}") as Record<string, unknown>;

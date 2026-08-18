@@ -73,7 +73,7 @@ export async function availableAgentTools(
   tools.push({
     name: "generate_artifact",
     description:
-      "Create a downloadable text artifact (markdown, CSV, JSON, HTML, or txt). Use for memos, spreadsheets, exports, and structured documents. Include the returned markdownDownload link in your reply.",
+      "Create a downloadable file for CSV, JSON, HTML exports, or when the user explicitly asks to download a file. Do NOT use this for writing deliverables (scripts, reels, reports, memos, research, captions)—those go in a ```markdown filename.md fence so Workspace Document opens. For markdown writing, skip this tool and fence the full text in your reply.",
     input_schema: {
       type: "object",
       properties: {

@@ -27,14 +27,30 @@ function toAnthropicMessages(
 function toolStatusLine(name: string): string {
   switch (name) {
     case "web_search":
-      return "\n_Searching the web…_\n";
+      return "\n_Searching…_\n";
     case "fetch_url":
-      return "\n_Reading page…_\n";
+      return "\n_Reading…_\n";
     case "get_weather":
       return "\n_Checking weather…_\n";
+    case "generate_artifact":
+      return "";
     default:
       return `\n_Using ${name}…_\n`;
   }
+}
+
+function enqueueToolStatus(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  name: string,
+  announced: Set<string>,
+) {
+  const key =
+    name === "web_search" || name === "fetch_url" ? `research:${name}` : name;
+  if (announced.has(key)) return;
+  announced.add(key);
+  const line = toolStatusLine(name);
+  if (line) controller.enqueue(encoder.encode(line));
 }
 
 /** Anthropic streaming chat with tool loop (CoWork / Codex integrations). */
@@ -58,6 +74,7 @@ export async function streamAnthropicWithTools(
   const encoder = new TextEncoder();
   let conversation = toAnthropicMessages(messages);
   let pendingDeviceOps: DeviceOpsPayload | null = null;
+  const announcedTools = new Set<string>();
 
   return new Response(
     new ReadableStream({
@@ -105,7 +122,7 @@ export async function streamAnthropicWithTools(
 
             const toolResults: Anthropic.ToolResultBlockParam[] = [];
             for (const tu of toolUses) {
-              controller.enqueue(encoder.encode(toolStatusLine(tu.name)));
+              enqueueToolStatus(controller, encoder, tu.name, announcedTools);
               const input =
                 tu.input && typeof tu.input === "object"
                   ? (tu.input as Record<string, unknown>)

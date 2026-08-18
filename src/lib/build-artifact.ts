@@ -164,6 +164,50 @@ function artifactFromFiles(
   };
 }
 
+function decodeDataUrlPayload(dataUrl: string): string | null {
+  const m = /^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,(.*)$/i.exec(dataUrl.trim());
+  if (!m) return null;
+  const isBase64 = Boolean(m[2]);
+  const payload = m[3] || "";
+  try {
+    if (isBase64) {
+      if (typeof atob === "function") {
+        const binary = atob(payload.replace(/\s/g, ""));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+      }
+      // Node
+      return Buffer.from(payload.replace(/\s/g, ""), "base64").toString("utf8");
+    }
+    return decodeURIComponent(payload);
+  } catch {
+    return null;
+  }
+}
+
+/** Recover a Document from Claude/ChatGPT-style download links if the model used generate_artifact. */
+function extractDocumentFromDataUrl(text: string): ChatBuildArtifact | null {
+  const link =
+    /\[([^\]]*?)\]\(\s*(data:text\/(?:markdown|plain)[^)\s]+)\s*\)/i.exec(text) ||
+    /(data:text\/(?:markdown|plain)[^)\s]+)/i.exec(text);
+  if (!link) return null;
+  const dataUrl = (link[2] || link[1] || "").trim();
+  if (!/^data:text\//i.test(dataUrl)) return null;
+  const content = decodeDataUrlPayload(dataUrl);
+  if (!content || content.trim().length < 40) return null;
+  const label = (link[1] && !link[1].startsWith("data:") ? link[1] : "document.md")
+    .replace(/^download\s+/i, "")
+    .trim();
+  const filename = /\.md$/i.test(label) ? label : `${label.replace(/[^\w.-]+/g, "-") || "document"}.md`;
+  return {
+    language: "markdown",
+    code: content.trim(),
+    primaryPath: filename,
+    kind: "document",
+  };
+}
+
 export function extractBuildArtifact(
   text: string,
   options?: ExtractBuildArtifactOptions,
@@ -176,14 +220,22 @@ export function extractBuildArtifact(
   const preferDocument = Boolean(options?.preferDocument);
   const closed = collectClosedCodeFences(text);
   if (closed.length > 0) {
-    return artifactFromFiles(closed, false, preferDocument);
+    const fromFences = artifactFromFiles(closed, false, preferDocument);
+    if (fromFences) return fromFences;
   }
 
   if (options?.allowOpenFence) {
     const open = collectOpenCodeFence(text);
     if (open) {
-      return artifactFromFiles([open], true, preferDocument);
+      const fromOpen = artifactFromFiles([open], true, preferDocument);
+      if (fromOpen) return fromOpen;
     }
+  }
+
+  // Fallback: download data-URL markdown → still open Document Workspace.
+  if (preferDocument || /data:text\/(?:markdown|plain)/i.test(text)) {
+    const fromData = extractDocumentFromDataUrl(text);
+    if (fromData) return fromData;
   }
 
   return null;

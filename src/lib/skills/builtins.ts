@@ -99,10 +99,11 @@ description: Use when creating or structuring documents, spreadsheets, decks out
 # Document Expert
 
 ## Workflow
-1. Confirm deliverable type (memo, proposal, CSV, slide outline, checklist).
+1. Confirm deliverable type (memo, proposal, CSV, slide outline, checklist, reel script).
 2. Draft structured content with clear headings.
-3. Call **generate_artifact** to emit downloadable markdown, CSV, JSON, or HTML when the user wants a file.
-4. Keep a short summary in chat plus the artifact.
+3. For **writing** (scripts, memos, reports, reels, captions): put the full body in a \`\`\`markdown filename.md\`\`\` fence so Workspace Document opens. Do **not** use generate_artifact for writing.
+4. Call **generate_artifact** only for CSV/JSON/HTML exports or when the user explicitly asks to download a file.
+5. Keep a short summary in chat; the full writing lives in the Workspace fence.
 
 ## Quality
 - Professional tone matching the ask.

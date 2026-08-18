@@ -54,8 +54,18 @@ export function isDocumentWritingPrompt(text: string): boolean {
     return false;
   }
 
+  // Social / short-form content scripts (Instagram Reels, TikTok, etc.)
+  if (
+    /\b(reel|reels|tiktok|instagram|ig\b|youtube\s*short|short[\s-]?form|voiceover|voice[\s-]?over|caption|captions|hook)\b/i.test(
+      t,
+    ) &&
+    /\b(write|draft|create|make|script|scripts|talk\s+about|content)\b/i.test(t)
+  ) {
+    return true;
+  }
+
   const docNoun =
-    /\b(research|report|memo|brief|essay|proposal|white\s*paper|article|blog\s*post|screenplay|teleplay|pitch|document|write[\s-]?up|analysis|outline|summary|script|narrative|story|copy|press\s*release|one[\s-]?pager)\b/i.test(
+    /\b(research|report|memo|brief|essay|proposal|white\s*paper|article|blog\s*post|screenplay|teleplay|pitch|document|write[\s-]?up|analysis|outline|summary|script|scripts|narrative|story|copy|press\s*release|one[\s-]?pager|reel|reels|caption|captions|voiceover)\b/i.test(
       t,
     );
   const writingVerb =

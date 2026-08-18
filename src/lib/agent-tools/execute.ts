@@ -134,6 +134,7 @@ export async function executeAgentTool(
           filename: typeof input.filename === "string" ? input.filename : undefined,
         });
         if (!res.ok) return { content: res.error, isError: true };
+        const isWritingDoc = res.format === "markdown" || res.format === "txt";
         return {
           content: JSON.stringify(
             {
@@ -141,10 +142,12 @@ export async function executeAgentTool(
               filename: res.filename,
               mimeType: res.mimeType,
               format: res.format,
+              // Full body so the model can fence it for Workspace Document.
+              content: res.content,
               markdownDownload: res.markdownDownload,
-              preview: res.content.slice(0, 4_000),
-              instruction:
-                "Include the markdownDownload link in your reply so the user can download the file.",
+              instruction: isWritingDoc
+                ? `IMPORTANT: This is a writing deliverable. Do NOT lead with the download link. Put the FULL content below into your reply inside a single fenced block so Workspace Document opens:\n\`\`\`markdown ${res.filename}\n…paste content…\n\`\`\`\nChat gets one short intro only. Download link is optional secondary.`
+                : "Include the markdownDownload link in your reply so the user can download the file.",
             },
             null,
             2,

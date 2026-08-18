@@ -44,13 +44,14 @@ Use language tag \`markdown\` (or \`md\`) and path \`document.md\` (or a clear t
 **Document quality**
 - Complete, standalone prose the user can read in the Document preview.
 - Clear headings, short paragraphs, lists/tables when they help.
-- For screenplays / video scripts: proper sluglines, dialogue, stage directions.
+- For screenplays / video / Instagram Reels / TikTok scripts: hooks, timed beats, on-screen text, CTA — talkable out loud.
 - For research: structured findings with sources when available — no fake citations.
 
 **Do not**
 - Ship HTML/CSS/JS app scaffolds for writing tasks.
 - Put only a summary in chat and omit the full body from the fence.
-- Use \`generate_artifact\` instead of the markdown fence when the Workspace document preview is the goal.`);
+- Call **generate_artifact** or paste a download data-URL link as the primary deliverable — that hides the script behind a download instead of opening Workspace Document.
+- Narrate every tool call. After research, deliver the scripts in the markdown fence.`);
     return `\n\n${parts.join("\n\n")}`;
   }
 
