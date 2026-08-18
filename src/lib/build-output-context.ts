@@ -1,4 +1,5 @@
 import type { SmileBuilderTarget } from "@/lib/smile-system-prompt";
+import { isDocumentWritingPrompt } from "@/lib/infer-builder-target";
 
 const UI_BUILD_PATTERN =
   /\b(website|web\s*site|landing\s*page|web\s*page|html|homepage|portfolio|storefront|ui|frontend|preview|mockup|redesign|layout|saas|dashboard|marketing\s*site|one[\s-]?pager|sales\s*page|multi[\s-]?page|e[\s-]?commerce|shop)\b/i;
@@ -25,6 +26,34 @@ export function buildOutputSystemContext(
   opts?: { siteClone?: boolean },
 ): string {
   const parts: string[] = [];
+
+  // Claude Artifact / ChatGPT Canvas writing mode — document in Workspace, not an app.
+  if (isDocumentWritingPrompt(userText)) {
+    parts.push(`## Workspace — Document (writing / research)
+The user wants a **document deliverable** in Workspace (like Claude Artifacts markdown or ChatGPT Canvas writing) — **not** a website or app preview.
+
+**How to respond**
+1. One short intro in chat (what you delivered).
+2. Put the **full document** in a single fenced block:
+\`\`\`markdown document.md
+# Title
+…
+\`\`\`
+Use language tag \`markdown\` (or \`md\`) and path \`document.md\` (or a clear title like \`research-brief.md\`).
+
+**Document quality**
+- Complete, standalone prose the user can read in the Document preview.
+- Clear headings, short paragraphs, lists/tables when they help.
+- For screenplays / video scripts: proper sluglines, dialogue, stage directions.
+- For research: structured findings with sources when available — no fake citations.
+
+**Do not**
+- Ship HTML/CSS/JS app scaffolds for writing tasks.
+- Put only a summary in chat and omit the full body from the fence.
+- Use \`generate_artifact\` instead of the markdown fence when the Workspace document preview is the goal.`);
+    return `\n\n${parts.join("\n\n")}`;
+  }
+
   const wantsUi = target === "application" && UI_BUILD_PATTERN.test(userText);
   const siteClone = Boolean(opts?.siteClone);
   const intricate = wantsUi && (INTRICATE_PATTERN.test(userText) || (!siteClone && wantsUi));

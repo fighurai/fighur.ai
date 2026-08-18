@@ -1,5 +1,6 @@
 "use client";
 
+import Markdown from "react-markdown";
 import {
   useCallback,
   useEffect,
@@ -9,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
-import { activeBuildFile } from "@/lib/build-artifact";
+import { activeBuildFile, isDocumentArtifact } from "@/lib/build-artifact";
 import { extractCanvasSections, type CanvasSection } from "@/lib/canvas-sections";
 import type { ChatBuildArtifact } from "@/lib/chat-types";
 import {
@@ -215,6 +216,7 @@ export function BuildCanvas({
   const [moreOpen, setMoreOpen] = useState(false);
 
   const previewImageUrl = useMemo(() => resolveImagePreviewUrl(artifact), [artifact]);
+  const isDocument = isDocumentArtifact(artifact);
   const activeFile = useMemo(
     () => (artifact ? activeBuildFile(artifact, selectedPath) : null),
     [artifact, selectedPath],
@@ -225,14 +227,27 @@ export function BuildCanvas({
   );
 
   const canPreviewImage = Boolean(previewImageUrl);
-  const canPreviewHtml = !canPreviewImage && preview.mode === "html" && Boolean(preview.doc);
-  const canPreviewReact = !canPreviewImage && preview.mode === "react" && Boolean(preview.doc);
+  const canPreviewDocument = isDocument && Boolean(activeFile?.code?.trim());
+  const canPreviewHtml =
+    !canPreviewImage && !canPreviewDocument && preview.mode === "html" && Boolean(preview.doc);
+  const canPreviewReact =
+    !canPreviewImage && !canPreviewDocument && preview.mode === "react" && Boolean(preview.doc);
   const canPreviewInteractive = canPreviewHtml || canPreviewReact;
   const buildFileList = artifact?.files ?? [];
   const canvasSections = useMemo(() => {
     if (!canPreviewHtml || !activeFile?.code) return [];
     return extractCanvasSections(activeFile.code);
   }, [canPreviewHtml, activeFile?.code]);
+
+  const documentMarkdown = activeFile?.code ?? artifact?.code ?? "";
+
+  const copyDocument = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(documentMarkdown);
+    } catch {
+      /* ignore */
+    }
+  }, [documentMarkdown]);
 
   const refreshPreview = useCallback(() => setPreviewKey((k) => k + 1), []);
 
@@ -333,7 +348,9 @@ export function BuildCanvas({
               Chat
             </button>
           ) : null}
-          <p className="shrink-0 text-sm font-semibold text-[var(--text-primary)]">Canvas</p>
+          <p className="shrink-0 text-sm font-semibold text-[var(--text-primary)]">
+            {isDocument ? "Document" : "Canvas"}
+          </p>
           {artifact?.incomplete ? (
             <span
               className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-400"
@@ -354,7 +371,7 @@ export function BuildCanvas({
                       : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  {t}
+                  {isDocument && t === "preview" ? "Document" : isDocument && t === "code" ? "Source" : t}
                 </button>
               ))}
             </div>
@@ -382,6 +399,26 @@ export function BuildCanvas({
           ) : null}
 
           <div className="ml-auto flex items-center gap-0.5">
+            {!isSheet && tab === "preview" && canPreviewDocument ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void copyDocument()}
+                  className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                  title="Copy document"
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFullscreen((v) => !v)}
+                  className="rounded-md px-2 py-1 text-[0.7rem] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                >
+                  {fullscreen ? "Exit" : "Fullscreen"}
+                </button>
+              </>
+            ) : null}
+
             {!isSheet && tab === "preview" && canPreviewInteractive ? (
               <>
                 <button
@@ -454,6 +491,18 @@ export function BuildCanvas({
                 </button>
                 {moreOpen ? (
                   <div className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] overflow-hidden rounded-xl border border-white/[0.1] bg-[var(--bg-elevated)] py-1 shadow-xl">
+                    {tab === "preview" && canPreviewDocument ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void copyDocument();
+                          setMoreOpen(false);
+                        }}
+                        className="block w-full px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
+                      >
+                        Copy document
+                      </button>
+                    ) : null}
                     {tab === "preview" && canPreviewInteractive ? (
                       <>
                         <button
@@ -503,7 +552,7 @@ export function BuildCanvas({
                         }}
                         className="block w-full px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
                       >
-                        Download code
+                        {isDocument ? "Download document" : "Download code"}
                       </button>
                     ) : null}
                     {previewImageUrl ? (
@@ -575,7 +624,7 @@ export function BuildCanvas({
                     : "text-[var(--text-muted)]"
                 }`}
               >
-                {t}
+                {isDocument && t === "preview" ? "Document" : isDocument && t === "code" ? "Source" : t}
               </button>
             ))}
           </div>
@@ -634,6 +683,16 @@ export function BuildCanvas({
                 className="max-h-full max-w-full rounded-xl border border-white/[0.12] bg-black/20 object-contain shadow-2xl"
               />
             </div>
+          ) : canPreviewDocument ? (
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.04),_transparent_55%)]">
+              <article
+                className={`workspace-doc studio-md mx-auto w-full max-w-[42rem] px-5 py-8 text-[var(--text-primary)] sm:px-8 sm:py-10 ${
+                  isSheet ? "text-[0.95rem]" : "text-[0.9375rem]"
+                }`}
+              >
+                <Markdown>{documentMarkdown}</Markdown>
+              </article>
+            </div>
           ) : canPreviewInteractive && preview.doc ? (
             isSheet ? (
               <MobileSheetPreview
@@ -652,9 +711,13 @@ export function BuildCanvas({
           ) : (
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
               <div className="rounded-2xl border border-dashed border-white/[0.12] bg-black/20 px-6 py-10">
-                <p className="text-sm font-medium text-[var(--text-primary)]">No preview yet</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">
+                  {isDocument ? "No document yet" : "No preview yet"}
+                </p>
                 <p className="mt-2 max-w-[16rem] text-xs leading-relaxed text-[var(--text-muted)]">
-                  Ask for a site or app — the live preview appears here.
+                  {isDocument
+                    ? "Ask for research, a script, or a report — the rendered document appears here."
+                    : "Ask for a document, site, or app — the Workspace preview appears here."}
                 </p>
               </div>
             </div>

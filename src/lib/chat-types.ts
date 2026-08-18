@@ -14,6 +14,11 @@ export type ChatBuildArtifact = {
   primaryPath?: string;
   /** True when extracted from an unclosed fence during streaming. */
   incomplete?: boolean;
+  /**
+   * Workspace mode — Claude Artifact / ChatGPT Canvas style.
+   * `document` = rendered prose preview; `app` = site/code preview (default).
+   */
+  kind?: "document" | "app";
 };
 
 export type ChatMessage = {

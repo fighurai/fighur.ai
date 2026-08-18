@@ -14,12 +14,36 @@ const CODE_LANGUAGES = new Set([
   "sql",
 ]);
 
+const DOCUMENT_LANGUAGES = new Set([
+  "markdown",
+  "md",
+  "mdx",
+  "text",
+  "txt",
+  "document",
+  "doc",
+]);
+
 const IMAGE_LANGUAGES = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "image"]);
 
 export type ExtractBuildArtifactOptions = {
   /** Parse the last unclosed ``` fence (for live streaming preview). */
   allowOpenFence?: boolean;
+  /** Prefer markdown/document fences (writing / research Workspace). */
+  preferDocument?: boolean;
 };
+
+export function isDocumentLanguage(language: string | undefined | null): boolean {
+  if (!language) return false;
+  return DOCUMENT_LANGUAGES.has(language.toLowerCase());
+}
+
+export function isDocumentArtifact(artifact: ChatBuildArtifact | null | undefined): boolean {
+  if (!artifact) return false;
+  if (artifact.kind === "document") return true;
+  if (artifact.kind === "app") return false;
+  return isDocumentLanguage(artifact.language);
+}
 
 /** Parse optional path from fence info: `typescript src/foo.ts` or `html:index.html` */
 function parseFenceMeta(info: string): { language: string; path?: string } {
@@ -89,7 +113,11 @@ function collectOpenCodeFence(text: string): ChatBuildFile | null {
   };
 }
 
-function pickPrimary(files: ChatBuildFile[]): ChatBuildFile {
+function pickPrimary(files: ChatBuildFile[], preferDocument = false): ChatBuildFile {
+  if (preferDocument) {
+    const doc = files.find((f) => DOCUMENT_LANGUAGES.has(f.language));
+    if (doc) return doc;
+  }
   const indexHtml = files.find(
     (f) =>
       (f.language === "html" || f.language === "htm") &&
@@ -100,20 +128,30 @@ function pickPrimary(files: ChatBuildFile[]): ChatBuildFile {
   if (html) return html;
   const code = files.find((f) => CODE_LANGUAGES.has(f.language));
   if (code) return code;
+  const doc = files.find((f) => DOCUMENT_LANGUAGES.has(f.language));
+  if (doc) return doc;
   const image = files.find((f) => IMAGE_LANGUAGES.has(f.language));
   if (image) return image;
   return files[0];
 }
 
-function artifactFromFiles(files: ChatBuildFile[], incomplete = false): ChatBuildArtifact | null {
+function artifactFromFiles(
+  files: ChatBuildFile[],
+  incomplete = false,
+  preferDocument = false,
+): ChatBuildArtifact | null {
   if (files.length === 0) return null;
-  const primary = pickPrimary(files);
+  const primary = pickPrimary(files, preferDocument);
+  const kind: "document" | "app" = isDocumentLanguage(primary.language)
+    ? "document"
+    : "app";
   if (files.length === 1) {
     return {
       language: primary.language,
       code: primary.code,
       primaryPath: primary.path,
       incomplete,
+      kind,
     };
   }
   return {
@@ -122,6 +160,7 @@ function artifactFromFiles(files: ChatBuildFile[], incomplete = false): ChatBuil
     files,
     primaryPath: primary.path,
     incomplete,
+    kind,
   };
 }
 
@@ -131,18 +170,19 @@ export function extractBuildArtifact(
 ): ChatBuildArtifact | null {
   const imageUrl = extractImagePreviewUrl(text);
   if (imageUrl) {
-    return { language: "image", code: imageUrl };
+    return { language: "image", code: imageUrl, kind: "app" };
   }
 
+  const preferDocument = Boolean(options?.preferDocument);
   const closed = collectClosedCodeFences(text);
   if (closed.length > 0) {
-    return artifactFromFiles(closed, false);
+    return artifactFromFiles(closed, false, preferDocument);
   }
 
   if (options?.allowOpenFence) {
     const open = collectOpenCodeFence(text);
     if (open) {
-      return artifactFromFiles([open], true);
+      return artifactFromFiles([open], true, preferDocument);
     }
   }
 

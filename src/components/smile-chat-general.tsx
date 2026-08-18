@@ -9,7 +9,7 @@ import type { RefObject } from "react";
 import { flushSync } from "react-dom";
 
 import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
-import { promptRequestsBuildWorkspace } from "@/lib/infer-builder-target";
+import { promptRequestsBuildWorkspace, isDocumentWritingPrompt } from "@/lib/infer-builder-target";
 import {
   applyLayoutCssVars,
   composerDockInsets,
@@ -1169,6 +1169,7 @@ export function SmileChatGeneral() {
       setStreamOutputStarted(false);
     });
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
+    const preferDocument = isDocumentWritingPrompt(trimmed);
     if (isBuildRequest) {
       setCanvasOpen(true);
       setBuildPanelTab("preview");
@@ -1176,8 +1177,10 @@ export function SmileChatGeneral() {
 
     const applyBuildArtifact = (snapshot: string, allowOpen = false) => {
       const artifact =
-        extractBuildArtifact(snapshot) ??
-        (allowOpen ? extractBuildArtifact(snapshot, { allowOpenFence: true }) : null);
+        extractBuildArtifact(snapshot, { preferDocument }) ??
+        (allowOpen
+          ? extractBuildArtifact(snapshot, { allowOpenFence: true, preferDocument })
+          : null);
       if (!artifact) return;
       setLatestBuildArtifact(artifact);
       setSelectedBuildFilePath(artifact.primaryPath ?? artifact.files?.[0]?.path ?? null);

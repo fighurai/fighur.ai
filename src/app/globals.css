@@ -423,6 +423,77 @@ html[data-ombre="on"] body {
   font-size: inherit;
 }
 
+/* Workspace Document — Claude Artifact / ChatGPT Canvas writing pane */
+.workspace-doc {
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.workspace-doc h1 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 1.75em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.65em;
+  line-height: 1.2;
+}
+
+.workspace-doc h2 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 1.35em 0 0.45em;
+  line-height: 1.3;
+}
+
+.workspace-doc h3 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 1.15em 0 0.4em;
+}
+
+.workspace-doc p {
+  margin-bottom: 0.9em;
+  color: var(--text-muted);
+}
+
+.workspace-doc li {
+  color: var(--text-muted);
+}
+
+.workspace-doc blockquote {
+  margin: 1em 0;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.workspace-doc hr {
+  margin: 1.75em 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.workspace-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0 1.25em;
+  font-size: 0.9em;
+}
+
+.workspace-doc th,
+.workspace-doc td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.45em 0.65em;
+  text-align: left;
+}
+
+.workspace-doc th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .font-display {
   font-family: var(--font-fraunces), Georgia, serif;
 }
