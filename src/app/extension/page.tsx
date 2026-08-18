@@ -113,8 +113,8 @@ function ExtensionContent() {
           EULA
         </Link>
         {" · "}
-        <Link href="/settings?tab=apps" className="underline-offset-2 hover:underline">
-          Settings → Apps
+        <Link href="/settings?tab=extension" className="underline-offset-2 hover:underline">
+          Settings → Extension
         </Link>
         {" · "}
         <Link href="/upgrade" className="underline-offset-2 hover:underline">

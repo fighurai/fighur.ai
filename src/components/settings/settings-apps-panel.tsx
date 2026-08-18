@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { readSession } from "@/lib/auth-storage";
-import { COLORS_CHROME_STORE_URL } from "@/lib/colors-chrome-store";
 import {
   listConversationBuilds,
   type ConversationBuildRow,
@@ -25,15 +24,12 @@ export function SettingsAppsPanel() {
   const [apps, setApps] = useState<AppRow[]>([]);
   const [builds, setBuilds] = useState<ConversationBuildRow[]>([]);
   const [appsError, setAppsError] = useState<string | null>(null);
-  const [plan, setPlan] = useState<"free" | "pro" | null>(readSession()?.plan ?? null);
   const signedIn = Boolean(readSession()?.userId);
-  const isPro = plan === "pro";
 
   const refresh = useCallback(async () => {
     setBuilds(listConversationBuilds(readSession()?.userId));
     setAppsError(null);
     const local = readSession();
-    setPlan(local?.plan ?? null);
     if (!local?.userId) {
       setApps([]);
       return;
@@ -103,51 +99,6 @@ export function SettingsAppsPanel() {
 
   return (
     <div className="space-y-8">
-      <section>
-        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Chrome extensions</h3>
-        <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
-          Desktop browser tools included with your plan.
-        </p>
-        <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-[var(--text-primary)]">FIGHURAI Colors</p>
-              <p className="mt-1 text-[0.65rem] leading-relaxed text-[var(--text-muted)]">
-                Chrome extension: pin it, then open Colors on any website — same background and text
-                controls as on FIGHURAI.
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-0.5 text-[0.6rem] font-semibold text-[var(--accent)]">
-              Pro
-            </span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <a
-              href={COLORS_CHROME_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex rounded-full bg-[var(--accent)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent-foreground)]"
-            >
-              Add to Chrome
-            </a>
-            <Link
-              href="/extension"
-              className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.06]"
-            >
-              How it works
-            </Link>
-            {!isPro ? (
-              <Link
-                href="/upgrade"
-                className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--accent)]"
-              >
-                Upgrade to Pro
-              </Link>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
       <section>
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">Saved apps</h3>
         <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">

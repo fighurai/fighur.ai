@@ -85,7 +85,7 @@ const STEPS: Step[] = [
     id: "add-to-chrome",
     title: "3c. Point “Add to Chrome” at the Store",
     detail:
-      "Done — /extension and Settings → Apps link to the live Chrome Web Store listing (FIGHURAI Colors).",
+      "Done — /extension and Settings → Extension link to the live Chrome Web Store listing (FIGHURAI Colors).",
     href: "https://chromewebstore.google.com/detail/fighurai-colors/kihglfamlplmecmnookmleodhgmdgnbm",
     hrefLabel: "Open Chrome Web Store",
     youMustDo: false,

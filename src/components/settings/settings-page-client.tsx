@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { SettingsAppsPanel } from "@/components/settings/settings-apps-panel";
 import { SettingsConnectorsPanel } from "@/components/settings/settings-connectors-panel";
+import { SettingsExtensionPanel } from "@/components/settings/settings-extension-panel";
 import { SettingsMcpPanel } from "@/components/settings/settings-mcp-panel";
 import { clearSession, readSession } from "@/lib/auth-storage";
 import { emitActiveAgentChange } from "@/lib/agents/types";
@@ -20,13 +21,14 @@ type SettingsPageTab =
   | "skills"
   | "connectors"
   | "apps"
+  | "extension"
   | "mcp";
 
 const NAV_GROUPS: { label: string; ids: SettingsPageTab[] }[] = [
   { label: "Account", ids: ["account"] },
   { label: "Preferences", ids: ["customize", "research"] },
   { label: "Automation", ids: ["tasks", "agents"] },
-  { label: "Integrations", ids: ["skills", "connectors", "apps", "mcp"] },
+  { label: "Integrations", ids: ["skills", "connectors", "apps", "extension", "mcp"] },
 ];
 
 const TABS: { id: SettingsPageTab; label: string; blurb: string }[] = [
@@ -38,6 +40,7 @@ const TABS: { id: SettingsPageTab; label: string; blurb: string }[] = [
   { id: "skills", label: "Skills", blurb: "Skill packs & toggles" },
   { id: "connectors", label: "Connectors", blurb: "Google, Microsoft, Slack, and more" },
   { id: "apps", label: "Apps", blurb: "Saved apps & conversation builds" },
+  { id: "extension", label: "Extension", blurb: "FIGHURAI Colors for Chrome" },
   { id: "mcp", label: "MCP", blurb: "Custom remote MCP servers" },
 ];
 
@@ -1107,6 +1110,7 @@ export function SettingsPageClient() {
 
           {tab === "connectors" ? <SettingsConnectorsPanel /> : null}
           {tab === "apps" ? <SettingsAppsPanel /> : null}
+          {tab === "extension" ? <SettingsExtensionPanel /> : null}
           {tab === "mcp" ? <SettingsMcpPanel /> : null}
             </div>
           </div>
