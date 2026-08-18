@@ -69,7 +69,7 @@ import {
 import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
-import { detectBrowserLocation, isMobileClient, requestBrowserLocationFromGesture } from "@/lib/browser-geolocation";
+import { detectBrowserLocation } from "@/lib/browser-geolocation";
 import type { UserLocationHint } from "@/lib/client-location";
 import { BuildCanvas } from "@/components/build-canvas";
 import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
@@ -675,26 +675,10 @@ export function SmileChatGeneral() {
   );
 
   useEffect(() => {
-    // Warm cache only if permission was already granted — never prompt on page load
-    // (browsers suppress / ignore geolocation prompts without a user gesture).
-    void (async () => {
-      try {
-        const status = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
-        if (status?.state === "granted") {
-          const loc = await detectBrowserLocation();
-          if (loc) clientLocationRef.current = loc;
-        }
-      } catch {
-        /* Permissions API unsupported — wait for Send / gate */
-      }
-    })();
-
-    const onReady = (e: Event) => {
-      const detail = (e as CustomEvent<UserLocationHint>).detail;
-      if (detail?.source === "browser") clientLocationRef.current = detail;
-    };
-    window.addEventListener("fighur-location-ready", onReady);
-    return () => window.removeEventListener("fighur-location-ready", onReady);
+    // Quiet mount-time GPS (original flow) — no custom welcome gate.
+    void detectBrowserLocation().then((loc) => {
+      clientLocationRef.current = loc;
+    });
   }, []);
 
   useEffect(() => {
@@ -1088,12 +1072,6 @@ export function SmileChatGeneral() {
 
     sendInFlightRef.current = true;
 
-    // Mobile: start GPS in this same tap turn (before any await) or iOS never shows the prompt.
-    const mobileLocationPromise =
-      isMobileClient() && clientLocationRef.current?.source !== "browser"
-        ? requestBrowserLocationFromGesture({ timeoutMs: 20_000 })
-        : null;
-
     let convId = activeId;
     if (!convId) {
       convId = id();
@@ -1176,16 +1154,6 @@ export function SmileChatGeneral() {
       }
     } catch {
       mcpConfig = undefined;
-    }
-
-    // Request GPS from this Send click (user gesture → permission popup can appear).
-    // Always force when we don't already have a browser-sourced fix.
-    if (mobileLocationPromise) {
-      const loc = await mobileLocationPromise;
-      if (loc) clientLocationRef.current = loc;
-    } else if (clientLocationRef.current?.source !== "browser") {
-      const loc = await detectBrowserLocation({ force: true, timeoutMs: 12_000 });
-      if (loc) clientLocationRef.current = loc;
     }
 
     const chatPayload = JSON.stringify({

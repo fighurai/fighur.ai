@@ -73,13 +73,11 @@ export async function buildLiveWebContext(
   const work = (async () => {
     if (looksLikeWeather(userText)) {
       const city = extractCityHint(userText);
-      const precise = userLocation?.source === "browser";
       try {
         let weather;
         if (city) {
           weather = await fetchWeather(city);
         } else if (
-          precise &&
           userLocation?.latitude !== undefined &&
           userLocation?.longitude !== undefined
         ) {
@@ -87,7 +85,7 @@ export async function buildLiveWebContext(
             userLocation.latitude,
             userLocation.longitude,
           );
-        } else if (precise && userLocation?.city) {
+        } else if (userLocation?.city) {
           weather = await fetchWeather(userLocation.city);
         }
 
@@ -102,10 +100,6 @@ export async function buildLiveWebContext(
               `### Live weather\nCould not fetch weather: ${weather.error}`,
             );
           }
-        } else if (!city && !precise) {
-          sections.push(
-            `### Live weather\nNo precise browser location yet — ask the user which city (do not use IP/CDN guesses).`,
-          );
         }
       } catch (e) {
         sections.push(

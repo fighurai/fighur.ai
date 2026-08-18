@@ -88,7 +88,6 @@ export async function resolveUserLocation(
   request: Request,
   clientHint: UserLocationHint | null,
 ): Promise<UserLocationHint | null> {
-  // Browser GPS always wins over CDN/IP guesses (those are often a wrong metro).
   if (
     clientHint &&
     (clientHint.city ||
@@ -105,42 +104,19 @@ export async function resolveUserLocation(
   return fromIp ? enrichWithReverseGeocode(fromIp) : null;
 }
 
+/** Same confident wording as the original location-aware weather release. */
 export function userLocationSystemContext(loc: UserLocationHint | null): string {
-  if (!loc) {
-    return `
-
-## User location
-Precise location is **unknown** (browser GPS not granted yet, or unavailable).
-- For "weather here" / "my weather" / local asks: **ask which city** (one short question). Do not invent a metro like Atlanta from guesswork.
-- Do not claim the user is in a specific city.`;
-  }
-
+  if (!loc) return "";
   const label = [loc.city, loc.region, loc.country].filter(Boolean).join(", ");
   const coords =
     loc.latitude !== undefined && loc.longitude !== undefined
-      ? ` (${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)})`
+      ? ` (${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)})`
       : "";
   if (!label && !coords) return "";
-
-  const isPrecise = loc.source === "browser";
-  const placeForTools =
-    loc.city || label || `${loc.latitude?.toFixed(4)}, ${loc.longitude?.toFixed(4)}`;
-
-  if (!isPrecise) {
-    return `
-
-## User location (LOW CONFIDENCE — IP/CDN guess only)
-A rough network estimate says **${label || "unknown"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: ${loc.source}).
-This is often wrong (VPN, ISP routing, edge POP). **Do not treat it as the user's real city.**
-- For "weather here" / "my location": ask which city they mean (or tell them to Allow Location in the browser), then use that answer.
-- Never confidently say they are in ${loc.city || "that metro"} unless they confirm.`;
-  }
-
   return `
 
-## User location (precise — browser GPS)
-The user is approximately in **${label || "their area"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: browser).
-- For "weather here" / "my weather" / "what's it like outside" — call **get_weather** with location **"${placeForTools}"** or use the coordinates above.
-- Prefer coordinates over city name when both are available.
-- Do not ask which city unless they say the place is wrong.`;
+## User location (detected)
+The user is approximately in **${label || "their area"}**${coords}${loc.timezone ? ` · timezone ${loc.timezone}` : ""} (source: ${loc.source}).
+- For "weather here" / "my weather" / "what's it like outside" — call **get_weather** with location **"${loc.city || label}"** (or use coordinates if the tool accepts them).
+- Do not ask which city unless detection failed.`;
 }
