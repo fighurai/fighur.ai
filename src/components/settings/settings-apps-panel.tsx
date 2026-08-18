@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { readSession } from "@/lib/auth-storage";
+import { COLORS_CHROME_STORE_URL } from "@/lib/colors-chrome-store";
 import {
   listConversationBuilds,
   type ConversationBuildRow,
@@ -121,28 +122,28 @@ export function SettingsAppsPanel() {
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link
-              href="/extension"
+            <a
+              href={COLORS_CHROME_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex rounded-full bg-[var(--accent)] px-3 py-1.5 text-[0.7rem] font-semibold text-[var(--accent-foreground)]"
             >
-              {isPro ? "Add to Chrome" : "View install guide"}
+              Add to Chrome
+            </a>
+            <Link
+              href="/extension"
+              className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.06]"
+            >
+              How it works
             </Link>
-            {isPro ? (
-              <a
-                href="/api/extension/download"
-                download="fighur-page-theme.zip"
-                className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--text-muted)] hover:bg-white/[0.06]"
-              >
-                Download zip
-              </a>
-            ) : (
+            {!isPro ? (
               <Link
                 href="/upgrade"
                 className="inline-flex rounded-full border border-white/[0.12] px-3 py-1.5 text-[0.7rem] font-medium text-[var(--accent)]"
               >
                 Upgrade to Pro
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </section>

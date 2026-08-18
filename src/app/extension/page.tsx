@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { hydrateServerSession, readSession } from "@/lib/auth-storage";
+import { COLORS_CHROME_STORE_URL } from "@/lib/colors-chrome-store";
 
 function ExtensionContent() {
   const searchParams = useSearchParams();
@@ -31,13 +32,13 @@ function ExtensionContent() {
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
         Bring FIGHURAI’s <strong className="text-[var(--text-primary)]">Colors</strong> settings to
-        any website: background and text, synced with Pro.
+        any website — background and text, unlocked with Pro.
       </p>
 
       {justInstalled ? (
         <p className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-100">
-          Extension installed. Stay signed in here so Pro syncs, pin the icon, then open any website
-          and click <strong>Colors</strong> in the corner or the toolbar icon.
+          Extension installed. Stay signed in here on Pro, pin the icon, then open any site and use{" "}
+          <strong>Colors</strong> from the corner or the toolbar.
         </p>
       ) : null}
 
@@ -48,13 +49,19 @@ function ExtensionContent() {
             Colors on any website is included with FIGHURAI Pro.{" "}
             {!signedIn ? (
               <>
-                <Link href="/sign-in" className="font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                <Link
+                  href="/sign-in"
+                  className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                >
                   Sign in
                 </Link>{" "}
                 or{" "}
               </>
             ) : null}
-            <Link href="/upgrade" className="font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+            <Link
+              href="/upgrade"
+              className="font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+            >
               Upgrade to Pro
             </Link>
             .
@@ -63,85 +70,45 @@ function ExtensionContent() {
       ) : null}
 
       <a
-        href="/api/extension/download"
-        download="fighur-page-theme.zip"
+        href={COLORS_CHROME_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
         className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[var(--accent)] py-3.5 text-sm font-semibold text-[var(--accent-foreground)] shadow-[0_0_24px_var(--accent-glow)] transition hover:brightness-110"
       >
-        Download FIGHURAI Colors (.zip)
+        Add to Chrome
       </a>
       <p className="mt-2 text-center text-[0.65rem] text-[var(--text-faint)]">
-        If the button does nothing, open{" "}
-        <a
-          href="/api/extension/download"
-          download="fighur-page-theme.zip"
-          className="text-[var(--accent)] underline-offset-2 hover:underline"
-        >
-          this direct link
-        </a>
-        , or right‑click → Save Link As…
-      </p>
-      <p className="mt-2 text-center text-[0.65rem] text-[var(--text-faint)]">
-        Chrome Web Store listing coming soon. Until then, install with Developer mode (same files
-        Chrome will review). The extension does not receive your email or name — only a Pro check.
-        Privacy:{" "}
+        Opens the Chrome Web Store. The extension only checks Pro status — not your email or name.{" "}
         <Link href="/privacy" className="underline-offset-2 hover:underline">
-          fighur.ai/privacy
+          Privacy
         </Link>
         .
       </p>
 
-      <ol className="mt-8 space-y-4 text-sm text-[var(--text-muted)]">
+      <ol className="mt-8 space-y-3 text-sm text-[var(--text-muted)]">
         <li className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-          <p className="font-semibold text-[var(--text-primary)]">1. Download &amp; unzip</p>
+          <p className="font-semibold text-[var(--text-primary)]">1. Install from Chrome</p>
           <p className="mt-1 text-xs leading-relaxed">
-            Save <code className="text-[0.65rem]">fighur-page-theme.zip</code>, then unzip it to a
-            folder you’ll keep (don’t delete that folder after installing).
+            Tap <strong>Add to Chrome</strong> above, then <strong>Add extension</strong> on the
+            store page.
           </p>
         </li>
         <li className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-          <p className="font-semibold text-[var(--text-primary)]">2. Load unpacked in Chrome</p>
+          <p className="font-semibold text-[var(--text-primary)]">2. Pin it</p>
           <p className="mt-1 text-xs leading-relaxed">
-            Open <code className="text-[0.65rem]">chrome://extensions</code> → turn on{" "}
-            <strong>Developer mode</strong> → <strong>Load unpacked</strong> → select the unzipped
-            folder (the one with <code className="text-[0.65rem]">manifest.json</code>).
+            Puzzle icon in Chrome’s toolbar → pin <strong>FIGHURAI Colors</strong>.
           </p>
         </li>
         <li className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-          <p className="font-semibold text-[var(--text-primary)]">3. Pin it</p>
+          <p className="font-semibold text-[var(--text-primary)]">3. Sync Pro &amp; use anywhere</p>
           <p className="mt-1 text-xs leading-relaxed">
-            Click the puzzle piece in Chrome’s toolbar → pin <strong>FIGHURAI Colors</strong>.
-          </p>
-        </li>
-        <li className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-          <p className="font-semibold text-[var(--text-primary)]">4. Sync Pro</p>
-          <p className="mt-1 text-xs leading-relaxed">
-            Keep this tab open while signed in on Pro. The extension reads your plan from FIGHURAI
-            so Colors unlocks on other sites.
-          </p>
-        </li>
-        <li className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
-          <p className="font-semibold text-[var(--text-primary)]">5. Use it anywhere</p>
-          <p className="mt-1 text-xs leading-relaxed">
-            Visit any website. Click the floating <strong>Colors</strong> button (bottom-right) or
-            the toolbar icon. Pick background and text — same controls as Colors on FIGHURAI.
+            Stay signed in on fighur.ai with Pro, then open any website and use the floating{" "}
+            <strong>Colors</strong> control or the toolbar icon.
           </p>
         </li>
       </ol>
 
-      <div className="mt-8 rounded-xl border border-white/[0.08] px-4 py-3 text-xs leading-relaxed text-[var(--text-faint)]">
-        <p className="font-semibold text-[var(--text-muted)]">What you get</p>
-        <ul className="mt-2 list-disc space-y-1 pl-4">
-          <li>Install → pin → Colors on any website</li>
-          <li>Same background and text controls as Colors on FIGHURAI</li>
-          <li>Pro entitlement only — no email or name shared with the extension</li>
-        </ul>
-      </div>
-
       <p className="mt-8 text-center text-xs text-[var(--text-faint)]">
-        <Link href="/legal" className="underline-offset-2 hover:underline">
-          Own &amp; sell checklist
-        </Link>
-        {" · "}
         <Link href="/eula" className="underline-offset-2 hover:underline">
           EULA
         </Link>

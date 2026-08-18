@@ -85,10 +85,10 @@ const STEPS: Step[] = [
     id: "add-to-chrome",
     title: "3c. Point “Add to Chrome” at the Store",
     detail:
-      "After approval, replace the zip CTA on /extension with your Chrome Web Store URL for one-click installs.",
-    href: "/extension",
-    hrefLabel: "Extension install page",
-    youMustDo: true,
+      "Done — /extension and Settings → Apps link to the live Chrome Web Store listing (FIGHURAI Colors).",
+    href: "https://chromewebstore.google.com/detail/fighurai-colors/kihglfamlplmecmnookmleodhgmdgnbm",
+    hrefLabel: "Open Chrome Web Store",
+    youMustDo: false,
   },
 ];
 
