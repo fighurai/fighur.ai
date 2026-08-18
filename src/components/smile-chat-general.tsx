@@ -69,7 +69,11 @@ import {
 import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
-import { detectBrowserLocation } from "@/lib/browser-geolocation";
+import {
+  detectBrowserLocation,
+  isMobileClient,
+  requestNativeLocationFromGesture,
+} from "@/lib/browser-geolocation";
 import type { UserLocationHint } from "@/lib/client-location";
 import { BuildCanvas } from "@/components/build-canvas";
 import { extractBuildArtifact, stripCodeFences } from "@/lib/build-artifact";
@@ -1072,6 +1076,13 @@ export function SmileChatGeneral() {
 
     sendInFlightRef.current = true;
 
+    // iPhone: start the *system* Location popup in this same Send tap (no custom UI).
+    // Must run before any await or Safari drops the gesture and never prompts.
+    const nativeLocationPromise =
+      isMobileClient() && clientLocationRef.current?.source !== "browser"
+        ? requestNativeLocationFromGesture({ timeoutMs: 20_000 })
+        : null;
+
     let convId = activeId;
     if (!convId) {
       convId = id();
@@ -1154,6 +1165,11 @@ export function SmileChatGeneral() {
       }
     } catch {
       mcpConfig = undefined;
+    }
+
+    if (nativeLocationPromise) {
+      const loc = await nativeLocationPromise;
+      if (loc) clientLocationRef.current = loc;
     }
 
     const chatPayload = JSON.stringify({
