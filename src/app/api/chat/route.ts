@@ -275,7 +275,8 @@ async function streamOpenAICompatible(
       messages: openaiMessages,
       stream: true,
       max_tokens: maxTokens,
-      temperature: 0.7,
+      // Slightly warmer than 0.7 — more natural ChatGPT-like prose without chaos.
+      temperature: 0.9,
     }),
   });
 
@@ -315,6 +316,8 @@ async function streamAnthropic(
             {
               model: process.env.ANTHROPIC_MODEL?.trim() || model,
               max_tokens: maxTokens,
+              // Claude’s natural conversational default.
+              temperature: 1,
               system,
               messages: messages
                 .filter((m) => m.role === "user" || m.role === "assistant")

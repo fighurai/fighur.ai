@@ -70,6 +70,7 @@ export async function streamAnthropicWithTools(
               {
                 model: resolvedModel,
                 max_tokens: maxTokens,
+                temperature: 1,
                 system,
                 messages: conversation,
                 tools: tools.map((t) => ({
