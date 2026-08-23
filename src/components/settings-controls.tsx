@@ -5,7 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { ConnectStatusResponse } from "@/lib/connect-status-types";
 import { readSession } from "@/lib/auth-storage";
-import { isAdminRoles } from "@/lib/rbac";
+import { isPlatformAdminEmail } from "@/lib/platform-admin";
 import {
   readConnectedServices,
   writeConnectedServices,
@@ -742,7 +742,7 @@ export function SettingsControls() {
                 >
                   Open full settings
                 </Link>
-                {isAdminRoles(readSession()?.roles) ? (
+                {isPlatformAdminEmail(readSession()?.email) ? (
                   <Link
                     href="/admin"
                     className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"

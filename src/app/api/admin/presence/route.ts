@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requirePermission } from "@/lib/auth-guard";
+import { requirePlatformAdmin } from "@/lib/platform-admin-server";
 import {
   readPresenceState,
   summarizePresence,
@@ -50,21 +50,30 @@ function mergeKnownAccounts(
   return Object.values(byKey).sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
 }
 
+const NO_STORE = {
+  "Cache-Control": "private, no-store, max-age=0",
+  Pragma: "no-cache",
+  "X-Robots-Tag": "noindex, nofollow",
+};
+
 export async function GET(request: Request) {
   const session = await readVerifiedSession(request);
-  const access = await requirePermission(session, "admin:users");
+  const access = await requirePlatformAdmin(session);
   if (!access.ok) {
-    return NextResponse.json({ error: access.message }, { status: session ? 403 : 401 });
+    return NextResponse.json({ error: access.message }, { status: access.status, headers: NO_STORE });
   }
 
   const [state, profiles] = await Promise.all([readPresenceState(), listKnownProfiles()]);
   const people = mergeKnownAccounts(state.visitors, profiles);
   const merged: Record<string, PresenceVisitor> = Object.fromEntries(people.map((p) => [p.key, p]));
 
-  return NextResponse.json({
-    ok: true,
-    stats: summarizePresence({ v: 1, visitors: merged, events: state.events }),
-    people,
-    events: state.events.slice(0, 80),
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      stats: summarizePresence({ v: 1, visitors: merged, events: state.events }),
+      people,
+      events: state.events.slice(0, 80),
+    },
+    { headers: NO_STORE },
+  );
 }
