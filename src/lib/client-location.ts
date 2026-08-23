@@ -1,3 +1,5 @@
+import { prettyPlaceLabel } from "@/lib/geo-labels";
+
 /** Location sent from browser geolocation or inferred on the server. */
 export type UserLocationHint = {
   city?: string;
@@ -11,6 +13,13 @@ export type UserLocationHint = {
 };
 
 export function formatUserLocationLabel(loc: UserLocationHint): string | null {
+  const pretty = prettyPlaceLabel({
+    city: loc.city,
+    region: loc.region,
+    country: loc.country,
+    countryCode: loc.countryCode,
+  });
+  if (pretty) return pretty;
   const parts = [loc.city, loc.region, loc.country].filter(Boolean);
   if (parts.length > 0) return parts.join(", ");
   if (loc.latitude !== undefined && loc.longitude !== undefined) {

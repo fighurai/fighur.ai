@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces, Geist_Mono } from "next/font/google";
 
 import { SmileShell } from "@/components/smile-shell";
+import { TrackVisit } from "@/components/track-visit";
 import { SITE_DESCRIPTION, SITE_FAVICON, SITE_OG_IMAGE, SITE_TITLE } from "@/lib/site-brand";
 import { getSiteUrl } from "@/lib/site-url";
 
@@ -80,6 +81,7 @@ export default function RootLayout({
       className={`${dmSans.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--bg-deep)]">
+        <TrackVisit />
         <SmileShell>{children}</SmileShell>
       </body>
     </html>
