@@ -2,8 +2,13 @@ import { randomUUID } from "crypto";
 
 import { syncUserScheduleIndex } from "@/lib/tasks/index";
 import {
+  clampHour,
+  clampMinute,
   computeNextRunAt,
+  inferScheduleOptions,
   isTaskSchedulePreset,
+  resolveTaskTimeZone,
+  type TaskScheduleOptions,
   type TaskSchedulePreset,
 } from "@/lib/tasks/schedule";
 import { isSafeUserId } from "@/lib/user-data-store";
@@ -22,14 +27,28 @@ export type ManagedTask = {
   name: string;
   prompt: string;
   schedule: TaskSchedulePreset;
+  /** IANA zone for daily/weekly local time (default America/New_York). */
+  timeZone?: string;
+  /** Local hour (0–23) for daily/weekly. Default 8. */
+  hour?: number;
+  minute?: number;
   enabled: boolean;
   nextRunAt: string;
   lastRunAt?: string;
   lastStatus?: ManagedTaskStatus;
   lastResult?: string;
+  lastConversationId?: string;
   createdAt: string;
   updatedAt: string;
 };
+
+export function scheduleOptionsFromTask(task: Pick<ManagedTask, "timeZone" | "hour" | "minute">): TaskScheduleOptions {
+  return {
+    timeZone: resolveTaskTimeZone(task.timeZone),
+    hour: clampHour(task.hour),
+    minute: clampMinute(task.minute),
+  };
+}
 
 type TaskStore = {
   tasks: ManagedTask[];
@@ -40,6 +59,22 @@ function emptyStore(): TaskStore {
   return { tasks: [], updatedAt: new Date().toISOString() };
 }
 
+function backfillSchedule(task: ManagedTask): ManagedTask {
+  if (task.timeZone && task.hour !== undefined) return task;
+  const inferred = inferScheduleOptions(task.prompt, {
+    timeZone: task.timeZone,
+    hour: task.hour,
+    minute: task.minute,
+  });
+  return {
+    ...task,
+    timeZone: inferred.timeZone,
+    hour: inferred.hour,
+    minute: inferred.minute,
+    nextRunAt: computeNextRunAt(task.schedule, new Date(), inferred),
+  };
+}
+
 async function readStore(userId: string): Promise<TaskStore> {
   if (!isSafeUserId(userId)) return emptyStore();
   const raw = await readUserFile(userId, FILE);
@@ -47,10 +82,14 @@ async function readStore(userId: string): Promise<TaskStore> {
   try {
     const parsed = JSON.parse(raw) as TaskStore;
     if (!Array.isArray(parsed.tasks)) return emptyStore();
-    return {
-      tasks: parsed.tasks,
+    const tasks = parsed.tasks;
+    const needsBackfill = tasks.some((t) => !t.timeZone || t.hour === undefined);
+    const store: TaskStore = {
+      tasks: needsBackfill ? tasks.map(backfillSchedule) : tasks,
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
     };
+    if (needsBackfill) return writeStore(userId, store);
+    return store;
   } catch {
     return emptyStore();
   }
@@ -90,6 +129,9 @@ export async function createManagedTask(
     prompt: string;
     schedule: TaskSchedulePreset;
     enabled?: boolean;
+    timeZone?: string;
+    hour?: number;
+    minute?: number;
   },
 ): Promise<ManagedTask> {
   if (!isSafeUserId(userId)) throw new Error("Invalid user");
@@ -104,14 +146,20 @@ export async function createManagedTask(
     throw new Error(`Task limit reached (${MAX_TASKS})`);
   }
 
+  const inferred = inferScheduleOptions(prompt, { timeZone: input.timeZone });
+  if (input.hour !== undefined) inferred.hour = clampHour(input.hour);
+  if (input.minute !== undefined) inferred.minute = clampMinute(input.minute);
   const now = new Date().toISOString();
   const task: ManagedTask = {
     id: randomUUID(),
     name,
     prompt,
     schedule: input.schedule,
+    timeZone: inferred.timeZone,
+    hour: inferred.hour,
+    minute: inferred.minute,
     enabled: input.enabled !== false,
-    nextRunAt: computeNextRunAt(input.schedule, new Date()),
+    nextRunAt: computeNextRunAt(input.schedule, new Date(), inferred),
     createdAt: now,
     updatedAt: now,
   };
@@ -123,7 +171,9 @@ export async function createManagedTask(
 export async function updateManagedTask(
   userId: string,
   taskId: string,
-  patch: Partial<Pick<ManagedTask, "name" | "prompt" | "schedule" | "enabled">>,
+  patch: Partial<
+    Pick<ManagedTask, "name" | "prompt" | "schedule" | "enabled" | "timeZone" | "hour" | "minute">
+  >,
 ): Promise<ManagedTask | null> {
   const store = await readStore(userId);
   const idx = store.tasks.findIndex((t) => t.id === taskId);
@@ -141,15 +191,25 @@ export async function updateManagedTask(
     if (!prompt) throw new Error("prompt required");
     next.prompt = prompt;
   }
+  if (typeof patch.timeZone === "string") next.timeZone = resolveTaskTimeZone(patch.timeZone);
+  if (patch.hour !== undefined) next.hour = clampHour(patch.hour);
+  if (patch.minute !== undefined) next.minute = clampMinute(patch.minute);
   if (patch.schedule !== undefined) {
     if (!isTaskSchedulePreset(patch.schedule)) throw new Error("Invalid schedule");
     next.schedule = patch.schedule;
-    next.nextRunAt = computeNextRunAt(patch.schedule, new Date());
+  }
+  const scheduleChanged =
+    patch.schedule !== undefined ||
+    patch.timeZone !== undefined ||
+    patch.hour !== undefined ||
+    patch.minute !== undefined;
+  if (scheduleChanged) {
+    next.nextRunAt = computeNextRunAt(next.schedule, new Date(), scheduleOptionsFromTask(next));
   }
   if (typeof patch.enabled === "boolean") {
     next.enabled = patch.enabled;
     if (patch.enabled && !prev.enabled) {
-      next.nextRunAt = computeNextRunAt(next.schedule, new Date());
+      next.nextRunAt = computeNextRunAt(next.schedule, new Date(), scheduleOptionsFromTask(next));
     }
   }
 
@@ -175,6 +235,7 @@ export async function recordTaskRunResult(
     text: string;
     /** When set, becomes the next scheduled time (after claim/run). */
     nextRunAt: string;
+    conversationId?: string;
   },
 ): Promise<ManagedTask | null> {
   const store = await readStore(userId);
@@ -186,6 +247,7 @@ export async function recordTaskRunResult(
     lastRunAt: new Date().toISOString(),
     lastStatus: result.status,
     lastResult: result.text.slice(0, MAX_RESULT),
+    lastConversationId: result.conversationId ?? prev.lastConversationId,
     nextRunAt: result.nextRunAt,
     updatedAt: new Date().toISOString(),
   };
@@ -203,7 +265,7 @@ export async function claimManagedTask(
   if (idx < 0) return null;
   const prev = store.tasks[idx]!;
   if (!prev.enabled) return null;
-  const claimedNext = computeNextRunAt(prev.schedule, new Date());
+  const claimedNext = computeNextRunAt(prev.schedule, new Date(), scheduleOptionsFromTask(prev));
   store.tasks[idx] = {
     ...prev,
     nextRunAt: claimedNext,

@@ -140,7 +140,7 @@ export async function availableAgentTools(
   tools.push({
     name: "create_task",
     description:
-      "Create a scheduled FIGHURAI task (hourly/daily/weekly). Runs the prompt on cron; store last result in Settings → Tasks. User must be signed in.",
+      "Create a scheduled FIGHURAI task (hourly/daily/weekly). Daily/weekly default to 8:00 AM in the user's timezone (or America/New_York). News-style prompts fetch live headlines and save a chat. User must be signed in.",
     input_schema: {
       type: "object",
       properties: {
@@ -149,6 +149,14 @@ export async function availableAgentTools(
         schedule: {
           type: "string",
           description: "hourly | daily | weekly",
+        },
+        time_zone: {
+          type: "string",
+          description: "IANA timezone such as America/New_York. Defaults to America/New_York.",
+        },
+        hour: {
+          type: "number",
+          description: "Local hour 0-23 for daily/weekly. Parsed from the prompt when omitted (e.g. 'at 8 am' → 8).",
         },
         enabled: { type: "boolean", description: "Default true" },
       },

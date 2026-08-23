@@ -6,12 +6,15 @@ import { resolveChatModelOption, type ChatProvider } from "@/lib/chat-models";
 import { estimateUsageCostUsd } from "@/lib/token-pricing";
 import { recordUserUsage } from "@/lib/usage-wallet";
 import { readUserPreferences } from "@/lib/user-preferences-store";
+import { buildTaskLiveContext } from "@/lib/tasks/live-context";
+import { saveTaskConversation } from "@/lib/tasks/save-conversation";
 import {
   claimManagedTask,
   recordTaskRunResult,
+  scheduleOptionsFromTask,
   type ManagedTask,
 } from "@/lib/tasks/store";
-import { computeNextRunAt } from "@/lib/tasks/schedule";
+import { computeNextRunAt, formatNowInTimeZone, scheduleLabel } from "@/lib/tasks/schedule";
 
 function apiKeyFor(provider: ChatProvider): string | null {
   switch (provider) {
@@ -59,7 +62,7 @@ async function completeOnce(opts: {
     const client = new Anthropic({ apiKey: opts.apiKey });
     const msg = await client.messages.create({
       model: opts.apiModel,
-      max_tokens: 2048,
+      max_tokens: 4096,
       system: opts.system,
       messages: [{ role: "user", content: opts.user }],
     });
@@ -89,14 +92,14 @@ async function completeOnce(opts: {
     headers,
     body: JSON.stringify({
       model: opts.apiModel,
-      temperature: 0.4,
-      max_tokens: 2048,
+      temperature: 0.3,
+      max_tokens: 4096,
       messages: [
         { role: "system", content: opts.system },
         { role: "user", content: opts.user },
       ],
     }),
-    signal: AbortSignal.timeout(55_000),
+    signal: AbortSignal.timeout(70_000),
   });
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
@@ -115,11 +118,13 @@ export type TaskRunOutcome = {
   taskId: string;
   status: "ok" | "error" | "skipped";
   detail: string;
+  conversationId?: string;
 };
 
 /**
- * Claim + run a scheduled task (non-streaming, no tools).
- * Safe for Vercel Cron — does not use /api/chat.
+ * Claim + run a scheduled task.
+ * Injects the real local date, live web search for news-style prompts, and
+ * saves the result as a sidebar conversation.
  */
 export async function runScheduledTask(
   userId: string,
@@ -130,6 +135,9 @@ export async function runScheduledTask(
     return { userId, taskId, status: "skipped", detail: "Task missing or disabled" };
   }
 
+  const scheduleOpts = scheduleOptionsFromTask(claimed);
+  const nextRunAt = claimed.nextRunAt || computeNextRunAt(claimed.schedule, new Date(), scheduleOpts);
+
   try {
     const plan = await resolveUserPlan(userId);
     const roles = await resolveUserRoles(userId);
@@ -139,7 +147,7 @@ export async function runScheduledTask(
       await recordTaskRunResult(userId, taskId, {
         status: "error",
         text: "No model API keys configured on the server.",
-        nextRunAt: claimed.nextRunAt,
+        nextRunAt,
       });
       return { userId, taskId, status: "error", detail: "No model keys" };
     }
@@ -149,16 +157,29 @@ export async function runScheduledTask(
       await recordTaskRunResult(userId, taskId, {
         status: "error",
         text: `Missing API key for ${option.provider}`,
-        nextRunAt: claimed.nextRunAt,
+        nextRunAt,
       });
       return { userId, taskId, status: "error", detail: "Missing API key" };
     }
 
     const prefs = await readUserPreferences(userId);
+    const now = new Date();
+    const clock = formatNowInTimeZone(now, scheduleOpts.timeZone || "America/New_York");
+    const live = await buildTaskLiveContext({
+      prompt: claimed.prompt,
+      monthDayYear: clock.monthDayYear,
+      isoDate: clock.isoDate,
+    });
+
     const system = [
       "You are FIGHURAI running a scheduled task for the signed-in user.",
-      "Complete the task prompt thoroughly and concisely.",
-      "Do not claim you lack tools for live web — this scheduled runner is text-only; answer from knowledge and be clear about uncertainty.",
+      `The current date and time is ${clock.longLabel}.`,
+      `ISO date: ${clock.isoDate}.`,
+      'Use this date in titles and copy. Never invent another "today" (for example January 2025) and never use your training cutoff as the current date.',
+      "Complete the task thoroughly. Write the full deliverable — this reply is saved as a chat conversation.",
+      live
+        ? "A LIVE WEB SEARCH block is included. For news, headlines, or “latest” requests, ground every factual claim in that block and cite URLs. Do not pad with generic industry landscape copy."
+        : "No live search block was attached. If the task needs current events, say you could not fetch headlines instead of inventing them.",
       prefs.behaviorInstructions.trim()
         ? `\nBehavior instructions:\n${prefs.behaviorInstructions.trim()}`
         : prefs.customInstructions.trim()
@@ -170,37 +191,69 @@ export async function runScheduledTask(
       prefs.deepResearch.enabled
         ? `\nDeep research preference is on${prefs.deepResearch.citeSources ? " (cite sources)" : ""}.`
         : "",
+      live,
     ]
       .filter(Boolean)
       .join("\n");
+
+    const user = [
+      `Scheduled task: ${claimed.name}`,
+      "",
+      claimed.prompt,
+      "",
+      `Today's date is ${clock.monthDayYear} (${clock.isoDate}). Start any dated title from this date.`,
+    ].join("\n");
 
     const text = await completeOnce({
       provider: option.provider,
       apiModel: option.apiModel,
       apiKey: key,
       system,
-      user: `Scheduled task: ${claimed.name}\n\n${claimed.prompt}`,
+      user,
     });
 
     await recordUserUsage(userId, {
-      costUsd: estimateUsageCostUsd(option.id, system.length + claimed.prompt.length, text.length),
-      inputChars: system.length + claimed.prompt.length,
+      costUsd: estimateUsageCostUsd(option.id, system.length + user.length, text.length),
+      inputChars: system.length + user.length,
       outputChars: text.length,
     });
+
+    let conversationId: string | undefined;
+    try {
+      conversationId = await saveTaskConversation({
+        userId,
+        taskId,
+        taskName: claimed.name,
+        prompt: claimed.prompt,
+        result: text,
+        isoDate: clock.isoDate,
+        dateLabel: clock.monthDayYear,
+      });
+    } catch (e) {
+      conversationId = undefined;
+      console.error("task conversation save failed", e);
+    }
 
     await recordTaskRunResult(userId, taskId, {
       status: "ok",
       text,
-      nextRunAt: claimed.nextRunAt || computeNextRunAt(claimed.schedule),
+      nextRunAt,
+      conversationId,
     });
 
-    return { userId, taskId, status: "ok", detail: text.slice(0, 200) };
+    return {
+      userId,
+      taskId,
+      status: "ok",
+      detail: text.slice(0, 200),
+      conversationId,
+    };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Task run failed";
     await recordTaskRunResult(userId, taskId, {
       status: "error",
       text: msg,
-      nextRunAt: claimed.nextRunAt || computeNextRunAt(claimed.schedule),
+      nextRunAt,
     });
     return { userId, taskId, status: "error", detail: msg };
   }
@@ -218,15 +271,21 @@ export async function runDueTasks(limit = 5): Promise<TaskRunOutcome[]> {
 
 /** Public summary fields for Settings / tools. */
 export function taskSummary(task: ManagedTask) {
+  const opts = scheduleOptionsFromTask(task);
   return {
     id: task.id,
     name: task.name,
     schedule: task.schedule,
+    scheduleLabel: scheduleLabel(task.schedule, opts),
+    timeZone: opts.timeZone,
+    hour: opts.hour,
+    minute: opts.minute,
     enabled: task.enabled,
     nextRunAt: task.nextRunAt,
     lastRunAt: task.lastRunAt,
     lastStatus: task.lastStatus,
     lastResultPreview: task.lastResult?.slice(0, 280),
+    lastConversationId: task.lastConversationId ?? null,
   };
 }
 

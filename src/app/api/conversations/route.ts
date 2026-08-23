@@ -18,7 +18,12 @@ function parseList(raw: unknown): SavedConversation[] | null {
       Array.isArray((c as { messages?: unknown }).messages) &&
       typeof (c as { updatedAt?: unknown }).updatedAt === "number"
     ) {
-      out.push(c as SavedConversation);
+      const row = c as SavedConversation;
+      out.push({
+        ...row,
+        source: row.source === "task" ? "task" : undefined,
+        taskId: typeof row.taskId === "string" ? row.taskId : undefined,
+      });
     }
   }
   return out;
@@ -53,7 +58,18 @@ export async function PUT(request: Request) {
   }
 
   try {
-    await writeUserConversations(session.userId, list);
+    const existing = await readUserConversations(session.userId);
+    const incomingIds = new Set(list.map((c) => c.id));
+    const now = Date.now();
+    // Keep task chats created in the last 10 minutes so an open chat tab
+    // cannot overwrite a just-finished scheduled run.
+    const preserve = existing.filter(
+      (c) =>
+        c.source === "task" &&
+        !incomingIds.has(c.id) &&
+        now - c.updatedAt < 10 * 60 * 1000,
+    );
+    await writeUserConversations(session.userId, [...preserve, ...list]);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Save failed.";
     return NextResponse.json({ error: message }, { status: 400 });

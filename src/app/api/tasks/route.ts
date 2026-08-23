@@ -34,7 +34,11 @@ export async function GET(request: Request) {
     tasks: tasks.map(taskDetail),
     schedules: ["hourly", "daily", "weekly"].map((s) => ({
       id: s,
-      label: scheduleLabel(s as "hourly" | "daily" | "weekly"),
+      label: scheduleLabel(s as "hourly" | "daily" | "weekly", {
+        timeZone: "America/New_York",
+        hour: 8,
+        minute: 0,
+      }),
     })),
     ephemeralStorage: usesEphemeralUserStorage(),
   });
@@ -60,7 +64,14 @@ export async function POST(request: Request) {
     prompt?: unknown;
     schedule?: unknown;
     enabled?: unknown;
+    timeZone?: unknown;
+    hour?: unknown;
+    minute?: unknown;
   };
+
+  const timeZone = typeof b.timeZone === "string" ? b.timeZone : undefined;
+  const hour = typeof b.hour === "number" ? b.hour : undefined;
+  const minute = typeof b.minute === "number" ? b.minute : undefined;
 
   const action = typeof b.action === "string" ? b.action : "create";
 
@@ -79,6 +90,9 @@ export async function POST(request: Request) {
         prompt,
         schedule: b.schedule,
         enabled: b.enabled !== false,
+        timeZone,
+        hour,
+        minute,
       });
       return NextResponse.json({ ok: true, task: taskDetail(task) });
     }
@@ -91,6 +105,9 @@ export async function POST(request: Request) {
       if (typeof b.prompt === "string") patch.prompt = b.prompt;
       if (isTaskSchedulePreset(b.schedule)) patch.schedule = b.schedule;
       if (typeof b.enabled === "boolean") patch.enabled = b.enabled;
+      if (timeZone) patch.timeZone = timeZone;
+      if (hour !== undefined) patch.hour = hour;
+      if (minute !== undefined) patch.minute = minute;
       const task = await updateManagedTask(session.userId, id, patch);
       if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
       return NextResponse.json({ ok: true, task: taskDetail(task) });

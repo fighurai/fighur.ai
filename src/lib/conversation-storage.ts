@@ -9,6 +9,9 @@ export type SavedConversation = {
   /** Agent this chat belongs to (from header Agents picker). Null = default FIGHURAI. */
   agentId?: string | null;
   agentName?: string | null;
+  /** Set when a scheduled task writes the chat so Settings can deep-link it. */
+  source?: "task";
+  taskId?: string;
 };
 
 export type ConversationScope = "ask" | "assistant";

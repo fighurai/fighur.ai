@@ -284,17 +284,26 @@ export async function executeAgentTool(
           return { content: "schedule must be hourly, daily, or weekly", isError: true };
         }
         try {
+          const timeZone =
+            typeof input.time_zone === "string"
+              ? input.time_zone
+              : typeof input.timeZone === "string"
+                ? input.timeZone
+                : undefined;
+          const hour = typeof input.hour === "number" ? input.hour : undefined;
           const task = await createManagedTask(ctx.userId, {
             name,
             prompt,
             schedule,
             enabled: input.enabled !== false,
+            timeZone,
+            hour,
           });
           return {
             content: JSON.stringify({
               ok: true,
               task: taskSummary(task),
-              message: `Task scheduled (${schedule}). Next run ${task.nextRunAt}. Manage in Settings → Tasks.`,
+              message: `Task scheduled (${taskSummary(task).scheduleLabel}). Next run ${task.nextRunAt}. Results are saved as a chat. Manage in Settings → Tasks.`,
             }),
           };
         } catch (e) {

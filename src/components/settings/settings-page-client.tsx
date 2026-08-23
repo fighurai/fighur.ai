@@ -50,13 +50,45 @@ type TaskRow = {
   name: string;
   prompt: string;
   schedule: "hourly" | "daily" | "weekly";
+  scheduleLabel?: string;
+  timeZone?: string;
+  hour?: number;
+  minute?: number;
   enabled: boolean;
   nextRunAt: string;
   lastRunAt?: string;
   lastStatus?: string;
   lastResultPreview?: string;
   lastResult?: string | null;
+  lastConversationId?: string | null;
 };
+
+const TASK_TIME_ZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Toronto",
+  "Europe/London",
+  "Europe/Paris",
+  "UTC",
+];
+
+function browserTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
+  } catch {
+    return "America/New_York";
+  }
+}
+
+function hourOptions(): Array<{ value: number; label: string }> {
+  return Array.from({ length: 24 }, (_, hour) => {
+    const h = ((hour + 11) % 12) + 1;
+    const ap = hour < 12 ? "AM" : "PM";
+    return { value: hour, label: `${h}:00 ${ap}` };
+  });
+}
 
 type AgentRow = {
   id: string;
@@ -110,6 +142,8 @@ export function SettingsPageClient() {
   const [taskName, setTaskName] = useState("");
   const [taskPrompt, setTaskPrompt] = useState("");
   const [taskSchedule, setTaskSchedule] = useState<"hourly" | "daily" | "weekly">("daily");
+  const [taskHour, setTaskHour] = useState(8);
+  const [taskTimeZone, setTaskTimeZone] = useState("America/New_York");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
@@ -144,6 +178,7 @@ export function SettingsPageClient() {
     const s = readSession();
     setSignedIn(Boolean(s?.userId));
     setAccountEmail(s?.email ?? null);
+    setTaskTimeZone(browserTimeZone());
   }, []);
 
   const deleteAccount = async () => {
@@ -296,12 +331,18 @@ export function SettingsPageClient() {
                 name: taskName,
                 prompt: taskPrompt,
                 schedule: taskSchedule,
+                hour: taskHour,
+                timeZone: taskTimeZone,
+                minute: 0,
               }
             : {
                 action: "create",
                 name: taskName,
                 prompt: taskPrompt,
                 schedule: taskSchedule,
+                hour: taskHour,
+                timeZone: taskTimeZone,
+                minute: 0,
               },
         ),
       });
@@ -313,6 +354,8 @@ export function SettingsPageClient() {
       setTaskName("");
       setTaskPrompt("");
       setTaskSchedule("daily");
+      setTaskHour(8);
+      setTaskTimeZone(browserTimeZone());
       setEditingTaskId(null);
       await loadTasks();
     } catch {
@@ -337,6 +380,8 @@ export function SettingsPageClient() {
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         setTasksError(data.error || "Task action failed");
+      } else if (action === "run") {
+        setExpandedTaskId(id);
       }
       await loadTasks();
     } finally {
@@ -776,8 +821,9 @@ export function SettingsPageClient() {
               <div>
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Scheduled Tasks</h2>
                 <p className="mt-1 text-[0.7rem] text-[var(--text-faint)]">
-                  Recurring agent workflows. Create, edit, run now, and inspect full results. Cron
-                  runs daily on Hobby; Pro can use higher frequency.
+                  Recurring agent workflows. Daily tasks run at your local time (default 8:00 AM).
+                  News-style prompts pull live headlines and save a chat in the sidebar. Cron
+                  checks about every 15 minutes.
                 </p>
               </div>
               {tasksError ? (
@@ -809,6 +855,34 @@ export function SettingsPageClient() {
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                   </select>
+                  {taskSchedule !== "hourly" ? (
+                    <>
+                      <select
+                        value={taskHour}
+                        onChange={(e) => setTaskHour(Number(e.target.value))}
+                        className="rounded-full border border-white/[0.1] bg-black/30 px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)]"
+                      >
+                        {hourOptions().map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={taskTimeZone}
+                        onChange={(e) => setTaskTimeZone(e.target.value)}
+                        className="rounded-full border border-white/[0.1] bg-black/30 px-2.5 py-1 text-[0.65rem] text-[var(--text-muted)]"
+                      >
+                        {[taskTimeZone, ...TASK_TIME_ZONES.filter((z) => z !== taskTimeZone)].map(
+                          (z) => (
+                            <option key={z} value={z}>
+                              {z.replace(/_/g, " ")}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     disabled={taskBusy || !taskName.trim() || !taskPrompt.trim()}
@@ -824,6 +898,8 @@ export function SettingsPageClient() {
                         setEditingTaskId(null);
                         setTaskName("");
                         setTaskPrompt("");
+                        setTaskHour(8);
+                        setTaskTimeZone(browserTimeZone());
                       }}
                       className="text-[0.7rem] text-[var(--text-faint)] underline-offset-2 hover:underline"
                     >
@@ -844,8 +920,11 @@ export function SettingsPageClient() {
                           {task.name}
                         </p>
                         <p className="mt-0.5 text-[0.6rem] text-[var(--text-faint)]">
-                          {task.schedule} · {task.enabled ? "on" : "off"} · next{" "}
-                          {new Date(task.nextRunAt).toLocaleString()}
+                          {task.scheduleLabel || task.schedule} · {task.enabled ? "on" : "off"} ·
+                          next{" "}
+                          {new Date(task.nextRunAt).toLocaleString(undefined, {
+                            timeZone: task.timeZone || undefined,
+                          })}
                         </p>
                         {task.lastStatus ? (
                           <p className="mt-1 text-[0.65rem] text-[var(--text-muted)]">
@@ -870,6 +949,8 @@ export function SettingsPageClient() {
                             setTaskName(task.name);
                             setTaskPrompt(task.prompt);
                             setTaskSchedule(task.schedule);
+                            setTaskHour(typeof task.hour === "number" ? task.hour : 8);
+                            setTaskTimeZone(task.timeZone || browserTimeZone());
                           }}
                           className="rounded-full border border-white/[0.1] px-2 py-0.5 text-[0.65rem] text-[var(--text-muted)]"
                         >
@@ -903,9 +984,19 @@ export function SettingsPageClient() {
                       </div>
                     </div>
                     {expandedTaskId === task.id ? (
-                      <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-white/[0.06] bg-black/30 p-2 text-[0.65rem] text-[var(--text-muted)]">
-                        {task.lastResult || task.prompt || "(no result yet)"}
-                      </pre>
+                      <div className="mt-2 space-y-2">
+                        {task.lastConversationId ? (
+                          <a
+                            href={`/?conversation=${encodeURIComponent(task.lastConversationId)}`}
+                            className="inline-block text-[0.65rem] font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                          >
+                            Open conversation
+                          </a>
+                        ) : null}
+                        <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-white/[0.06] bg-black/30 p-2 text-[0.65rem] text-[var(--text-muted)]">
+                          {task.lastResult || task.prompt || "(no result yet)"}
+                        </pre>
+                      </div>
                     ) : null}
                   </li>
                 ))}

@@ -57,6 +57,7 @@ type TaskRow = {
   id: string;
   name: string;
   schedule: string;
+  scheduleLabel?: string;
   enabled: boolean;
   nextRunAt: string;
   lastRunAt?: string;
@@ -1038,7 +1039,7 @@ export function SettingsControls() {
                         <span className="font-medium text-[var(--text-primary)]">{task.name}</span>
                         <span className="text-[var(--text-faint)]">
                           {" "}
-                          · {task.schedule} · {task.enabled ? "on" : "off"}
+                          · {task.scheduleLabel || task.schedule} · {task.enabled ? "on" : "off"}
                         </span>
                       </li>
                     ))}

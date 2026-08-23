@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runDueTasks } from "@/lib/tasks/run";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
