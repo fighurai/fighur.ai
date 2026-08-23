@@ -10,12 +10,12 @@ import { SettingsControls } from "@/components/settings-controls";
 import { ThemeControls } from "@/components/theme-controls";
 import { hydrateServerSession, readSession } from "@/lib/auth-storage";
 import { HEADER_TRIGGER_CLASS } from "@/lib/header-panel";
-import { isAdminRoles } from "@/lib/rbac";
+import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
 function AdminPeopleLink() {
   const [show, setShow] = useState(false);
   useEffect(() => {
-    const sync = () => setShow(isAdminRoles(readSession()?.roles));
+    const sync = () => setShow(isPlatformAdminEmail(readSession()?.email));
     sync();
     void hydrateServerSession().then(sync);
     window.addEventListener("smile-auth-changed", sync);
