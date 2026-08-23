@@ -353,6 +353,12 @@
       color: rgba(255, 255, 255, 0.85);
     }
 
+    .drop-zone.is-loaded {
+      border-color: rgba(45, 212, 191, 0.55);
+      background: rgba(45, 212, 191, 0.08);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
     .drop-zone strong { color: var(--control-accent); }
 
     .drop-zone input { display: none; }
@@ -1268,6 +1274,30 @@
 
     window.addEventListener('resize', updateStageScale);
 
+    async function tryAutoLoadSource() {
+      const candidates = [
+        'input/source.mov',
+        'input/source.mp4',
+        'input/source.webm',
+        'input/Aug-20-2026-1-1787275557_9094849.MOV',
+      ];
+      for (const path of candidates) {
+        try {
+          const res = await fetch(path, { method: 'HEAD' });
+          if (!res.ok) continue;
+          video.src = path;
+          videoBg.src = path;
+          dropZone.classList.add('is-loaded');
+          const label = dropZone.querySelector('strong');
+          if (label) label.textContent = `Loaded ${path.split('/').pop()}`;
+          exportStatus.textContent = 'Source loaded from environment — preview or export.';
+          return;
+        } catch (_) {
+          /* file:// or missing path */
+        }
+      }
+    }
+
     scrub.max = String(TOTAL_DURATION);
     applyFitMode();
     updateMuteBtn();
@@ -1275,6 +1305,7 @@
     syncCaption(0, { forceSnap: true });
     timeReadout.textContent = `${formatTime(0)} / ${formatTime(TOTAL_DURATION)}`;
     videoBg.muted = true;
+    tryAutoLoadSource();
   </script>
 </body>
 </html>
