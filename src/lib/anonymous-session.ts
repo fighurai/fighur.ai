@@ -1,8 +1,9 @@
 import { randomBytes } from "crypto";
 
 import { getAppSealingSecret, sealJson, unsealJson } from "@/lib/oauth-crypto";
+import { COOKIE_ANON, COOKIE_TOUCH, isGuestId } from "@/lib/presence-cookies";
 
-export const COOKIE_ANON = "smile_anon";
+export { COOKIE_ANON, COOKIE_TOUCH, isGuestId };
 
 type AnonPayload = { v: 1; id: string; iat: number };
 
@@ -23,8 +24,19 @@ export function readAnonymousId(request: Request): string | null {
   if (!raw) return null;
   const p = unsealJson<AnonPayload>(raw, secret);
   if (!p || p.v !== 1 || typeof p.id !== "string") return null;
-  if (!/^[a-zA-Z0-9_-]{16,64}$/.test(p.id)) return null;
+  if (!isGuestId(p.id)) return null;
   return p.id;
+}
+
+export function readTouchId(request: Request): string | null {
+  const raw = readCookie(request, COOKIE_TOUCH);
+  if (!raw || !isGuestId(raw)) return null;
+  return raw;
+}
+
+/** Signed-out visitor id from sealed anon cookie or first-touch cookie. */
+export function readGuestId(request: Request): string | null {
+  return readAnonymousId(request) ?? readTouchId(request);
 }
 
 export function sealAnonymousId(id: string): string | null {

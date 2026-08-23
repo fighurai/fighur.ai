@@ -6,6 +6,7 @@ import {
   anonymousCookieOptions,
   createAnonymousId,
   readAnonymousId,
+  readGuestId,
   sealAnonymousId,
 } from "@/lib/anonymous-session";
 import { recordPresence } from "@/lib/record-presence";
@@ -30,7 +31,7 @@ export async function prepareChatRequest(request: Request): Promise<
   const ip = clientIp(request);
   const ua = userAgent(request);
   const session = await readVerifiedSession(request);
-  let anonId = readAnonymousId(request);
+  let anonId = readGuestId(request) ?? readAnonymousId(request);
   let anonCookieToSet: string | null = null;
 
   if (!session && !anonId) {

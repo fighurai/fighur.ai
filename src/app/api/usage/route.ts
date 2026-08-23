@@ -5,6 +5,7 @@ import {
   anonymousCookieOptions,
   createAnonymousId,
   readAnonymousId,
+  readGuestId,
   sealAnonymousId,
 } from "@/lib/anonymous-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   }
 
   const session = await readVerifiedSession(request);
-  let anonId = readAnonymousId(request);
+  let anonId = readGuestId(request) ?? readAnonymousId(request);
   let setCookie = false;
 
   if (!session && !anonId) {
