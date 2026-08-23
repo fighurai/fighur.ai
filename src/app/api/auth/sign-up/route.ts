@@ -4,6 +4,7 @@ import { appendAudit } from "@/lib/audit-log";
 import { attachSessionCookie, sessionJsonBody } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { hashPassword, validatePasswordStrength } from "@/lib/password-auth";
+import { recordPresence } from "@/lib/record-presence";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { ensureUser, readUserByEmail, readUserProfile, ensureComplimentaryEntitlements } from "@/lib/user-data-store";
 
@@ -70,6 +71,16 @@ export async function POST(request: Request) {
       ip,
       userAgent: ua,
       resource: "account",
+    });
+    void recordPresence(request, {
+      action: "auth.sign_up",
+      userId,
+      email: created?.email ?? email,
+      name: created?.name ?? name,
+      plan: created?.plan,
+      authProvider: created?.authProvider ?? "email",
+      path: "/sign-up",
+      forceEvent: true,
     });
 
     return withCookie;

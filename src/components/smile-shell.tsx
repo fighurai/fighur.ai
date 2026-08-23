@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
+import { PresenceBeacon } from "@/components/presence-beacon";
 import { SiteTutorial } from "@/components/site-tutorial";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
 
@@ -64,6 +65,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+      <PresenceBeacon />
     </div>
   );
 }

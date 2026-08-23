@@ -1,7 +1,7 @@
-import { mkdir, readFile, unlink, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 
-import { del, get, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -159,6 +159,48 @@ export async function deleteGlobalUserFile(relativePath: string): Promise<void> 
     return;
   }
   await deleteFs(fsPathGlobal(relativePath));
+}
+
+/**
+ * Discover account user ids from stored `profile.json` files.
+ * Used by the admin People view so existing accounts appear even before a new visit.
+ */
+export async function listKnownUserIds(): Promise<string[]> {
+  const ids = new Set<string>();
+  if (usesBlobUserStorage()) {
+    const token = blobToken();
+    if (!token) return [];
+    try {
+      let cursor: string | undefined;
+      do {
+        const page = await list({
+          prefix: "smile-ai/users/",
+          token,
+          cursor,
+          limit: 1000,
+        });
+        for (const blob of page.blobs) {
+          const match = blob.pathname.match(/^smile-ai\/users\/([0-9a-f-]{36})\/profile\.json$/i);
+          if (match?.[1] && isSafeUserId(match[1])) ids.add(match[1]);
+        }
+        cursor = page.hasMore ? page.cursor : undefined;
+      } while (cursor);
+    } catch {
+      return [...ids];
+    }
+    return [...ids];
+  }
+
+  try {
+    const root = path.join(dataRoot(), "users");
+    const entries = await readdir(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && isSafeUserId(entry.name)) ids.add(entry.name);
+    }
+  } catch {
+    /* no users dir yet */
+  }
+  return [...ids];
 }
 
 /** Known per-user relative paths to wipe on account deletion. */

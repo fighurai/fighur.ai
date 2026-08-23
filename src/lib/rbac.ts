@@ -47,3 +47,7 @@ export function hasPermission(
   if (perms.has("admin:users") || perms.has("admin:audit")) return true;
   return perms.has(permission);
 }
+
+export function isAdminRoles(roles: unknown, extra?: Permission[]): boolean {
+  return hasPermission(normalizeRoles(roles), "admin:users", extra);
+}

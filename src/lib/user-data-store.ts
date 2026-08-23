@@ -331,6 +331,13 @@ export async function readUserByEmail(emailRaw: string): Promise<UserProfile | n
   return null;
 }
 
+export async function listKnownProfiles(): Promise<UserProfile[]> {
+  const { listKnownUserIds } = await import("@/lib/user-file-storage");
+  const ids = await listKnownUserIds();
+  const profiles = await Promise.all(ids.map((id) => readUserProfile(id)));
+  return profiles.filter((p): p is UserProfile => p !== null);
+}
+
 export async function readUserProfile(userId: string): Promise<UserProfile | null> {
   if (!isSafeUserId(userId)) return null;
   try {
@@ -417,6 +424,13 @@ export async function deleteUserAccount(userId: string): Promise<{ ok: true; ema
   if (email) {
     const key = emailKey(email);
     await deleteGlobalUserFile(`_by-email/${key}.json`);
+  }
+
+  try {
+    const { removePresenceForUser } = await import("@/lib/presence-store");
+    await removePresenceForUser(userId);
+  } catch {
+    /* presence cleanup is best-effort */
   }
 
   if (!usesBlobUserStorage()) {
