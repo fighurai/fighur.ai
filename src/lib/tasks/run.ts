@@ -178,7 +178,7 @@ export async function runScheduledTask(
       'Use this date in titles and copy. Never invent another "today" (for example January 2025) and never use your training cutoff as the current date.',
       "Complete the task thoroughly. Write the full deliverable — this reply is saved as a chat conversation.",
       live
-        ? "A LIVE WEB SEARCH block is included. For news, headlines, or “latest” requests, ground every factual claim in that block and cite URLs. Do not pad with generic industry landscape copy."
+        ? "A LIVE WEB SEARCH block is included. For news or latest requests, write a full briefing from those headlines and cite URLs. Cover the last few days if that is what the feed returned — especially on weekends. Do not say there is no news when headlines are present. Do not pad with generic industry landscape copy."
         : "No live search block was attached. If the task needs current events, say you could not fetch headlines instead of inventing them.",
       prefs.behaviorInstructions.trim()
         ? `\nBehavior instructions:\n${prefs.behaviorInstructions.trim()}`

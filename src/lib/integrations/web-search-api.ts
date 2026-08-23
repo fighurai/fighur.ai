@@ -2,6 +2,8 @@ export type WebSearchHit = {
   title: string;
   url: string;
   snippet: string;
+  published?: string;
+  source?: string;
 };
 
 export type WebSearchResult =
@@ -116,6 +118,11 @@ async function searchTavily(query: string, maxResults: number): Promise<WebSearc
   return { ok: true, query, provider: "tavily", results };
 }
 
+function attr(tag: string, name: string): string {
+  const m = new RegExp(`\\b${name}\\s*=\\s*["']([^"']+)["']`, "i").exec(tag);
+  return m?.[1] ?? "";
+}
+
 function parseRssItems(xml: string, maxResults: number): WebSearchHit[] {
   const results: WebSearchHit[] = [];
   const itemRe = /<item>([\s\S]*?)<\/item>/gi;
@@ -127,10 +134,50 @@ function parseRssItems(xml: string, maxResults: number): WebSearchHit[] {
     const desc = stripTags(
       /<description>([\s\S]*?)<\/description>/i.exec(block)?.[1] ?? "",
     ).slice(0, 400);
+    const published = stripTags(/<pubDate>([\s\S]*?)<\/pubDate>/i.exec(block)?.[1] ?? "");
+    const source = stripTags(/<source[^>]*>([\s\S]*?)<\/source>/i.exec(block)?.[1] ?? "");
     if (!title) continue;
-    results.push({ title, url: link.startsWith("http") ? link : "", snippet: desc });
+    results.push({
+      title,
+      url: link.startsWith("http") ? link : "",
+      snippet: desc,
+      published: published || undefined,
+      source: source || undefined,
+    });
   }
   return results;
+}
+
+function parseAtomEntries(xml: string, maxResults: number): WebSearchHit[] {
+  const results: WebSearchHit[] = [];
+  const entryRe = /<entry>([\s\S]*?)<\/entry>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = entryRe.exec(xml)) !== null && results.length < maxResults) {
+    const block = match[1] ?? "";
+    const title = stripTags(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(block)?.[1] ?? "");
+    const linkTag = /<link[^>]*>/i.exec(block)?.[0] ?? "";
+    const href = attr(linkTag, "href");
+    const desc = stripTags(
+      /<(?:summary|content)[^>]*>([\s\S]*?)<\/(?:summary|content)>/i.exec(block)?.[1] ?? "",
+    ).slice(0, 400);
+    const published = stripTags(
+      /<(?:updated|published)>([\s\S]*?)<\/(?:updated|published)>/i.exec(block)?.[1] ?? "",
+    );
+    if (!title) continue;
+    results.push({
+      title,
+      url: href.startsWith("http") ? href : "",
+      snippet: desc,
+      published: published || undefined,
+    });
+  }
+  return results;
+}
+
+function parseFeedItems(xml: string, maxResults: number): WebSearchHit[] {
+  const rss = parseRssItems(xml, maxResults);
+  if (rss.length) return rss;
+  return parseAtomEntries(xml, maxResults);
 }
 
 async function searchGoogleNewsRss(query: string, maxResults: number): Promise<WebSearchResult> {
@@ -147,7 +194,7 @@ async function searchGoogleNewsRss(query: string, maxResults: number): Promise<W
   });
   if (!res.ok) return { ok: false, error: `Google News RSS failed (${res.status})` };
   const xml = await res.text();
-  const results = parseRssItems(xml, maxResults);
+  const results = parseFeedItems(xml, maxResults);
   if (!results.length) return { ok: false, error: "Google News RSS returned no items" };
   return { ok: true, query, provider: "google_news_rss", results };
 }
@@ -166,9 +213,140 @@ async function searchBingNewsRss(query: string, maxResults: number): Promise<Web
   });
   if (!res.ok) return { ok: false, error: `Bing News RSS failed (${res.status})` };
   const xml = await res.text();
-  const results = parseRssItems(xml, maxResults);
+  const results = parseFeedItems(xml, maxResults);
   if (!results.length) return { ok: false, error: "Bing News RSS returned no items" };
   return { ok: true, query, provider: "bing_news_rss", results };
+}
+
+const NEWS_PUBLICATION_FEEDS = [
+  "https://techcrunch.com/category/artificial-intelligence/feed/",
+  "https://venturebeat.com/category/ai/feed/",
+];
+
+export function isJunkNewsHit(hit: WebSearchHit): boolean {
+  const blob = `${hit.title} ${hit.snippet} ${hit.url}`.toLowerCase();
+  if (
+    /wikipedia\.org|wiktionary\.org|dictionary\.com|merriam-webster|britannica\.com\/dictionary|vocabulary\.com/.test(
+      blob,
+    )
+  ) {
+    return true;
+  }
+  if (/\b(noun|definition of|defined as|meaning of)\b/i.test(`${hit.title} ${hit.snippet}`)) {
+    return true;
+  }
+  if (/^(artificial intelligence|ai|ai news|google news)$/i.test(hit.title.trim())) {
+    return true;
+  }
+  return false;
+}
+
+async function searchPublicationFeed(feedUrl: string, maxResults: number): Promise<WebSearchResult> {
+  let host = feedUrl;
+  try {
+    host = new URL(feedUrl).hostname.replace(/^www\./, "");
+  } catch {
+    /* keep */
+  }
+  const res = await fetch(feedUrl, {
+    headers: {
+      "User-Agent": "FIGHURAI/1.0 (+https://fighur.ai)",
+      Accept: "application/rss+xml,application/atom+xml,application/xml,text/xml,*/*",
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return { ok: false, error: `${host} feed failed (${res.status})` };
+  const xml = await res.text();
+  const results = parseFeedItems(xml, maxResults);
+  if (!results.length) return { ok: false, error: `${host} feed returned no items` };
+  return { ok: true, query: feedUrl, provider: `rss:${host}`, results };
+}
+
+function mergeNewsHits(batches: WebSearchResult[], maxResults: number): WebSearchHit[] {
+  const queues = batches
+    .filter((b): b is Extract<WebSearchResult, { ok: true }> => b.ok)
+    .map((b) =>
+      b.results.filter(
+        (hit) => hit.title && !isJunkNewsHit(hit) && !/^google news$/i.test(hit.title),
+      ),
+    )
+    .filter((q) => q.length > 0);
+
+  const seen = new Set<string>();
+  const out: WebSearchHit[] = [];
+  let progressed = true;
+  while (out.length < maxResults && progressed) {
+    progressed = false;
+    for (const queue of queues) {
+      while (queue.length) {
+        const hit = queue.shift()!;
+        const key = (hit.url || hit.title).toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          title: hit.title,
+          url: hit.url,
+          snippet: hit.snippet,
+          published: hit.published,
+          source: hit.source,
+        });
+        progressed = true;
+        break;
+      }
+      if (out.length >= maxResults) break;
+    }
+  }
+  return out;
+}
+
+/**
+ * News-only search. Skips Wikipedia / dictionary / instant-answer providers
+ * that drown headline queries in definitions.
+ */
+export async function searchNewsHeadlines(
+  query: string,
+  maxResults = 10,
+): Promise<WebSearchResult> {
+  const q = query.trim();
+  if (!q) return { ok: false, error: "query is required" };
+  const max = Math.min(12, Math.max(1, maxResults));
+  const fresh = /\bwhen:\d/i.test(q) ? q : `${q} when:7d`;
+
+  const aiLike =
+    /\b(ai|a\.i\.|artificial intelligence|openai|anthropic|gemini|chatgpt|claude|deepmind)\b/i.test(
+      q,
+    );
+  const settled = await Promise.allSettled([
+    searchGoogleNewsRss(fresh, max),
+    searchBingNewsRss(q, max),
+    ...(aiLike ? NEWS_PUBLICATION_FEEDS.map((url) => searchPublicationFeed(url, max)) : []),
+  ]);
+  const batches = settled.map((s) =>
+    s.status === "fulfilled"
+      ? s.value
+      : ({
+          ok: false,
+          error: s.reason instanceof Error ? s.reason.message : "provider error",
+        } as WebSearchResult),
+  );
+  const results = mergeNewsHits(batches, max);
+  if (!results.length) {
+    const errors = batches.filter((b) => !b.ok).map((b) => (!b.ok ? b.error : ""));
+    return {
+      ok: false,
+      error: errors.length ? errors.slice(0, 3).join(" · ") : "No news headlines found",
+    };
+  }
+  return {
+    ok: true,
+    query: fresh,
+    provider: batches
+      .filter((b) => b.ok)
+      .map((b) => (b.ok ? b.provider : ""))
+      .join("+"),
+    results,
+  };
 }
 
 /** Bing web SERP as RSS — works from datacenter IPs where HTML scrapers get captchas. */
