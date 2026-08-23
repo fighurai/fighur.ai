@@ -9,6 +9,7 @@ import { createHash } from "crypto";
 
 import { clientIp, userAgent } from "@/lib/request-context";
 import { resolveUserLocation, resolveUserLocationFast } from "@/lib/resolve-user-location";
+import { resolvePlatformArea } from "@/lib/platform-area";
 import { parseTrafficSource, type TrafficSource } from "@/lib/traffic-source";
 import { summarizeUserAgent } from "@/lib/user-agent-summary";
 import { readUserProfile } from "@/lib/user-data-store";
@@ -87,6 +88,11 @@ export async function recordPresence(request: Request, input: RecordPresenceInpu
       source: traffic.label,
       referrer: traffic.referrer,
       utmSource: traffic.utmSource,
+      area: resolvePlatformArea({
+        path: safePath(input.path),
+        search: input.search,
+        action: input.action,
+      }),
       forceEvent: input.forceEvent,
     };
     await touchPresence(touch);

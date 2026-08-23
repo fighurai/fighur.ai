@@ -8,6 +8,7 @@ import {
   type PresenceVisitor,
 } from "@/lib/presence-store";
 import { readVerifiedSession } from "@/lib/session-cookie";
+import { resolvePlatformArea } from "@/lib/platform-area";
 import { listKnownProfiles } from "@/lib/user-data-store";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,17 @@ function mergeKnownAccounts(
       visitCount: 0,
     };
   }
-  return Object.values(byKey).sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
+  return Object.values(byKey)
+    .map((row) => {
+      if (row.lastArea) return row;
+      const area = resolvePlatformArea({ path: row.lastPath || row.landingPath, action: row.lastAction });
+      return {
+        ...row,
+        lastArea: area,
+        areasUsed: row.areasUsed && Object.keys(row.areasUsed).length > 0 ? row.areasUsed : { [area]: 1 },
+      };
+    })
+    .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt));
 }
 
 const NO_STORE = {

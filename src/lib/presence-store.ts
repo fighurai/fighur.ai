@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 
 import { formatUserLocationLabel, type UserLocationHint } from "@/lib/client-location";
+import { mergeAreaCounts } from "@/lib/platform-area";
 import {
   readGlobalUserFile,
   writeGlobalUserFile,
@@ -50,6 +51,8 @@ export type PresenceVisitor = {
   referrer?: string;
   landingPath?: string;
   utmSource?: string;
+  lastArea?: string;
+  areasUsed?: Record<string, number>;
 };
 
 export type PresenceEvent = {
@@ -67,6 +70,7 @@ export type PresenceEvent = {
   device?: string;
   source?: string;
   referrer?: string;
+  area?: string;
 };
 
 export type PresenceState = {
@@ -90,6 +94,7 @@ export type PresenceTouch = {
   source?: string;
   referrer?: string;
   utmSource?: string;
+  area?: string;
   /** When true, always append an event even if the visitor was seen recently. */
   forceEvent?: boolean;
 };
@@ -178,8 +183,15 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
     const changedPlace = locationChanged(existing?.lastLocation, touch.location ?? undefined);
     const changedPath = Boolean(touch.path && touch.path !== existing?.lastPath);
     const changedSource = Boolean(touch.source && touch.source !== existing?.lastSource);
+    const changedArea = Boolean(touch.area && touch.area !== existing?.lastArea);
     const shouldEvent =
-      Boolean(touch.forceEvent) || !existing || !recent || changedPlace || changedPath || changedSource;
+      Boolean(touch.forceEvent) ||
+      !existing ||
+      !recent ||
+      changedPlace ||
+      changedPath ||
+      changedSource ||
+      changedArea;
 
     const visitor: PresenceVisitor = {
       key,
@@ -202,7 +214,15 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
       referrer: touch.referrer ?? existing?.referrer,
       landingPath: existing?.landingPath || touch.path,
       utmSource: existing?.utmSource || touch.utmSource,
+      lastArea: touch.area ?? existing?.lastArea,
+      areasUsed: { ...existing?.areasUsed },
     };
+    if (touch.area) {
+      visitor.areasUsed = {
+        ...visitor.areasUsed,
+        [touch.area]: (visitor.areasUsed?.[touch.area] ?? 0) + (shouldEvent || changedArea ? 1 : 0),
+      };
+    }
     if (touch.userId) visitor.hasAccount = true;
 
     state.visitors[key] = visitor;
@@ -218,6 +238,8 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
         if (!visitor.firstSource && guest.firstSource) visitor.firstSource = guest.firstSource;
         if (!visitor.landingPath && guest.landingPath) visitor.landingPath = guest.landingPath;
         if (!visitor.referrer && guest.referrer) visitor.referrer = guest.referrer;
+        visitor.areasUsed = mergeAreaCounts(guest.areasUsed, visitor.areasUsed);
+        if (!visitor.lastArea && guest.lastArea) visitor.lastArea = guest.lastArea;
         delete state.visitors[anonKey];
         state.visitors[key] = visitor;
       }
@@ -239,6 +261,7 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
         device: touch.device,
         source: touch.source,
         referrer: touch.referrer,
+        area: touch.area,
       });
     }
 
@@ -271,12 +294,20 @@ export function summarizePresence(state: PresenceState): {
   active15m: number;
   countries: number;
   instagram: number;
+  areas: Record<string, number>;
 } {
   const visitors = Object.values(state.visitors);
   const cutoff = Date.now() - 15 * 60 * 1000;
   const countries = new Set(
     visitors.map((v) => v.lastLocation?.country).filter((c): c is string => Boolean(c)),
   );
+  const areas: Record<string, number> = {};
+  for (const v of visitors) {
+    for (const area of Object.keys(v.areasUsed ?? {})) {
+      if ((v.areasUsed?.[area] ?? 0) > 0) areas[area] = (areas[area] ?? 0) + 1;
+    }
+    if (!v.areasUsed && v.lastArea) areas[v.lastArea] = (areas[v.lastArea] ?? 0) + 1;
+  }
   return {
     total: visitors.length,
     accounts: visitors.filter((v) => v.hasAccount).length,
@@ -286,5 +317,6 @@ export function summarizePresence(state: PresenceState): {
     instagram: visitors.filter(
       (v) => v.firstSource === "Instagram" || v.lastSource === "Instagram",
     ).length,
+    areas,
   };
 }
