@@ -8,6 +8,7 @@ import {
   readAnonymousId,
   sealAnonymousId,
 } from "@/lib/anonymous-session";
+import { recordPresence } from "@/lib/record-presence";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { readVerifiedSession, type SmileServerSession } from "@/lib/session-cookie";
 import { trackPlainTextStream } from "@/lib/stream-usage";
@@ -72,6 +73,12 @@ export async function prepareChatRequest(request: Request): Promise<
     anonId: access.anonId,
     ip,
     userAgent: ua,
+  });
+  void recordPresence(request, {
+    action: "chat.request",
+    userId: access.userId,
+    anonId: access.anonId,
+    path: "/chat",
   });
 
   return {

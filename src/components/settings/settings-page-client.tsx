@@ -9,6 +9,7 @@ import { SettingsConnectorsPanel } from "@/components/settings/settings-connecto
 import { SettingsExtensionPanel } from "@/components/settings/settings-extension-panel";
 import { SettingsMcpPanel } from "@/components/settings/settings-mcp-panel";
 import { clearSession, readSession } from "@/lib/auth-storage";
+import { isAdminRoles } from "@/lib/rbac";
 import { emitActiveAgentChange } from "@/lib/agents/types";
 import { WORK_MODE_OPTIONS, type WorkMode } from "@/lib/work-mode";
 
@@ -574,6 +575,18 @@ export function SettingsPageClient() {
                   to manage your account.
                 </p>
               )}
+              {signedIn && isAdminRoles(readSession()?.roles) ? (
+                <Link
+                  href="/admin"
+                  className="block rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 p-4"
+                >
+                  <p className="text-sm font-semibold text-[var(--accent)]">People tracker</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+                    See who logs on to fighur.ai, whether they have an account, and the city they are
+                    using it from.
+                  </p>
+                </Link>
+              ) : null}
               <div className="flex flex-wrap gap-3 text-sm">
                 <Link href="/privacy" className="text-[var(--accent)] underline-offset-2 hover:underline">
                   Privacy Policy

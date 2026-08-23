@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { ConnectStatusResponse } from "@/lib/connect-status-types";
 import { readSession } from "@/lib/auth-storage";
+import { isAdminRoles } from "@/lib/rbac";
 import {
   readConnectedServices,
   writeConnectedServices,
@@ -733,13 +734,24 @@ export function SettingsControls() {
                   Quick controls · full page for Tasks, Agents, Deep Research
                 </p>
               </div>
-              <Link
-                href="/settings"
-                className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-1 text-[0.65rem] font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
-                onClick={() => setOpen(false)}
-              >
-                Open full settings
-              </Link>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <Link
+                  href="/settings"
+                  className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-2.5 py-1 text-[0.65rem] font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/20"
+                  onClick={() => setOpen(false)}
+                >
+                  Open full settings
+                </Link>
+                {isAdminRoles(readSession()?.roles) ? (
+                  <Link
+                    href="/admin"
+                    className="shrink-0 rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[0.65rem] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    onClick={() => setOpen(false)}
+                  >
+                    People tracker
+                  </Link>
+                ) : null}
+              </div>
             </div>
             <div
               className="mt-3 flex gap-0.5 overflow-x-auto pb-2"

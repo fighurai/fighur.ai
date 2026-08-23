@@ -5,6 +5,7 @@ import { attachSessionCookie } from "@/lib/auth-session";
 import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
 import { getAppSealingSecret, timingSafeEqualString, unsealJson } from "@/lib/oauth-crypto";
 import { normalizeRoles } from "@/lib/rbac";
+import { recordPresence } from "@/lib/record-presence";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { ensureUser, getPlanForEmail } from "@/lib/user-data-store";
 
@@ -135,6 +136,16 @@ export async function GET(request: Request) {
       ip,
       userAgent: ua,
       resource: "google",
+    });
+    void recordPresence(request, {
+      action: "auth.sign_in_sso",
+      userId,
+      email,
+      name: claims.name,
+      plan,
+      authProvider: "google",
+      path: "/sign-in",
+      forceEvent: true,
     });
 
     return withCookie;

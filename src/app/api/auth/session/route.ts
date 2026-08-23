@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { appendAudit } from "@/lib/audit-log";
 import { sessionJsonBody, attachSessionCookie } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
+import { recordPresence } from "@/lib/record-presence";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { readVerifiedSession } from "@/lib/session-cookie";
 import { ensureUser, readUserProfile, repairUserProfileForSession, ensureComplimentaryEntitlements } from "@/lib/user-data-store";
@@ -116,6 +117,16 @@ export async function POST(request: Request) {
     ip,
     userAgent: ua,
     meta: { demo: true },
+  });
+  void recordPresence(request, {
+    action: "auth.sign_in",
+    userId,
+    email: profile?.email ?? email,
+    name: profile?.name ?? name,
+    plan: profile?.plan,
+    authProvider: profile?.authProvider ?? "email",
+    path: "/sign-in",
+    forceEvent: true,
   });
 
   return withCookie;

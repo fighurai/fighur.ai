@@ -6,6 +6,7 @@ import { getOAuthBaseUrl } from "@/lib/oauth-base-url";
 import { getAppSealingSecret, timingSafeEqualString, unsealJson } from "@/lib/oauth-crypto";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { normalizeRoles } from "@/lib/rbac";
+import { recordPresence } from "@/lib/record-presence";
 import { ensureUser, getPlanForEmail } from "@/lib/user-data-store";
 
 export const maxDuration = 60;
@@ -125,6 +126,16 @@ export async function GET(request: Request) {
     ip,
     userAgent: ua,
     resource: "microsoft",
+  });
+  void recordPresence(request, {
+    action: "auth.sign_in_sso",
+    userId,
+    email,
+    name: me.displayName,
+    plan: getPlanForEmail(email),
+    authProvider: "microsoft",
+    path: "/sign-in",
+    forceEvent: true,
   });
 
   return withCookie;

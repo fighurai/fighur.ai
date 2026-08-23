@@ -5,6 +5,7 @@ import { appendAudit } from "@/lib/audit-log";
 import { attachSessionCookie } from "@/lib/auth-session";
 import { getAppSealingSecret } from "@/lib/oauth-crypto";
 import { normalizeRoles } from "@/lib/rbac";
+import { recordPresence } from "@/lib/record-presence";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { ensureUser, getPlanForEmail } from "@/lib/user-data-store";
 
@@ -63,6 +64,16 @@ export async function POST(request: Request) {
       ip: clientIp(request),
       userAgent: userAgent(request),
       resource: "apple_native",
+    });
+    void recordPresence(request, {
+      action: "auth.sign_in_sso",
+      userId,
+      email,
+      name: body.fullName,
+      plan,
+      authProvider: "apple",
+      path: "/sign-in",
+      forceEvent: true,
     });
 
     return withCookie;
