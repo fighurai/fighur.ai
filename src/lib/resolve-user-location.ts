@@ -1,4 +1,5 @@
 import type { UserLocationHint } from "@/lib/client-location";
+import { countryName, regionName } from "@/lib/geo-labels";
 import { clientIp } from "@/lib/request-context";
 import { reverseGeocodePlace } from "@/lib/reverse-geocode";
 
@@ -14,8 +15,21 @@ function parseFloatHeader(request: Request, name: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function humanizeLocation(loc: UserLocationHint): UserLocationHint {
+  const countryCode = loc.countryCode || (loc.country && loc.country.length === 2 ? loc.country.toUpperCase() : undefined);
+  const country = countryName(loc.country || countryCode) || loc.country;
+  const region = regionName(loc.region, countryCode) || loc.region;
+  return {
+    ...loc,
+    city: loc.city,
+    region,
+    country,
+    countryCode,
+  };
+}
+
 /** Vercel / CDN geo headers (production on fighur.ai). */
-function locationFromVercelHeaders(request: Request): UserLocationHint | null {
+export function locationFromVercelHeaders(request: Request): UserLocationHint | null {
   const city = header(request, "x-vercel-ip-city");
   const region = header(request, "x-vercel-ip-country-region");
   const country = header(request, "x-vercel-ip-country");
@@ -23,17 +37,18 @@ function locationFromVercelHeaders(request: Request): UserLocationHint | null {
   const lon = parseFloatHeader(request, "x-vercel-ip-longitude");
   const timezone = header(request, "x-vercel-ip-timezone");
 
-  if (!city && !country && lat === undefined) return null;
+  if (!city && !region && !country && lat === undefined) return null;
 
-  return {
-    city: city ? decodeURIComponent(city) : undefined,
+  return humanizeLocation({
+    city: city ? decodeURIComponent(city.replace(/\+/g, " ")) : undefined,
     region: region ? decodeURIComponent(region) : undefined,
     country: country ? decodeURIComponent(country) : undefined,
+    countryCode: country && country.length === 2 ? country.toUpperCase() : undefined,
     latitude: lat,
     longitude: lon,
     timezone,
     source: "vercel",
-  };
+  });
 }
 
 /** Free IP geolocation fallback (non-commercial fair use). */
@@ -54,7 +69,7 @@ async function locationFromIp(ip: string): Promise<UserLocationHint | null> {
       timezone?: string;
     };
     if (data.status !== "success") return null;
-    return {
+    return humanizeLocation({
       city: data.city,
       region: data.regionName,
       country: data.country,
@@ -63,7 +78,7 @@ async function locationFromIp(ip: string): Promise<UserLocationHint | null> {
       longitude: data.lon,
       timezone: data.timezone,
       source: "ip",
-    };
+    });
   } catch {
     return null;
   }
@@ -82,6 +97,17 @@ async function enrichWithReverseGeocode(loc: UserLocationHint): Promise<UserLoca
     country: place.country || loc.country,
     countryCode: place.countryCode || loc.countryCode,
   };
+}
+
+/** Fast path for People tracking — Vercel geo only, no extra lookups. */
+export function resolveUserLocationFast(
+  request: Request,
+  clientHint: UserLocationHint | null,
+): UserLocationHint | null {
+  if (clientHint && (clientHint.city || clientHint.region || clientHint.country || clientHint.latitude !== undefined)) {
+    return humanizeLocation(clientHint);
+  }
+  return locationFromVercelHeaders(request);
 }
 
 export async function resolveUserLocation(

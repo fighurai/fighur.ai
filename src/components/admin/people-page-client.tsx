@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { prettyPlaceLabel } from "@/lib/geo-labels";
 import type { PresenceEvent, PresenceVisitor } from "@/lib/presence-store";
 
 type Stats = {
@@ -22,7 +23,7 @@ type Payload = {
   events?: PresenceEvent[];
 };
 
-type Filter = "all" | "accounts" | "guests" | "instagram";
+type Filter = "all" | "accounts" | "guests" | "instagram" | "canada" | "united-states";
 
 function actionLabel(action: string): string {
   switch (action) {
@@ -58,7 +59,31 @@ function relativeTime(iso: string): string {
 
 function locationText(loc?: PresenceVisitor["lastLocation"]): string {
   if (!loc) return "Location unknown";
-  return loc.label || [loc.city, loc.region, loc.country].filter(Boolean).join(", ") || "Location unknown";
+  return (
+    prettyPlaceLabel(loc) ||
+    loc.label ||
+    [loc.city, loc.region, loc.country].filter(Boolean).join(", ") ||
+    "Location unknown"
+  );
+}
+
+function placeHay(loc?: PresenceVisitor["lastLocation"]): string {
+  if (!loc) return "";
+  return [locationText(loc), loc.city, loc.region, loc.country, loc.countryCode].filter(Boolean).join(" ");
+}
+
+function isCanada(row: PresenceVisitor): boolean {
+  const hay = placeHay(row.lastLocation).toLowerCase();
+  return hay.includes("canada") || row.lastLocation?.countryCode === "CA";
+}
+
+function isUnitedStates(row: PresenceVisitor): boolean {
+  const hay = placeHay(row.lastLocation).toLowerCase();
+  return (
+    hay.includes("united states") ||
+    hay.includes("south carolina") ||
+    row.lastLocation?.countryCode === "US"
+  );
 }
 
 export function PeoplePageClient() {
@@ -106,6 +131,8 @@ export function PeoplePageClient() {
       ) {
         return false;
       }
+      if (filter === "canada" && !isCanada(row)) return false;
+      if (filter === "united-states" && !isUnitedStates(row)) return false;
       if (!q) return true;
       const hay = [
         row.email,
@@ -117,10 +144,7 @@ export function PeoplePageClient() {
         row.firstSource,
         row.lastSource,
         row.referrer,
-        row.lastLocation?.label,
-        row.lastLocation?.city,
-        row.lastLocation?.region,
-        row.lastLocation?.country,
+        placeHay(row.lastLocation),
       ]
         .filter(Boolean)
         .join(" ")
@@ -142,9 +166,9 @@ export function PeoplePageClient() {
             People
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-            Every open of a fighur.ai link from here on — Instagram, stories, hyperlinks, Google,
-            direct — even if they never created an account or the in-app browser closed before chat
-            loaded. Clicks from before this tracker shipped cannot be recovered.
+            New opens are tagged with Vercel city / region / country on the first request — so South
+            Carolina and Canada show as those names, not just a guest row. Visits from before this
+            geo tracker still cannot be rebuilt.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -203,6 +227,8 @@ export function PeoplePageClient() {
               ["accounts", "Accounts"],
               ["guests", "Guests"],
               ["instagram", "Instagram"],
+              ["canada", "Canada"],
+              ["united-states", "United States"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -222,7 +248,7 @@ export function PeoplePageClient() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search email, city, Instagram, link…"
+          placeholder="Search South Carolina, Canada, Instagram…"
           className="w-full rounded-full border border-white/[0.1] bg-black/30 px-4 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] sm:max-w-sm"
         />
       </div>

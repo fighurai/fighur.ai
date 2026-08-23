@@ -5,8 +5,10 @@ import {
   type PresenceAction,
   type PresenceTouch,
 } from "@/lib/presence-store";
+import { createHash } from "crypto";
+
 import { clientIp, userAgent } from "@/lib/request-context";
-import { resolveUserLocation } from "@/lib/resolve-user-location";
+import { resolveUserLocation, resolveUserLocationFast } from "@/lib/resolve-user-location";
 import { parseTrafficSource, type TrafficSource } from "@/lib/traffic-source";
 import { summarizeUserAgent } from "@/lib/user-agent-summary";
 import { readUserProfile } from "@/lib/user-data-store";
@@ -35,9 +37,16 @@ function safePath(raw: string | undefined): string | undefined {
   return trimmed;
 }
 
+function fallbackGuestId(ip: string, ua: string): string | undefined {
+  if (!ip || ip === "unknown") return undefined;
+  const hex = createHash("sha256").update(`touch:${ip}:${ua.slice(0, 80)}`, "utf8").digest("hex").slice(0, 22);
+  return `ip_${hex}`;
+}
+
 export async function recordPresence(request: Request, input: RecordPresenceInput): Promise<void> {
   try {
-    if (!input.userId && !input.anonId) return;
+    const anonId = input.anonId ?? (!input.userId ? fallbackGuestId(clientIp(request), userAgent(request)) : undefined);
+    if (!input.userId && !anonId) return;
 
     let email = input.email;
     let name = input.name;
@@ -54,7 +63,9 @@ export async function recordPresence(request: Request, input: RecordPresenceInpu
       }
     }
 
-    const loc = await resolveUserLocation(request, input.clientHint ?? null);
+    const loc =
+      resolveUserLocationFast(request, input.clientHint ?? null) ??
+      (await resolveUserLocation(request, input.clientHint ?? null));
     const traffic =
       input.traffic ??
       parseTrafficSource({
@@ -68,7 +79,7 @@ export async function recordPresence(request: Request, input: RecordPresenceInpu
       name,
       plan,
       authProvider,
-      anonId: input.anonId,
+      anonId,
       path: safePath(input.path),
       location: locationSnapshot(loc) ?? null,
       ip: clientIp(request),

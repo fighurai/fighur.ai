@@ -26,8 +26,24 @@ function newTouchId(): string {
   return `t_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
+function vercelGeo(request: NextRequest) {
+  return {
+    city: request.headers.get("x-vercel-ip-city") ?? "",
+    region: request.headers.get("x-vercel-ip-country-region") ?? "",
+    country: request.headers.get("x-vercel-ip-country") ?? "",
+    latitude: request.headers.get("x-vercel-ip-latitude") ?? "",
+    longitude: request.headers.get("x-vercel-ip-longitude") ?? "",
+    timezone: request.headers.get("x-vercel-ip-timezone") ?? "",
+  };
+}
+
 export function middleware(request: NextRequest, event: NextFetchEvent) {
-  const res = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-fighur-path", request.nextUrl.pathname);
+  requestHeaders.set("x-fighur-search", request.nextUrl.search);
+  requestHeaders.set("x-fighur-referrer", request.headers.get("referer") ?? "");
+
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   if (!request.nextUrl.pathname.startsWith("/a/")) {
@@ -80,6 +96,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
     if (v) headers[name] = v;
   }
 
+  const geo = vercelGeo(request);
   event.waitUntil(
     fetch(hitUrl, {
       method: "POST",
@@ -88,6 +105,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
         path: pathname,
         search: request.nextUrl.search,
         referrer: request.headers.get("referer") ?? "",
+        geo,
       }),
     }).catch(() => {
       /* tracking must not break the page */
