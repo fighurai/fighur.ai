@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
@@ -65,7 +65,9 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
-      <PresenceBeacon />
+      <Suspense fallback={null}>
+        <PresenceBeacon />
+      </Suspense>
     </div>
   );
 }

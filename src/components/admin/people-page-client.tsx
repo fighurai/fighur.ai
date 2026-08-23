@@ -13,6 +13,7 @@ type Stats = {
   active15m: number;
   countries: number;
   instagram?: number;
+  areas?: Record<string, number>;
 };
 
 type Payload = {
@@ -90,6 +91,7 @@ export function PeoplePageClient() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  const [areaFilter, setAreaFilter] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(true);
 
@@ -133,6 +135,10 @@ export function PeoplePageClient() {
       }
       if (filter === "canada" && !isCanada(row)) return false;
       if (filter === "united-states" && !isUnitedStates(row)) return false;
+      if (areaFilter) {
+        const used = row.areasUsed?.[areaFilter] ?? 0;
+        if (used <= 0 && row.lastArea !== areaFilter) return false;
+      }
       if (!q) return true;
       const hay = [
         row.email,
@@ -144,6 +150,8 @@ export function PeoplePageClient() {
         row.firstSource,
         row.lastSource,
         row.referrer,
+        row.lastArea,
+        Object.keys(row.areasUsed ?? {}).join(" "),
         placeHay(row.lastLocation),
       ]
         .filter(Boolean)
@@ -151,7 +159,7 @@ export function PeoplePageClient() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [data?.people, filter, query]);
+  }, [data?.people, filter, areaFilter, query]);
 
   const stats = data?.stats;
 
@@ -166,9 +174,8 @@ export function PeoplePageClient() {
             People
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-            New opens are tagged with Vercel city / region / country on the first request — so South
-            Carolina and Canada show as those names, not just a guest row. Visits from before this
-            geo tracker still cannot be rebuilt.
+            Who opened fighur.ai, where they are, and which parts they used — Chat, Settings,
+            Connectors, Upgrade, and the rest.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -253,6 +260,43 @@ export function PeoplePageClient() {
         />
       </div>
 
+      {stats?.areas && Object.keys(stats.areas).length > 0 ? (
+        <div className="mt-4">
+          <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--text-faint)]">
+            Parts of the platform
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setAreaFilter(null)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                !areaFilter
+                  ? "bg-[var(--accent)] text-[var(--bg-deep)]"
+                  : "bg-white/[0.06] text-[var(--text-muted)] ring-1 ring-white/[0.08]"
+              }`}
+            >
+              All parts
+            </button>
+            {Object.entries(stats.areas)
+              .sort((a, b) => b[1] - a[1])
+              .map(([area, count]) => (
+                <button
+                  key={area}
+                  type="button"
+                  onClick={() => setAreaFilter(area)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                    areaFilter === area
+                      ? "bg-[var(--accent)] text-[var(--bg-deep)]"
+                      : "bg-white/[0.06] text-[var(--text-muted)] ring-1 ring-white/[0.08]"
+                  }`}
+                >
+                  {area} · {count}
+                </button>
+              ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-5 overflow-hidden rounded-2xl border border-white/[0.08]">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -262,6 +306,7 @@ export function PeoplePageClient() {
                 <th className="px-4 py-3 font-medium">Account</th>
                 <th className="px-4 py-3 font-medium">Came from</th>
                 <th className="px-4 py-3 font-medium">Location</th>
+                <th className="px-4 py-3 font-medium">Using</th>
                 <th className="px-4 py-3 font-medium">Where / device</th>
                 <th className="px-4 py-3 font-medium">Last seen</th>
               </tr>
@@ -269,7 +314,7 @@ export function PeoplePageClient() {
             <tbody>
               {people.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
                     {busy
                       ? "Loading…"
                       : "No visits recorded yet. New Instagram and hyperlink taps will show here as soon as someone opens fighur.ai."}
@@ -315,6 +360,22 @@ export function PeoplePageClient() {
                       </p>
                     </td>
                     <td className="px-4 py-3">
+                      <p className="text-[var(--text-primary)]">{row.lastArea || "—"}</p>
+                      <p className="mt-1 flex flex-wrap gap-1">
+                        {Object.entries(row.areasUsed ?? {})
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([area, n]) => (
+                            <span
+                              key={area}
+                              className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[0.65rem] text-[var(--text-muted)]"
+                            >
+                              {area}
+                              {n > 1 ? ` · ${n}` : ""}
+                            </span>
+                          ))}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
                       <p className="text-[var(--text-primary)]">{row.lastPath || "—"}</p>
                       <p className="mt-0.5 text-[0.7rem] text-[var(--text-faint)]">
                         {row.lastDevice || "Unknown device"}
@@ -352,7 +413,8 @@ export function PeoplePageClient() {
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-medium text-[var(--text-primary)]">
-                    {event.email || (event.hasAccount ? "Account" : "Guest")} · {actionLabel(event.action)}
+                    {event.email || (event.hasAccount ? "Account" : "Guest")} ·{" "}
+                    {event.area || actionLabel(event.action)}
                   </p>
                   <p className="text-[0.7rem] text-[var(--text-faint)]">{relativeTime(event.ts)}</p>
                 </div>

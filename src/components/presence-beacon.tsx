@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { readCachedBrowserLocation } from "@/lib/browser-geolocation";
 
@@ -26,12 +26,16 @@ function sendPresencePing(path: string) {
 /** Quiet heartbeat so the admin People page can see who is on the site. */
 export function PresenceBeacon() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams?.toString() ? `?${searchParams.toString()}` : "";
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/api")) return;
-    sendPresencePing(pathname);
+    sendPresencePing(search ? `${pathname}${search}` : pathname);
     const tick = () => {
-      if (document.visibilityState === "visible") sendPresencePing(pathname);
+      if (document.visibilityState === "visible") {
+        sendPresencePing(search ? `${pathname}${search}` : pathname);
+      }
     };
     const id = window.setInterval(tick, 5 * 60 * 1000);
     document.addEventListener("visibilitychange", tick);
@@ -39,7 +43,7 @@ export function PresenceBeacon() {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [pathname]);
+  }, [pathname, search]);
 
   return null;
 }
