@@ -3,24 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Download — Fighur color science video</title>
+  <title>Export — Fighur color science video</title>
   <style>
     body { font-family: system-ui, sans-serif; background: #08090d; color: #eee; margin: 0; padding: 24px 16px 48px; }
     main { max-width: 560px; margin: 0 auto; }
     h1 { font-size: 1.35rem; margin: 0 0 8px; }
-    p { color: #aaa; line-height: 1.5; }
-    video { width: 100%; border-radius: 12px; margin: 16px 0; background: #111; }
-    a.btn { display: block; text-align: center; background: #2dd4bf; color: #042f2e; font-weight: 700; text-decoration: none; padding: 14px 16px; border-radius: 12px; margin-top: 12px; }
-    .note { font-size: 13px; margin-top: 20px; }
+    p { color: #aaa; line-height: 1.6; }
+    ol { color: #ccc; line-height: 1.7; padding-left: 1.25rem; }
+    a.btn { display: block; text-align: center; background: #2dd4bf; color: #042f2e; font-weight: 700; text-decoration: none; padding: 14px 16px; border-radius: 12px; margin-top: 20px; }
+    .note { font-size: 13px; margin-top: 20px; color: #888; }
+    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
   </style>
 </head>
 <body>
   <main>
     <h1>FIGHUR AI color science video</h1>
-    <p>1920×1080 · 3:08 · captions + @fighurai watermark baked in.</p>
-    <video src="./fighur-color-science-captioned.mp4" controls playsinline preload="metadata"></video>
-    <a class="btn" href="./fighur-color-science-captioned.mp4" download="fighur-color-science-captioned.mp4">Download MP4 (2.5 MB)</a>
-    <p class="note">This render uses a dark placeholder background because your talking-head .MOV stays on your Mac. To export with <strong>your</strong> footage: open <a href="./index.html" style="color:#2dd4bf">index.html</a>, drop your .MOV, click Export video.</p>
+    <p>1920×1080 · 3:08 · premium captions + @fighurai watermark. Your talking-head footage stays on your Mac — export locally in Chrome.</p>
+    <ol>
+      <li>Open <a href="./index.html" style="color:#2dd4bf">index.html</a> in <strong>Chrome</strong> (double-click or drag into the browser).</li>
+      <li>Drop your <code>Aug-20-2026-1-…MOV</code> from Downloads onto the drop zone.</li>
+      <li>Scrub to <strong>9.73s</strong> to preview the first caption, then click <strong>Export video</strong>.</li>
+      <li>Keep the tab focused (~3 min). Chrome saves <code>fighur-color-science-captioned.webm</code> to Downloads.</li>
+    </ol>
+    <a class="btn" href="./index.html">Open compositor</a>
+    <p class="note">Add <code>?debug=1</code> to the URL to align caption timing. Convert to MP4 with QuickTime or HandBrake if needed.</p>
   </main>
 </body>
 </html>

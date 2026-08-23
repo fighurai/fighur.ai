@@ -14,7 +14,7 @@ if [[ ! -f "$SRT" ]]; then
 fi
 
 ffmpeg -y -i "$INPUT" \
-  -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,subtitles=${SRT}:force_style='FontName=Playfair Display,FontSize=42,PrimaryColour=&HFFFFFF,Italic=1,Outline=0,Shadow=2,MarginV=120,Alignment=2'" \
+  -vf "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,subtitles=${SRT}:force_style='FontName=Cormorant Garamond,FontSize=56,PrimaryColour=&HF5F1EA,Italic=1,Outline=0,Shadow=2,MarginV=120,Alignment=2'" \
   -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 192k -t 188 \
   "$OUTPUT"
 

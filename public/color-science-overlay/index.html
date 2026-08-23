@@ -4,22 +4,38 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FIGHUR AI — Color Science Video (1920×1080)</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,500;1,600&display=swap" rel="stylesheet" />
   <style>
+    @font-face {
+      font-family: 'Cormorant Garamond';
+      font-style: italic;
+      font-weight: 500;
+      font-display: swap;
+      src: url('fonts/CormorantGaramond-MediumItalic.ttf') format('truetype');
+    }
+
+    @font-face {
+      font-family: 'DM Sans';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url('fonts/DMSans-SemiBold.ttf') format('truetype');
+    }
     :root {
       --stage-w: 1920;
       --stage-h: 1080;
-      --caption-color: #ffffff;
-      --caption-font-size-max: 42px;
-      --caption-font-size-min: 22px;
-      --caption-max-width: 70%;
-      --caption-shadow: 0 2px 14px rgba(0, 0, 0, 0.72), 0 1px 3px rgba(0, 0, 0, 0.55);
-      --caption-bottom: 12%;
-      --watermark-color: rgba(255, 255, 255, 0.92);
-      --control-bg: rgba(8, 9, 13, 0.88);
+      --caption-color: #f5f1ea;
+      --caption-font-size-max: 56px;
+      --caption-font-size-min: 30px;
+      --caption-max-width: 62%;
+      --caption-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 80px rgba(8, 9, 13, 0.35);
+      --caption-bottom: 11%;
+      --caption-tracking: 0.025em;
+      --watermark-color: rgba(245, 241, 234, 0.88);
+      --control-bg: rgba(8, 9, 13, 0.92);
       --control-accent: #2dd4bf;
+      --brand-deep: #08090d;
+      --brand-teal: #2dd4bf;
+      --brand-violet: #818cf8;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -93,14 +109,51 @@
     }
 
     #videoBg {
-      filter: blur(26px) brightness(0.5) saturate(1.05);
-      transform: scale(1.08);
+      filter: blur(42px) brightness(0.38) saturate(1.15) contrast(1.08);
+      transform: scale(1.12);
       z-index: 1;
     }
 
     #video {
       z-index: 2;
       object-fit: contain;
+      filter: contrast(1.06) saturate(1.1) brightness(1.04);
+    }
+
+    .grade-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 70% at 18% 12%, rgba(45, 212, 191, 0.11), transparent 55%),
+        radial-gradient(ellipse 80% 60% at 88% 88%, rgba(129, 140, 248, 0.09), transparent 50%),
+        radial-gradient(ellipse 120% 90% at 50% 50%, transparent 42%, rgba(8, 9, 13, 0.52) 100%);
+    }
+
+    .bottom-scrim {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 46%;
+      z-index: 8;
+      pointer-events: none;
+      background: linear-gradient(to top,
+        rgba(8, 9, 13, 0.82) 0%,
+        rgba(8, 9, 13, 0.48) 34%,
+        rgba(8, 9, 13, 0.12) 62%,
+        transparent 100%);
+    }
+
+    .film-grain {
+      position: absolute;
+      inset: 0;
+      z-index: 18;
+      pointer-events: none;
+      opacity: 0.045;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
     }
 
     #video.mode-cover,
@@ -115,32 +168,29 @@
 
     .watermark {
       position: absolute;
-      top: 36px;
-      right: 40px;
+      top: 44px;
+      right: 48px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       color: var(--watermark-color);
-      font-size: 22px;
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 15px;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
       z-index: 20;
       pointer-events: none;
       animation: text-pulse 3s ease-in-out infinite;
-      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
     }
 
-    .watermark-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #2dd4bf, #818cf8);
-      display: grid;
-      place-items: center;
-      font-size: 14px;
-      font-weight: 800;
-      color: #042f2e;
-      box-shadow: 0 0 18px rgba(45, 212, 191, 0.35);
+    .watermark-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brand-teal);
+      box-shadow: 0 0 14px rgba(45, 212, 191, 0.65);
+      flex-shrink: 0;
     }
 
     .caption-layer {
@@ -173,16 +223,23 @@
       width: 100%;
       max-width: 100%;
       text-align: center;
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    .caption-text {
+      display: inline-block;
       color: var(--caption-color);
-      font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+      font-family: "Cormorant Garamond", "Times New Roman", Georgia, serif;
       font-style: italic;
       font-weight: 500;
       font-size: var(--caption-font-size-max);
-      line-height: 1.15;
+      line-height: 1.08;
+      letter-spacing: var(--caption-tracking);
       white-space: nowrap;
-      opacity: 0;
       text-shadow: var(--caption-shadow);
-      will-change: transform, opacity;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
 
     .caption.is-visible {
@@ -342,9 +399,11 @@
           <div class="placeholder-bg" aria-hidden="true"></div>
           <video id="videoBg" class="mode-cover-hidden" playsinline muted></video>
           <video id="video" playsinline muted></video>
+          <div class="grade-overlay" aria-hidden="true"></div>
+          <div class="bottom-scrim" aria-hidden="true"></div>
 
           <div class="watermark" aria-hidden="true">
-            <span class="watermark-icon">F</span>
+            <span class="watermark-dot"></span>
             <span>@fighurai</span>
           </div>
 
@@ -354,6 +413,7 @@
               <p class="caption" id="captionB" aria-hidden="true"></p>
             </div>
           </div>
+          <div class="film-grain" aria-hidden="true"></div>
         </div>
       </div>
     </div>
@@ -476,6 +536,24 @@
     const TOTAL_DURATION = 188;
     const SNAP_THRESHOLD = 0.35;
 
+    const BRAND = {
+      deep: '#08090d',
+      teal: '#2dd4bf',
+      violet: '#818cf8',
+    };
+
+    const CAPTION_STYLE = {
+      color: '#f5f1ea',
+      maxSize: 56,
+      minSize: 30,
+      maxWidthPct: 0.62,
+      bottomPct: 0.11,
+      tracking: '0.025em',
+    };
+
+    const FONT_CAPTION = '"Cormorant Garamond", Georgia, serif';
+    const FONT_WATERMARK = '"DM Sans", system-ui, sans-serif';
+
     const video = document.getElementById('video');
     const videoBg = document.getElementById('videoBg');
     const stageWrap = document.getElementById('stageWrap');
@@ -512,6 +590,8 @@
     let isExporting = false;
     let audioHooked = false;
     let audioCtx = null;
+    let grainCanvas = null;
+    let exportFontsLoaded = false;
 
     function formatTime(seconds) {
       const clamped = Math.max(0, Math.min(TOTAL_DURATION, seconds));
@@ -537,23 +617,33 @@
 
     function resetCaptionClasses(el) {
       el.classList.remove('is-visible', 'is-exiting', 'is-snapped');
-      el.style.fontSize = '';
+      const textEl = el.querySelector('.caption-text');
+      if (textEl) textEl.style.fontSize = '';
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     function fitCaptionFont(el) {
+      const textEl = el.querySelector('.caption-text');
+      if (!textEl) return;
       const root = getComputedStyle(document.documentElement);
       const maxPx = parseFloat(root.getPropertyValue('--caption-font-size-max'));
       const minPx = parseFloat(root.getPropertyValue('--caption-font-size-min'));
       let size = maxPx;
-      el.style.fontSize = `${size}px`;
+      textEl.style.fontSize = `${size}px`;
 
       const slot = el.parentElement;
       const maxWidth = slot.clientWidth;
-      el.style.maxWidth = `${maxWidth}px`;
 
-      while (size > minPx && el.scrollWidth > maxWidth) {
+      while (size > minPx && textEl.scrollWidth > maxWidth) {
         size -= 1;
-        el.style.fontSize = `${size}px`;
+        textEl.style.fontSize = `${size}px`;
       }
     }
 
@@ -561,7 +651,7 @@
       clearTimeout(exitTimer);
       [captionA, captionB].forEach((el) => {
         resetCaptionClasses(el);
-        el.textContent = '';
+        el.innerHTML = '';
         el.setAttribute('aria-hidden', 'true');
       });
       activeIndex = -1;
@@ -573,14 +663,14 @@
       clearTimeout(exitTimer);
 
       if (index === -1) {
-        if (activeIndex !== -1 || activeEl.textContent) {
+        if (activeIndex !== -1 || activeEl.querySelector('.caption-text')) {
           const el = activeEl;
           if (animate) {
             el.classList.remove('is-visible', 'is-snapped');
             el.classList.add('is-exiting');
             exitTimer = setTimeout(() => {
               resetCaptionClasses(el);
-              el.textContent = '';
+              el.innerHTML = '';
               el.setAttribute('aria-hidden', 'true');
             }, 200);
           } else {
@@ -594,7 +684,7 @@
 
       const previousEl = activeEl;
       const previousIndex = activeIndex;
-      const previousHasText = Boolean(previousEl.textContent);
+      const previousHasText = Boolean(previousEl.querySelector('.caption-text'));
 
       if (previousHasText && previousIndex !== index) {
         previousEl.classList.remove('is-visible', 'is-snapped');
@@ -602,13 +692,13 @@
           previousEl.classList.add('is-exiting');
         } else {
           resetCaptionClasses(previousEl);
-          previousEl.textContent = '';
+          previousEl.innerHTML = '';
           previousEl.setAttribute('aria-hidden', 'true');
         }
       }
 
       resetCaptionClasses(idleEl);
-      idleEl.textContent = '';
+      idleEl.innerHTML = '';
       idleEl.setAttribute('aria-hidden', 'true');
 
       const nextEl =
@@ -617,7 +707,7 @@
           : activeEl;
 
       resetCaptionClasses(nextEl);
-      nextEl.textContent = captions[index].text;
+      nextEl.innerHTML = `<span class="caption-text">${escapeHtml(captions[index].text)}</span>`;
       nextEl.setAttribute('aria-hidden', 'false');
       fitCaptionFont(nextEl);
 
@@ -631,7 +721,7 @@
       if (previousHasText && previousIndex !== index && animate) {
         exitTimer = setTimeout(() => {
           resetCaptionClasses(previousEl);
-          previousEl.textContent = '';
+          previousEl.innerHTML = '';
           previousEl.setAttribute('aria-hidden', 'true');
         }, 200);
       }
@@ -723,12 +813,31 @@
       return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
     }
 
+    async function loadExportFonts() {
+      if (exportFontsLoaded) return;
+      const loads = [
+        new FontFace('Cormorant Garamond', "url('fonts/CormorantGaramond-MediumItalic.ttf')", {
+          style: 'italic',
+          weight: '500',
+        }),
+        new FontFace('DM Sans', "url('fonts/DMSans-SemiBold.ttf')", { weight: '600' }),
+      ];
+      const faces = await Promise.all(loads.map((face) => face.load()));
+      faces.forEach((face) => document.fonts.add(face));
+      exportFontsLoaded = true;
+    }
+
+    function applyCaptionFont(ctx, size) {
+      ctx.font = `500 italic ${size}px ${FONT_CAPTION}`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = CAPTION_STYLE.tracking;
+    }
+
     function measureCaptionFont(ctx, text, maxWidth, maxSize, minSize) {
       let size = maxSize;
-      ctx.font = `500 italic ${size}px "Playfair Display", Georgia, serif`;
+      applyCaptionFont(ctx, size);
       while (size > minSize && ctx.measureText(text).width > maxWidth) {
         size -= 1;
-        ctx.font = `500 italic ${size}px "Playfair Display", Georgia, serif`;
+        applyCaptionFont(ctx, size);
       }
       return size;
     }
@@ -791,54 +900,128 @@
 
     function drawCaptionOnCanvas(ctx, text, opacity, yOffset, w, h) {
       if (!text || opacity <= 0.01) return;
-      const maxWidth = w * 0.7;
-      const maxSize = 42;
-      const minSize = 22;
-      const size = measureCaptionFont(ctx, text, maxWidth, maxSize, minSize);
+      const maxWidth = w * CAPTION_STYLE.maxWidthPct;
+      const size = measureCaptionFont(ctx, text, maxWidth, CAPTION_STYLE.maxSize, CAPTION_STYLE.minSize);
       const x = w / 2;
-      const y = h * 0.88 + yOffset;
+      const y = h * (1 - CAPTION_STYLE.bottomPct) + yOffset;
 
       ctx.save();
       ctx.globalAlpha = opacity;
-      ctx.font = `500 italic ${size}px "Playfair Display", Georgia, serif`;
-      ctx.fillStyle = '#ffffff';
+      applyCaptionFont(ctx, size);
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.72)';
-      ctx.shadowBlur = 14;
-      ctx.shadowOffsetY = 2;
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = CAPTION_STYLE.color;
+
+      ctx.shadowColor = 'rgba(8, 9, 13, 0.35)';
+      ctx.shadowBlur = 80;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
       ctx.fillText(text, x, y);
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 32;
+      ctx.shadowOffsetY = 8;
+      ctx.fillText(text, x, y);
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetY = 1;
+      ctx.fillText(text, x, y);
+
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawGradeOverlay(ctx, w, h) {
+      let g = ctx.createRadialGradient(w * 0.18, h * 0.12, 0, w * 0.18, h * 0.12, w * 0.45);
+      g.addColorStop(0, 'rgba(45, 212, 191, 0.11)');
+      g.addColorStop(0.55, 'rgba(45, 212, 191, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      g = ctx.createRadialGradient(w * 0.88, h * 0.88, 0, w * 0.88, h * 0.88, w * 0.4);
+      g.addColorStop(0, 'rgba(129, 140, 248, 0.09)');
+      g.addColorStop(0.5, 'rgba(129, 140, 248, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      g = ctx.createRadialGradient(w / 2, h / 2, w * 0.21, w / 2, h / 2, w * 0.6);
+      g.addColorStop(0.42, 'rgba(8, 9, 13, 0)');
+      g.addColorStop(1, 'rgba(8, 9, 13, 0.52)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawBottomScrim(ctx, w, h) {
+      const scrimH = h * 0.46;
+      const g = ctx.createLinearGradient(0, h, 0, h - scrimH);
+      g.addColorStop(0, 'rgba(8, 9, 13, 0.82)');
+      g.addColorStop(0.34, 'rgba(8, 9, 13, 0.48)');
+      g.addColorStop(0.62, 'rgba(8, 9, 13, 0.12)');
+      g.addColorStop(1, 'rgba(8, 9, 13, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, h - scrimH, w, scrimH);
+    }
+
+    function getGrainCanvas(w, h) {
+      if (!grainCanvas || grainCanvas.width !== w || grainCanvas.height !== h) {
+        grainCanvas = document.createElement('canvas');
+        grainCanvas.width = w;
+        grainCanvas.height = h;
+        const gctx = grainCanvas.getContext('2d');
+        const imgData = gctx.createImageData(w, h);
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          const v = (Math.random() * 255) | 0;
+          imgData.data[i] = v;
+          imgData.data[i + 1] = v;
+          imgData.data[i + 2] = v;
+          imgData.data[i + 3] = 255;
+        }
+        gctx.putImageData(imgData, 0, 0);
+      }
+      return grainCanvas;
+    }
+
+    function drawFilmGrain(ctx, w, h) {
+      ctx.save();
+      ctx.globalAlpha = 0.045;
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.drawImage(getGrainCanvas(w, h), 0, 0, w, h);
       ctx.restore();
     }
 
     function drawWatermarkOnCanvas(ctx, t, w) {
       const pulse = 0.85 + 0.15 * (0.5 + 0.5 * Math.sin((t / 3) * Math.PI * 2));
-      const x = w - 40;
-      const y = 52;
+      const right = 48;
+      const top = 44;
+      const dotSize = 7;
+      const gap = 9;
+      const fontSize = 15;
+      const label = '@fighurai';
 
       ctx.save();
       ctx.globalAlpha = pulse;
-      ctx.font = '600 22px system-ui, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.font = `600 ${fontSize}px ${FONT_WATERMARK}`;
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 8;
 
-      const iconSize = 28;
-      const iconX = x - 120;
-      const grad = ctx.createLinearGradient(iconX, y - 14, iconX + iconSize, y + 14);
-      grad.addColorStop(0, '#2dd4bf');
-      grad.addColorStop(1, '#818cf8');
-      ctx.fillStyle = grad;
-      ctx.fillRect(iconX, y - 14, iconSize, iconSize);
-      ctx.fillStyle = '#042f2e';
-      ctx.font = '800 14px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('F', iconX + iconSize / 2, y + 1);
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.textAlign = 'right';
-      ctx.fillText('@fighurai', x, y);
+      const textX = w - right;
+      const y = top + fontSize * 0.55;
+      const textWidth = ctx.measureText(label).width;
+      const dotX = textX - textWidth - gap - dotSize;
+
+      ctx.shadowColor = 'rgba(45, 212, 191, 0.65)';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = BRAND.teal;
+      ctx.beginPath();
+      ctx.arc(dotX + dotSize / 2, y, dotSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(245, 241, 234, 0.88)';
+      ctx.fillText(label, textX, y);
       ctx.restore();
     }
 
@@ -860,17 +1043,26 @@
 
       if (video.readyState >= 2 && video.videoWidth) {
         if (fitMode === 'cover') {
-          drawVideoCover(ctx, video, w, h);
-        } else {
           ctx.save();
-          ctx.filter = 'blur(26px) brightness(0.5) saturate(1.05)';
+          ctx.filter = 'contrast(1.06) saturate(1.1) brightness(1.04)';
           drawVideoCover(ctx, video, w, h);
           ctx.restore();
+        } else {
+          ctx.save();
+          ctx.filter = 'blur(42px) brightness(0.38) saturate(1.15) contrast(1.08)';
+          drawVideoCover(ctx, video, w, h);
+          ctx.restore();
+          ctx.save();
+          ctx.filter = 'contrast(1.06) saturate(1.1) brightness(1.04)';
           drawVideoContain(ctx, video, w, h);
+          ctx.restore();
         }
       } else {
         drawPlaceholder(ctx, w, h);
       }
+
+      drawGradeOverlay(ctx, w, h);
+      drawBottomScrim(ctx, w, h);
 
       const { text, cap, prev } = getCaptionAtTime(t);
       if (cap) {
@@ -878,6 +1070,7 @@
         drawCaptionOnCanvas(ctx, text, opacity, y, w, h);
       }
 
+      drawFilmGrain(ctx, w, h);
       drawWatermarkOnCanvas(ctx, t, w);
     }
 
@@ -888,6 +1081,7 @@
       }
       if (isExporting) return;
 
+      await loadExportFonts();
       await document.fonts.ready;
       isExporting = true;
       exportBtn.disabled = true;
