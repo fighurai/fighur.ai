@@ -1,4 +1,5 @@
 export const COOKIE_ANON = "smile_anon";
+export const COOKIE_SESSION = "smile_session";
 /** Set in Edge middleware on the first tap, before JS loads. */
 export const COOKIE_TOUCH = "smile_touch";
 

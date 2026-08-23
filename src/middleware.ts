@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextRequest } from "next/server";
 
-import { COOKIE_ANON, COOKIE_TOUCH, isGuestId } from "@/lib/presence-cookies";
-import { COOKIE_SESSION } from "@/lib/session-cookie";
+import { COOKIE_ANON, COOKIE_SESSION, COOKIE_TOUCH, isGuestId } from "@/lib/presence-cookies";
 
 function hasCookie(request: NextRequest, name: string): boolean {
   return Boolean(request.cookies.get(name)?.value);
