@@ -8,8 +8,8 @@ import {
 
 export const PRESENCE_FILE = "_presence/state.json";
 
-const MAX_VISITORS = 800;
-const MAX_EVENTS = 500;
+const MAX_VISITORS = 5000;
+const MAX_EVENTS = 2000;
 
 export type PresenceAction =
   | "page.view"
@@ -45,6 +45,11 @@ export type PresenceVisitor = {
   lastIp?: string;
   lastDevice?: string;
   visitCount: number;
+  firstSource?: string;
+  lastSource?: string;
+  referrer?: string;
+  landingPath?: string;
+  utmSource?: string;
 };
 
 export type PresenceEvent = {
@@ -60,6 +65,8 @@ export type PresenceEvent = {
   location?: PresenceLocation;
   ip?: string;
   device?: string;
+  source?: string;
+  referrer?: string;
 };
 
 export type PresenceState = {
@@ -80,6 +87,9 @@ export type PresenceTouch = {
   location?: PresenceLocation | null;
   ip?: string;
   device?: string;
+  source?: string;
+  referrer?: string;
+  utmSource?: string;
   /** When true, always append an event even if the visitor was seen recently. */
   forceEvent?: boolean;
 };
@@ -167,7 +177,9 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
     const loc = touch.location ?? existing?.lastLocation;
     const changedPlace = locationChanged(existing?.lastLocation, touch.location ?? undefined);
     const changedPath = Boolean(touch.path && touch.path !== existing?.lastPath);
-    const shouldEvent = Boolean(touch.forceEvent) || !existing || !recent || changedPlace || changedPath;
+    const changedSource = Boolean(touch.source && touch.source !== existing?.lastSource);
+    const shouldEvent =
+      Boolean(touch.forceEvent) || !existing || !recent || changedPlace || changedPath || changedSource;
 
     const visitor: PresenceVisitor = {
       key,
@@ -185,6 +197,11 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
       lastIp: touch.ip ?? existing?.lastIp,
       lastDevice: touch.device ?? existing?.lastDevice,
       visitCount: (existing?.visitCount ?? 0) + (shouldEvent ? 1 : 0),
+      firstSource: existing?.firstSource || touch.source,
+      lastSource: touch.source ?? existing?.lastSource,
+      referrer: touch.referrer ?? existing?.referrer,
+      landingPath: existing?.landingPath || touch.path,
+      utmSource: existing?.utmSource || touch.utmSource,
     };
     if (touch.userId) visitor.hasAccount = true;
 
@@ -198,6 +215,9 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
         visitor.firstSeenAt =
           guest.firstSeenAt < visitor.firstSeenAt ? guest.firstSeenAt : visitor.firstSeenAt;
         if (!visitor.lastLocation && guest.lastLocation) visitor.lastLocation = guest.lastLocation;
+        if (!visitor.firstSource && guest.firstSource) visitor.firstSource = guest.firstSource;
+        if (!visitor.landingPath && guest.landingPath) visitor.landingPath = guest.landingPath;
+        if (!visitor.referrer && guest.referrer) visitor.referrer = guest.referrer;
         delete state.visitors[anonKey];
         state.visitors[key] = visitor;
       }
@@ -217,6 +237,8 @@ export async function touchPresence(touch: PresenceTouch): Promise<void> {
         location: loc,
         ip: touch.ip,
         device: touch.device,
+        source: touch.source,
+        referrer: touch.referrer,
       });
     }
 
@@ -248,6 +270,7 @@ export function summarizePresence(state: PresenceState): {
   guests: number;
   active15m: number;
   countries: number;
+  instagram: number;
 } {
   const visitors = Object.values(state.visitors);
   const cutoff = Date.now() - 15 * 60 * 1000;
@@ -260,5 +283,8 @@ export function summarizePresence(state: PresenceState): {
     guests: visitors.filter((v) => !v.hasAccount).length,
     active15m: visitors.filter((v) => Date.parse(v.lastSeenAt) >= cutoff).length,
     countries: countries.size,
+    instagram: visitors.filter(
+      (v) => v.firstSource === "Instagram" || v.lastSource === "Instagram",
+    ).length,
   };
 }

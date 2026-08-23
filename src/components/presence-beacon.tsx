@@ -11,7 +11,12 @@ function sendPresencePing(path: string) {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, location }),
+    body: JSON.stringify({
+      path,
+      location,
+      referrer: typeof document !== "undefined" ? document.referrer : "",
+      search: typeof window !== "undefined" ? window.location.search : "",
+    }),
     keepalive: true,
   }).catch(() => {
     /* ignore */

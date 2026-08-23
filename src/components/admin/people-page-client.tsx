@@ -11,6 +11,7 @@ type Stats = {
   guests: number;
   active15m: number;
   countries: number;
+  instagram?: number;
 };
 
 type Payload = {
@@ -21,7 +22,7 @@ type Payload = {
   events?: PresenceEvent[];
 };
 
-type Filter = "all" | "accounts" | "guests";
+type Filter = "all" | "accounts" | "guests" | "instagram";
 
 function actionLabel(action: string): string {
   switch (action) {
@@ -98,6 +99,13 @@ export function PeoplePageClient() {
     return rows.filter((row) => {
       if (filter === "accounts" && !row.hasAccount) return false;
       if (filter === "guests" && row.hasAccount) return false;
+      if (
+        filter === "instagram" &&
+        row.firstSource !== "Instagram" &&
+        row.lastSource !== "Instagram"
+      ) {
+        return false;
+      }
       if (!q) return true;
       const hay = [
         row.email,
@@ -105,6 +113,10 @@ export function PeoplePageClient() {
         row.userId,
         row.lastDevice,
         row.lastPath,
+        row.landingPath,
+        row.firstSource,
+        row.lastSource,
+        row.referrer,
         row.lastLocation?.label,
         row.lastLocation?.city,
         row.lastLocation?.region,
@@ -130,8 +142,9 @@ export function PeoplePageClient() {
             People
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--text-muted)]">
-            Who is using fighur.ai, whether they have an account, and the city we detect from Vercel
-            geo or IP. Only visible to admin accounts.
+            Every open of a fighur.ai link from here on — Instagram, stories, hyperlinks, Google,
+            direct — even if they never created an account or the in-app browser closed before chat
+            loaded. Clicks from before this tracker shipped cannot be recovered.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -167,7 +180,7 @@ export function PeoplePageClient() {
           ["Seen", stats?.total ?? "—"],
           ["Accounts", stats?.accounts ?? "—"],
           ["Guests", stats?.guests ?? "—"],
-          ["Active 15m", stats?.active15m ?? "—"],
+          ["Instagram", stats?.instagram ?? "—"],
           ["Countries", stats?.countries ?? "—"],
         ].map(([label, value]) => (
           <div
@@ -189,6 +202,7 @@ export function PeoplePageClient() {
               ["all", "Everyone"],
               ["accounts", "Accounts"],
               ["guests", "Guests"],
+              ["instagram", "Instagram"],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -208,7 +222,7 @@ export function PeoplePageClient() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search email, city, device…"
+          placeholder="Search email, city, Instagram, link…"
           className="w-full rounded-full border border-white/[0.1] bg-black/30 px-4 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-faint)] sm:max-w-sm"
         />
       </div>
@@ -220,6 +234,7 @@ export function PeoplePageClient() {
               <tr>
                 <th className="px-4 py-3 font-medium">Person</th>
                 <th className="px-4 py-3 font-medium">Account</th>
+                <th className="px-4 py-3 font-medium">Came from</th>
                 <th className="px-4 py-3 font-medium">Location</th>
                 <th className="px-4 py-3 font-medium">Where / device</th>
                 <th className="px-4 py-3 font-medium">Last seen</th>
@@ -228,10 +243,10 @@ export function PeoplePageClient() {
             <tbody>
               {people.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
                     {busy
                       ? "Loading…"
-                      : "No visits recorded yet. Open fighur.ai or wait for the next sign-in — new activity will land here."}
+                      : "No visits recorded yet. New Instagram and hyperlink taps will show here as soon as someone opens fighur.ai."}
                   </td>
                 </tr>
               ) : (
@@ -257,6 +272,14 @@ export function PeoplePageClient() {
                       >
                         {row.hasAccount ? "Yes" : "No"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-[var(--text-primary)]">
+                        {row.firstSource || row.lastSource || "Direct / unknown"}
+                      </p>
+                      <p className="mt-0.5 text-[0.7rem] text-[var(--text-faint)]">
+                        {row.landingPath || row.referrer || "No landing path"}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-[var(--text-primary)]">{locationText(row.lastLocation)}</p>
@@ -289,7 +312,8 @@ export function PeoplePageClient() {
       <section className="mt-8">
         <h2 className="text-base font-semibold text-[var(--text-primary)]">Recent activity</h2>
         <p className="mt-1 text-xs text-[var(--text-muted)]">
-          Sign-ins, page opens, and chat use after this tracker shipped.
+          Page opens from Instagram and other links, plus sign-ins and chat, after server-side
+          tracking shipped.
         </p>
         <ul className="mt-3 space-y-2">
           {(data?.events ?? []).length === 0 ? (
@@ -307,6 +331,7 @@ export function PeoplePageClient() {
                   <p className="text-[0.7rem] text-[var(--text-faint)]">{relativeTime(event.ts)}</p>
                 </div>
                 <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  {event.source ? `${event.source} · ` : ""}
                   {locationText(event.location)}
                   {event.path ? ` · ${event.path}` : ""}
                   {event.device ? ` · ${event.device}` : ""}

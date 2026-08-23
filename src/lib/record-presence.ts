@@ -7,6 +7,7 @@ import {
 } from "@/lib/presence-store";
 import { clientIp, userAgent } from "@/lib/request-context";
 import { resolveUserLocation } from "@/lib/resolve-user-location";
+import { parseTrafficSource, type TrafficSource } from "@/lib/traffic-source";
 import { summarizeUserAgent } from "@/lib/user-agent-summary";
 import { readUserProfile } from "@/lib/user-data-store";
 
@@ -19,6 +20,9 @@ export type RecordPresenceInput = {
   authProvider?: string;
   anonId?: string;
   path?: string;
+  search?: string;
+  referrer?: string;
+  traffic?: TrafficSource | null;
   clientHint?: UserLocationHint | null;
   forceEvent?: boolean;
 };
@@ -51,6 +55,12 @@ export async function recordPresence(request: Request, input: RecordPresenceInpu
     }
 
     const loc = await resolveUserLocation(request, input.clientHint ?? null);
+    const traffic =
+      input.traffic ??
+      parseTrafficSource({
+        referrer: input.referrer ?? request.headers.get("referer"),
+        search: input.search,
+      });
     const touch: PresenceTouch = {
       action: input.action,
       userId: input.userId,
@@ -63,6 +73,9 @@ export async function recordPresence(request: Request, input: RecordPresenceInpu
       location: locationSnapshot(loc) ?? null,
       ip: clientIp(request),
       device: summarizeUserAgent(userAgent(request)),
+      source: traffic.label,
+      referrer: traffic.referrer,
+      utmSource: traffic.utmSource,
       forceEvent: input.forceEvent,
     };
     await touchPresence(touch);
