@@ -1,0 +1,319 @@
+1
+00:00:09,730 --> 00:00:10,810
+Quick question.
+
+2
+00:00:10,810 --> 00:00:14,560
+What color is your screen right now?
+
+3
+00:00:14,560 --> 00:00:15,640
+Why black?
+
+4
+00:00:15,640 --> 00:00:18,850
+You probably never once changed it.
+
+5
+00:00:18,850 --> 00:00:20,460
+Most people haven't.
+
+6
+00:00:20,460 --> 00:00:22,610
+And that's actually strange
+
+7
+00:00:22,610 --> 00:00:26,900
+because your brain is reacting to the color
+
+8
+00:00:26,900 --> 00:00:30,120
+whether you notice it or not.
+
+9
+00:00:30,120 --> 00:00:34,420
+A 2025 study put people through reading tests
+
+10
+00:00:34,420 --> 00:00:39,240
+on plain white screens versus a light green one,
+
+11
+00:00:39,240 --> 00:00:43,000
+tracking eye movement the whole way through.
+
+12
+00:00:43,070 --> 00:00:45,090
+The light green group read faster
+
+13
+00:00:45,090 --> 00:00:46,440
+and got tired slower.
+
+14
+00:00:46,440 --> 00:00:47,790
+Same words, same person,
+
+15
+00:00:47,790 --> 00:00:49,140
+different color, different result.
+
+16
+00:00:49,140 --> 00:00:52,170
+Here's the one thing that surprised us the most.
+
+17
+00:00:52,170 --> 00:00:54,530
+About 1 in 3 people with dyslexia
+
+18
+00:00:54,530 --> 00:00:56,550
+also have something called Irlen syndrome,
+
+19
+00:00:56,550 --> 00:00:58,910
+where regular black text on white background
+
+20
+00:00:58,910 --> 00:01:00,940
+doesn't just feel harder to read,
+
+21
+00:01:00,940 --> 00:01:02,620
+it visually distorts the letters,
+
+22
+00:01:02,620 --> 00:01:04,650
+and the letters appear to shift,
+
+23
+00:01:04,650 --> 00:01:06,330
+glare that isn't really there.
+
+24
+00:01:06,330 --> 00:01:08,400
+And reading specialists already treat this
+
+25
+00:01:08,400 --> 00:01:09,430
+with colored overlays.
+
+26
+00:01:09,430 --> 00:01:11,160
+It's not a fringe idea,
+
+27
+00:01:11,160 --> 00:01:12,540
+it's a documented tool.
+
+28
+00:01:12,540 --> 00:01:14,950
+But almost nobody talks about the catch.
+
+29
+00:01:14,950 --> 00:01:16,670
+The color that actually helps
+
+30
+00:01:16,670 --> 00:01:18,740
+is not the same for everyone.
+
+31
+00:01:18,740 --> 00:01:20,460
+It's not blue that's calming,
+
+32
+00:01:20,460 --> 00:01:22,530
+green — it's the dyslexia color.
+
+33
+00:01:22,530 --> 00:01:24,250
+Research on this is specific.
+
+34
+00:01:24,250 --> 00:01:26,670
+It's one precise point in the spectrum,
+
+35
+00:01:26,670 --> 00:01:27,700
+different per person.
+
+36
+00:01:27,700 --> 00:01:29,980
+And if you drift from it,
+
+37
+00:01:29,980 --> 00:01:31,120
+the benefit disappears.
+
+38
+00:01:31,120 --> 00:01:33,020
+Harvard also found blue light
+
+39
+00:01:33,020 --> 00:01:35,680
+suppresses melatonin more than any other wavelength,
+
+40
+00:01:35,680 --> 00:01:40,250
+which is the actual reason night mode exists in the first place.
+
+41
+00:01:40,250 --> 00:01:41,770
+Screen color isn't neutral.
+
+42
+00:01:41,770 --> 00:01:43,670
+Your body reacts to it
+
+43
+00:01:43,670 --> 00:01:45,950
+whether you like it or not.
+
+44
+00:01:45,950 --> 00:01:47,470
+That's the exact gap
+
+45
+00:01:47,470 --> 00:01:50,130
+that Fighur AI was built to close.
+
+46
+00:01:50,200 --> 00:01:53,060
+Not a preset, not a filter.
+
+47
+00:01:53,060 --> 00:01:57,360
+With two settings, you get your exact text color
+
+48
+00:01:57,360 --> 00:01:59,270
+and exact background color
+
+49
+00:01:59,270 --> 00:02:02,130
+on the platform, catered to you.
+
+50
+00:02:02,130 --> 00:02:04,510
+And it doesn't stop there.
+
+51
+00:02:04,510 --> 00:02:07,850
+Fighur's Chrome extension carries the same control
+
+52
+00:02:07,850 --> 00:02:10,720
+to any website you're already browsing.
+
+53
+00:02:10,720 --> 00:02:12,620
+That level of control
+
+54
+00:02:12,620 --> 00:02:14,530
+lives inside something bigger.
+
+55
+00:02:14,630 --> 00:02:18,150
+Fighur AI is a general AI assistant you build with —
+
+56
+00:02:18,150 --> 00:02:21,030
+just like any other AI platform you use —
+
+57
+00:02:21,030 --> 00:02:23,910
+that can build an app, an agent, a workflow,
+
+58
+00:02:23,910 --> 00:02:25,180
+all in plain English.
+
+59
+00:02:25,180 --> 00:02:27,420
+But the color science is the part
+
+60
+00:02:27,420 --> 00:02:29,020
+that makes this genuinely different
+
+61
+00:02:29,020 --> 00:02:31,260
+from every other AI platform out there,
+
+62
+00:02:31,260 --> 00:02:33,500
+because it was built on the idea
+
+63
+00:02:33,500 --> 00:02:35,730
+that your tool should adapt to you,
+
+64
+00:02:35,730 --> 00:02:37,330
+not the other way around.
+
+65
+00:02:37,400 --> 00:02:38,050
+I'm Fighur.
+
+66
+00:02:38,050 --> 00:02:40,000
+I built this before Fighur AI.
+
+67
+00:02:40,000 --> 00:02:42,930
+I was already living the exact problem it solves.
+
+68
+00:02:42,930 --> 00:02:45,850
+I make music, I paint, I build things —
+
+69
+00:02:45,850 --> 00:02:47,150
+and every single time,
+
+70
+00:02:47,150 --> 00:02:49,100
+the technical side was the bottleneck
+
+71
+00:02:49,100 --> 00:02:51,700
+standing between an idea and it actually existing,
+
+72
+00:02:51,700 --> 00:02:53,330
+not the idea, the tooling.
+
+73
+00:02:53,330 --> 00:02:56,580
+Fighur AI is the belief turned into a product —
+
+74
+00:02:56,580 --> 00:02:58,200
+not built by a committee,
+
+75
+00:02:58,230 --> 00:02:59,570
+guessing what creators need,
+
+76
+00:02:59,570 --> 00:03:02,580
+built by someone who kept running into the wall
+
+77
+00:03:02,580 --> 00:03:02,920
+myself,
+
+78
+00:03:02,920 --> 00:03:04,920
+and decided to just remove it.
+
+79
+00:03:04,920 --> 00:03:06,260
+Come to Fighur AI
+
+80
+00:03:06,260 --> 00:03:07,930
+and build something with color.

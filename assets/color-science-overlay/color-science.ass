@@ -1,0 +1,94 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,Cormorant Garamond,56,&H00EAF1F5,&H000000FF,&H00000000,&H80000000,-1,1,0,0,100,100,0.6,0,1,0,3,2,240,240,118,1
+Style: Watermark,DM Sans,15,&H00E0F1F5,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,9,48,48,44,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,3:08:00.00,Watermark,,0,0,0,,{\an9\pos(1872,44)\fad(400,400)}@fighurai
+Dialogue: 0,0:00:09.73,0:00:10.81,Caption,,0,0,0,,{\fad(180,180)}Quick question.
+Dialogue: 0,0:00:10.81,0:00:14.56,Caption,,0,0,0,,{\fad(180,180)}What color is your screen right now?
+Dialogue: 0,0:00:14.56,0:00:15.64,Caption,,0,0,0,,{\fad(180,180)}Why black?
+Dialogue: 0,0:00:15.64,0:00:18.85,Caption,,0,0,0,,{\fad(180,180)}You probably never once changed it.
+Dialogue: 0,0:00:18.85,0:00:20.46,Caption,,0,0,0,,{\fad(180,180)}Most people haven't.
+Dialogue: 0,0:00:20.46,0:00:22.61,Caption,,0,0,0,,{\fad(180,180)}And that's actually strange
+Dialogue: 0,0:00:22.61,0:00:26.90,Caption,,0,0,0,,{\fad(180,180)}because your brain is reacting to the color
+Dialogue: 0,0:00:26.90,0:00:30.12,Caption,,0,0,0,,{\fad(180,180)}whether you notice it or not.
+Dialogue: 0,0:00:30.12,0:00:34.42,Caption,,0,0,0,,{\fad(180,180)}A 2025 study put people through reading tests
+Dialogue: 0,0:00:34.42,0:00:39.24,Caption,,0,0,0,,{\fad(180,180)}on plain white screens versus a light green one,
+Dialogue: 0,0:00:39.24,0:00:43.00,Caption,,0,0,0,,{\fad(180,180)}tracking eye movement the whole way through.
+Dialogue: 0,0:00:43.07,0:00:45.09,Caption,,0,0,0,,{\fad(180,180)}The light green group read faster
+Dialogue: 0,0:00:45.09,0:00:46.44,Caption,,0,0,0,,{\fad(180,180)}and got tired slower.
+Dialogue: 0,0:00:46.44,0:00:47.79,Caption,,0,0,0,,{\fad(180,180)}Same words, same person,
+Dialogue: 0,0:00:47.79,0:00:49.14,Caption,,0,0,0,,{\fad(180,180)}different color, different result.
+Dialogue: 0,0:00:49.14,0:00:52.17,Caption,,0,0,0,,{\fad(180,180)}Here's the one thing that surprised us the most.
+Dialogue: 0,0:00:52.17,0:00:54.53,Caption,,0,0,0,,{\fad(180,180)}About 1 in 3 people with dyslexia
+Dialogue: 0,0:00:54.53,0:00:56.55,Caption,,0,0,0,,{\fad(180,180)}also have something called Irlen syndrome,
+Dialogue: 0,0:00:56.55,0:00:58.91,Caption,,0,0,0,,{\fad(180,180)}where regular black text on white background
+Dialogue: 0,0:00:58.91,0:01:00.94,Caption,,0,0,0,,{\fad(180,180)}doesn't just feel harder to read,
+Dialogue: 0,0:01:00.94,0:01:02.62,Caption,,0,0,0,,{\fad(180,180)}it visually distorts the letters,
+Dialogue: 0,0:01:02.62,0:01:04.65,Caption,,0,0,0,,{\fad(180,180)}and the letters appear to shift,
+Dialogue: 0,0:01:04.65,0:01:06.33,Caption,,0,0,0,,{\fad(180,180)}glare that isn't really there.
+Dialogue: 0,0:01:06.33,0:01:08.40,Caption,,0,0,0,,{\fad(180,180)}And reading specialists already treat this
+Dialogue: 0,0:01:08.40,0:01:09.43,Caption,,0,0,0,,{\fad(180,180)}with colored overlays.
+Dialogue: 0,0:01:09.43,0:01:11.16,Caption,,0,0,0,,{\fad(180,180)}It's not a fringe idea,
+Dialogue: 0,0:01:11.16,0:01:12.54,Caption,,0,0,0,,{\fad(180,180)}it's a documented tool.
+Dialogue: 0,0:01:12.54,0:01:14.95,Caption,,0,0,0,,{\fad(180,180)}But almost nobody talks about the catch.
+Dialogue: 0,0:01:14.95,0:01:16.67,Caption,,0,0,0,,{\fad(180,180)}The color that actually helps
+Dialogue: 0,0:01:16.67,0:01:18.74,Caption,,0,0,0,,{\fad(180,180)}is not the same for everyone.
+Dialogue: 0,0:01:18.74,0:01:20.46,Caption,,0,0,0,,{\fad(180,180)}It's not blue that's calming,
+Dialogue: 0,0:01:20.46,0:01:22.53,Caption,,0,0,0,,{\fad(180,180)}green — it's the dyslexia color.
+Dialogue: 0,0:01:22.53,0:01:24.25,Caption,,0,0,0,,{\fad(180,180)}Research on this is specific.
+Dialogue: 0,0:01:24.25,0:01:26.67,Caption,,0,0,0,,{\fad(180,180)}It's one precise point in the spectrum,
+Dialogue: 0,0:01:26.67,0:01:27.70,Caption,,0,0,0,,{\fad(180,180)}different per person.
+Dialogue: 0,0:01:27.70,0:01:29.98,Caption,,0,0,0,,{\fad(180,180)}And if you drift from it,
+Dialogue: 0,0:01:29.98,0:01:31.12,Caption,,0,0,0,,{\fad(180,180)}the benefit disappears.
+Dialogue: 0,0:01:31.12,0:01:33.02,Caption,,0,0,0,,{\fad(180,180)}Harvard also found blue light
+Dialogue: 0,0:01:33.02,0:01:35.68,Caption,,0,0,0,,{\fad(180,180)}suppresses melatonin more than any other wavelength,
+Dialogue: 0,0:01:35.68,0:01:40.25,Caption,,0,0,0,,{\fad(180,180)}which is the actual reason night mode exists in the first place.
+Dialogue: 0,0:01:40.25,0:01:41.77,Caption,,0,0,0,,{\fad(180,180)}Screen color isn't neutral.
+Dialogue: 0,0:01:41.77,0:01:43.67,Caption,,0,0,0,,{\fad(180,180)}Your body reacts to it
+Dialogue: 0,0:01:43.67,0:01:45.95,Caption,,0,0,0,,{\fad(180,180)}whether you like it or not.
+Dialogue: 0,0:01:45.95,0:01:47.47,Caption,,0,0,0,,{\fad(180,180)}That's the exact gap
+Dialogue: 0,0:01:47.47,0:01:50.13,Caption,,0,0,0,,{\fad(180,180)}that Fighur AI was built to close.
+Dialogue: 0,0:01:50.20,0:01:53.06,Caption,,0,0,0,,{\fad(180,180)}Not a preset, not a filter.
+Dialogue: 0,0:01:53.06,0:01:57.36,Caption,,0,0,0,,{\fad(180,180)}With two settings, you get your exact text color
+Dialogue: 0,0:01:57.36,0:01:59.27,Caption,,0,0,0,,{\fad(180,180)}and exact background color
+Dialogue: 0,0:01:59.27,0:02:02.13,Caption,,0,0,0,,{\fad(180,180)}on the platform, catered to you.
+Dialogue: 0,0:02:02.13,0:02:04.51,Caption,,0,0,0,,{\fad(180,180)}And it doesn't stop there.
+Dialogue: 0,0:02:04.51,0:02:07.85,Caption,,0,0,0,,{\fad(180,180)}Fighur's Chrome extension carries the same control
+Dialogue: 0,0:02:07.85,0:02:10.72,Caption,,0,0,0,,{\fad(180,180)}to any website you're already browsing.
+Dialogue: 0,0:02:10.72,0:02:12.62,Caption,,0,0,0,,{\fad(180,180)}That level of control
+Dialogue: 0,0:02:12.62,0:02:14.53,Caption,,0,0,0,,{\fad(180,180)}lives inside something bigger.
+Dialogue: 0,0:02:14.63,0:02:18.15,Caption,,0,0,0,,{\fad(180,180)}Fighur AI is a general AI assistant you build with —
+Dialogue: 0,0:02:18.15,0:02:21.03,Caption,,0,0,0,,{\fad(180,180)}just like any other AI platform you use —
+Dialogue: 0,0:02:21.03,0:02:23.91,Caption,,0,0,0,,{\fad(180,180)}that can build an app, an agent, a workflow,
+Dialogue: 0,0:02:23.91,0:02:25.18,Caption,,0,0,0,,{\fad(180,180)}all in plain English.
+Dialogue: 0,0:02:25.18,0:02:27.42,Caption,,0,0,0,,{\fad(180,180)}But the color science is the part
+Dialogue: 0,0:02:27.42,0:02:29.02,Caption,,0,0,0,,{\fad(180,180)}that makes this genuinely different
+Dialogue: 0,0:02:29.02,0:02:31.26,Caption,,0,0,0,,{\fad(180,180)}from every other AI platform out there,
+Dialogue: 0,0:02:31.26,0:02:33.50,Caption,,0,0,0,,{\fad(180,180)}because it was built on the idea
+Dialogue: 0,0:02:33.50,0:02:35.73,Caption,,0,0,0,,{\fad(180,180)}that your tool should adapt to you,
+Dialogue: 0,0:02:35.73,0:02:37.33,Caption,,0,0,0,,{\fad(180,180)}not the other way around.
+Dialogue: 0,0:02:37.40,0:02:38.05,Caption,,0,0,0,,{\fad(180,180)}I'm Fighur.
+Dialogue: 0,0:02:38.05,0:02:40.00,Caption,,0,0,0,,{\fad(180,180)}I built this before Fighur AI.
+Dialogue: 0,0:02:40.00,0:02:42.93,Caption,,0,0,0,,{\fad(180,180)}I was already living the exact problem it solves.
+Dialogue: 0,0:02:42.93,0:02:45.85,Caption,,0,0,0,,{\fad(180,180)}I make music, I paint, I build things —
+Dialogue: 0,0:02:45.85,0:02:47.15,Caption,,0,0,0,,{\fad(180,180)}and every single time,
+Dialogue: 0,0:02:47.15,0:02:49.10,Caption,,0,0,0,,{\fad(180,180)}the technical side was the bottleneck
+Dialogue: 0,0:02:49.10,0:02:51.70,Caption,,0,0,0,,{\fad(180,180)}standing between an idea and it actually existing,
+Dialogue: 0,0:02:51.70,0:02:53.33,Caption,,0,0,0,,{\fad(180,180)}not the idea, the tooling.
+Dialogue: 0,0:02:53.33,0:02:56.58,Caption,,0,0,0,,{\fad(180,180)}Fighur AI is the belief turned into a product —
+Dialogue: 0,0:02:56.58,0:02:58.20,Caption,,0,0,0,,{\fad(180,180)}not built by a committee,
+Dialogue: 0,0:02:58.23,0:02:59.57,Caption,,0,0,0,,{\fad(180,180)}guessing what creators need,
+Dialogue: 0,0:02:59.57,0:03:02.58,Caption,,0,0,0,,{\fad(180,180)}built by someone who kept running into the wall
+Dialogue: 0,0:03:02.58,0:03:02.92,Caption,,0,0,0,,{\fad(180,180)}myself,
+Dialogue: 0,0:03:02.92,0:03:04.92,Caption,,0,0,0,,{\fad(180,180)}and decided to just remove it.
+Dialogue: 0,0:03:04.92,0:03:06.26,Caption,,0,0,0,,{\fad(180,180)}Come to Fighur AI
+Dialogue: 0,0:03:06.26,0:03:07.93,Caption,,0,0,0,,{\fad(180,180)}and build something with color.

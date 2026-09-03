@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Export — Fighur color science video</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #08090d; color: #eee; margin: 0; padding: 24px 16px 48px; }
+    main { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    p { color: #aaa; line-height: 1.6; }
+    ol { color: #ccc; line-height: 1.7; padding-left: 1.25rem; }
+    a.btn { display: block; text-align: center; background: #2dd4bf; color: #042f2e; font-weight: 700; text-decoration: none; padding: 14px 16px; border-radius: 12px; margin-top: 20px; }
+    .note { font-size: 13px; margin-top: 20px; color: #888; }
+    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+    .warn { background: rgba(255,180,80,0.12); border: 1px solid rgba(255,180,80,0.35); color: #f5d9a8; padding: 12px 14px; border-radius: 10px; margin: 16px 0; font-size: 14px; line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>FIGHUR AI color science video</h1>
+    <p>1920×1080 · 3:08 · Cormorant ivory captions · cinematic framing · @fighurai watermark.</p>
+    <div class="warn" id="sourceStatus">Checking for environment source video…</div>
+    <ol>
+      <li>Place your clip at <code>assets/color-science-overlay/input/source.mov</code> in the agent environment (or drop it in the compositor).</li>
+      <li>Open <a href="./index.html" style="color:#2dd4bf">index.html</a> in <strong>Chrome</strong> — it auto-loads <code>input/source.mov</code> when served over HTTP.</li>
+      <li>Scrub to <strong>9.73s</strong> for the first caption, then click <strong>Export video</strong> (~3 min).</li>
+      <li>Or run <code>assets/color-science-overlay/render-color-science-video.sh</code> on the server for MP4.</li>
+    </ol>
+    <a class="btn" href="./index.html">Open compositor</a>
+    <p class="note">Add <code>?debug=1</code> for timecode alignment. Final MP4 appears here once the source clip is detected and rendered.</p>
+  </main>
+  <script>
+    fetch('input/source.mov', { method: 'HEAD' }).then((r) => {
+      const el = document.getElementById('sourceStatus');
+      if (r.ok) {
+        el.textContent = 'Source video detected at input/source.mov — open the compositor to preview or export.';
+        el.style.borderColor = 'rgba(45,212,191,0.45)';
+        el.style.background = 'rgba(45,212,191,0.12)';
+        el.style.color = '#b8fff4';
+      } else {
+        el.textContent = 'No source video at input/source.mov yet. Add your Aug-20 talking-head .MOV to assets/color-science-overlay/input/source.mov in the environment.';
+      }
+    }).catch(() => {
+      document.getElementById('sourceStatus').textContent = 'Open via a local server or the compositor drop zone to load your .MOV.';
+    });
+  </script>
+</body>
+</html>

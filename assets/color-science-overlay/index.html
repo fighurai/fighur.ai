@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FIGHUR AI — Color Science Video (1920×1080)</title>
+  <style>
+    @font-face {
+      font-family: 'Cormorant Garamond';
+      font-style: italic;
+      font-weight: 500;
+      font-display: swap;
+      src: url('fonts/CormorantGaramond-MediumItalic.ttf') format('truetype');
+    }
+
+    @font-face {
+      font-family: 'DM Sans';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url('fonts/DMSans-SemiBold.ttf') format('truetype');
+    }
+    :root {
+      --stage-w: 1920;
+      --stage-h: 1080;
+      --caption-color: #f5f1ea;
+      --caption-font-size-max: 56px;
+      --caption-font-size-min: 30px;
+      --caption-max-width: 62%;
+      --caption-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 80px rgba(8, 9, 13, 0.35);
+      --caption-bottom: 11%;
+      --caption-tracking: 0.025em;
+      --watermark-color: rgba(245, 241, 234, 0.88);
+      --control-bg: rgba(8, 9, 13, 0.92);
+      --control-accent: #2dd4bf;
+      --brand-deep: #08090d;
+      --brand-teal: #2dd4bf;
+      --brand-violet: #818cf8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #08090d;
+      color: #e8e8ea;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    .workspace {
+      width: min(100%, calc((100vh - 220px) * 16 / 9));
+      max-width: 100%;
+    }
+
+    .stage-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #111;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .stage-inner {
+      position: absolute;
+      width: 1920px;
+      height: 1080px;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+      transform-origin: center center;
+    }
+
+    .placeholder-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(45, 212, 191, 0.18), transparent 55%),
+        radial-gradient(ellipse 70% 55% at 85% 75%, rgba(99, 102, 241, 0.14), transparent 50%),
+        linear-gradient(145deg, #0c1018 0%, #141820 45%, #0a0d12 100%);
+    }
+
+    #video,
+    #videoBg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: transparent;
+    }
+
+    #videoBg {
+      filter: blur(42px) brightness(0.38) saturate(1.15) contrast(1.08);
+      transform: scale(1.12);
+      z-index: 1;
+    }
+
+    #video {
+      z-index: 2;
+      object-fit: contain;
+      filter: contrast(1.06) saturate(1.1) brightness(1.04);
+    }
+
+    .grade-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 70% at 18% 12%, rgba(45, 212, 191, 0.11), transparent 55%),
+        radial-gradient(ellipse 80% 60% at 88% 88%, rgba(129, 140, 248, 0.09), transparent 50%),
+        radial-gradient(ellipse 120% 90% at 50% 50%, transparent 42%, rgba(8, 9, 13, 0.52) 100%);
+    }
+
+    .bottom-scrim {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 46%;
+      z-index: 8;
+      pointer-events: none;
+      background: linear-gradient(to top,
+        rgba(8, 9, 13, 0.82) 0%,
+        rgba(8, 9, 13, 0.48) 34%,
+        rgba(8, 9, 13, 0.12) 62%,
+        transparent 100%);
+    }
+
+    .film-grain {
+      position: absolute;
+      inset: 0;
+      z-index: 18;
+      pointer-events: none;
+      opacity: 0.045;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    }
+
+    #video.mode-cover,
+    #videoBg.mode-cover-hidden {
+      display: none;
+    }
+
+    #video.mode-cover {
+      display: block;
+      object-fit: cover;
+    }
+
+    .watermark {
+      position: absolute;
+      top: 44px;
+      right: 48px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--watermark-color);
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
+      z-index: 20;
+      pointer-events: none;
+      animation: text-pulse 3s ease-in-out infinite;
+    }
+
+    .watermark-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brand-teal);
+      box-shadow: 0 0 14px rgba(45, 212, 191, 0.65);
+      flex-shrink: 0;
+    }
+
+    .caption-layer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: var(--caption-bottom);
+      display: flex;
+      justify-content: center;
+      padding: 0 calc((100% - var(--caption-max-width)) / 2);
+      z-index: 15;
+      pointer-events: none;
+      min-height: 80px;
+    }
+
+    .caption-slot {
+      position: relative;
+      width: 100%;
+      max-width: var(--caption-max-width);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .caption {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%) translateY(20px);
+      width: 100%;
+      max-width: 100%;
+      text-align: center;
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    .caption-text {
+      display: inline-block;
+      color: var(--caption-color);
+      font-family: "Cormorant Garamond", "Times New Roman", Georgia, serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: var(--caption-font-size-max);
+      line-height: 1.08;
+      letter-spacing: var(--caption-tracking);
+      white-space: nowrap;
+      text-shadow: var(--caption-shadow);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    .caption.is-visible {
+      animation: settle-in 350ms ease-out forwards;
+    }
+
+    .caption.is-exiting {
+      animation: settle-out 200ms ease-in forwards;
+    }
+
+    .caption.is-snapped {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    @keyframes settle-in {
+      from {
+        transform: translateX(-50%) translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes settle-out {
+      from {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 0;
+      }
+    }
+
+    @keyframes text-pulse {
+      0%, 100% { opacity: 0.85; }
+      50% { opacity: 1; }
+    }
+
+    .controls {
+      width: 100%;
+      background: var(--control-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .controls button:hover { background: rgba(255, 255, 255, 0.1); }
+
+    .controls button.primary {
+      background: rgba(45, 212, 191, 0.15);
+      border-color: rgba(45, 212, 191, 0.35);
+      color: var(--control-accent);
+    }
+
+    .time-readout {
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.72);
+      min-width: 9.5em;
+    }
+
+    .scrub {
+      flex: 1;
+      min-width: 160px;
+      accent-color: var(--control-accent);
+    }
+
+    .drop-zone {
+      width: 100%;
+      border: 1.5px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 14px;
+      line-height: 1.45;
+      transition: border-color 160ms, background 160ms;
+      cursor: pointer;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.is-dragover {
+      border-color: rgba(45, 212, 191, 0.45);
+      background: rgba(45, 212, 191, 0.06);
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .drop-zone.is-loaded {
+      border-color: rgba(45, 212, 191, 0.55);
+      background: rgba(45, 212, 191, 0.08);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .drop-zone strong { color: var(--control-accent); }
+
+    .drop-zone input { display: none; }
+
+    .debug-panel {
+      width: 100%;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(45, 212, 191, 0.25);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #a7f3d0;
+    }
+
+    .debug-panel[hidden] { display: none; }
+
+    .controls button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .export-status {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.55);
+      min-height: 1.2em;
+    }
+
+    #exportCanvas { display: none; }
+    .hint {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.45);
+      text-align: center;
+      max-width: 720px;
+    }
+  </style>
+</head>
+<body>
+  <div class="workspace">
+    <div class="stage-wrap" id="stageWrap">
+      <div class="stage">
+        <div class="stage-inner" id="stageInner">
+          <div class="placeholder-bg" aria-hidden="true"></div>
+          <video id="videoBg" class="mode-cover-hidden" playsinline muted></video>
+          <video id="video" playsinline muted></video>
+          <div class="grade-overlay" aria-hidden="true"></div>
+          <div class="bottom-scrim" aria-hidden="true"></div>
+
+          <div class="watermark" aria-hidden="true">
+            <span class="watermark-dot"></span>
+            <span>@fighurai</span>
+          </div>
+
+          <div class="caption-layer">
+            <div class="caption-slot">
+              <p class="caption" id="captionA" aria-live="polite"></p>
+              <p class="caption" id="captionB" aria-hidden="true"></p>
+            </div>
+          </div>
+          <div class="film-grain" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="controls-row">
+        <button type="button" class="primary" id="playPauseBtn">Play</button>
+        <button type="button" id="muteBtn">Unmute</button>
+        <button type="button" id="fitBtn">Fit: cinematic</button>
+        <button type="button" id="exportBtn">Export video</button>
+        <span class="time-readout" id="timeReadout">00:00.00 / 03:08.00</span>
+        <input type="range" class="scrub" id="scrub" min="0" max="188" step="0.01" value="0" aria-label="Scrub timeline" />
+      </div>
+      <p class="export-status" id="exportStatus"></p>
+    </div>
+
+    <label class="drop-zone" id="dropZone" for="fileInput">
+      <strong>Drop your talking-head .MOV here</strong> (e.g. from Messages or Downloads). Loads locally — nothing uploads.
+      <input type="file" id="fileInput" accept="video/*,.mov,.mp4,.webm,.m4v" />
+    </label>
+
+    <canvas id="exportCanvas" width="1920" height="1080" aria-hidden="true"></canvas>
+
+    <div class="debug-panel" id="debugPanel" hidden>
+      <div id="debugTime">time: 0.000</div>
+      <div id="debugCaption">caption: —</div>
+      <div id="debugWindow">window: —</div>
+    </div>
+  </div>
+
+  <p class="hint">1920×1080 captioned video · cold open 0–9.73s · export downloads a .webm · add <code>?debug=1</code> to align captions</p>
+
+  <script>
+    // ─── Caption timeline (pre-calculated; edit lines here only) ───────────────
+    const captions = [
+      { start: 9.73, end: 10.81, text: 'Quick question.' },
+      { start: 10.81, end: 14.56, text: 'What color is your screen right now?' },
+      { start: 14.56, end: 15.64, text: 'Why black?' },
+      { start: 15.64, end: 18.85, text: 'You probably never once changed it.' },
+      { start: 18.85, end: 20.46, text: "Most people haven't." },
+      { start: 20.46, end: 22.61, text: "And that's actually strange" },
+      { start: 22.61, end: 26.90, text: 'because your brain is reacting to the color' },
+      { start: 26.90, end: 30.12, text: 'whether you notice it or not.' },
+      { start: 30.12, end: 34.42, text: 'A 2025 study put people through reading tests' },
+      { start: 34.42, end: 39.24, text: 'on plain white screens versus a light green one,' },
+      { start: 39.24, end: 43.00, text: 'tracking eye movement the whole way through.' },
+      { start: 43.07, end: 45.09, text: 'The light green group read faster' },
+      { start: 45.09, end: 46.44, text: 'and got tired slower.' },
+      { start: 46.44, end: 47.79, text: 'Same words, same person,' },
+      { start: 47.79, end: 49.14, text: 'different color, different result.' },
+      { start: 49.14, end: 52.17, text: "Here's the one thing that surprised us the most." },
+      { start: 52.17, end: 54.53, text: 'About 1 in 3 people with dyslexia' },
+      { start: 54.53, end: 56.55, text: 'also have something called Irlen syndrome,' },
+      { start: 56.55, end: 58.91, text: 'where regular black text on white background' },
+      { start: 58.91, end: 60.94, text: "doesn't just feel harder to read," },
+      { start: 60.94, end: 62.62, text: 'it visually distorts the letters,' },
+      { start: 62.62, end: 64.65, text: 'and the letters appear to shift,' },
+      { start: 64.65, end: 66.33, text: "glare that isn't really there." },
+      { start: 66.33, end: 68.40, text: 'And reading specialists already treat this' },
+      { start: 68.40, end: 69.43, text: 'with colored overlays.' },
+      { start: 69.43, end: 71.16, text: "It's not a fringe idea," },
+      { start: 71.16, end: 72.54, text: "it's a documented tool." },
+      { start: 72.54, end: 74.95, text: 'But almost nobody talks about the catch.' },
+      { start: 74.95, end: 76.67, text: 'The color that actually helps' },
+      { start: 76.67, end: 78.74, text: 'is not the same for everyone.' },
+      { start: 78.74, end: 80.46, text: "It's not blue that's calming," },
+      { start: 80.46, end: 82.53, text: "green — it's the dyslexia color." },
+      { start: 82.53, end: 84.25, text: 'Research on this is specific.' },
+      { start: 84.25, end: 86.67, text: "It's one precise point in the spectrum," },
+      { start: 86.67, end: 87.70, text: 'different per person.' },
+      { start: 87.70, end: 89.98, text: 'And if you drift from it,' },
+      { start: 89.98, end: 91.12, text: 'the benefit disappears.' },
+      { start: 91.12, end: 93.02, text: 'Harvard also found blue light' },
+      { start: 93.02, end: 95.68, text: 'suppresses melatonin more than any other wavelength,' },
+      { start: 95.68, end: 100.25, text: 'which is the actual reason night mode exists in the first place.' },
+      { start: 100.25, end: 101.77, text: "Screen color isn't neutral." },
+      { start: 101.77, end: 103.67, text: 'Your body reacts to it' },
+      { start: 103.67, end: 105.95, text: 'whether you like it or not.' },
+      { start: 105.95, end: 107.47, text: "That's the exact gap" },
+      { start: 107.47, end: 110.13, text: 'that Fighur AI was built to close.' },
+      { start: 110.20, end: 113.06, text: 'Not a preset, not a filter.' },
+      { start: 113.06, end: 117.36, text: 'With two settings, you get your exact text color' },
+      { start: 117.36, end: 119.27, text: 'and exact background color' },
+      { start: 119.27, end: 122.13, text: 'on the platform, catered to you.' },
+      { start: 122.13, end: 124.51, text: "And it doesn't stop there." },
+      { start: 124.51, end: 127.85, text: "Fighur's Chrome extension carries the same control" },
+      { start: 127.85, end: 130.72, text: "to any website you're already browsing." },
+      { start: 130.72, end: 132.62, text: 'That level of control' },
+      { start: 132.62, end: 134.53, text: 'lives inside something bigger.' },
+      { start: 134.63, end: 138.15, text: 'Fighur AI is a general AI assistant you build with —' },
+      { start: 138.15, end: 141.03, text: 'just like any other AI platform you use —' },
+      { start: 141.03, end: 143.91, text: 'that can build an app, an agent, a workflow,' },
+      { start: 143.91, end: 145.18, text: 'all in plain English.' },
+      { start: 145.18, end: 147.42, text: 'But the color science is the part' },
+      { start: 147.42, end: 149.02, text: 'that makes this genuinely different' },
+      { start: 149.02, end: 151.26, text: 'from every other AI platform out there,' },
+      { start: 151.26, end: 153.50, text: 'because it was built on the idea' },
+      { start: 153.50, end: 155.73, text: 'that your tool should adapt to you,' },
+      { start: 155.73, end: 157.33, text: 'not the other way around.' },
+      { start: 157.40, end: 158.05, text: "I'm Fighur." },
+      { start: 158.05, end: 160.00, text: 'I built this before Fighur AI.' },
+      { start: 160.00, end: 162.93, text: 'I was already living the exact problem it solves.' },
+      { start: 162.93, end: 165.85, text: 'I make music, I paint, I build things —' },
+      { start: 165.85, end: 167.15, text: 'and every single time,' },
+      { start: 167.15, end: 169.10, text: 'the technical side was the bottleneck' },
+      { start: 169.10, end: 171.70, text: 'standing between an idea and it actually existing,' },
+      { start: 171.70, end: 173.33, text: 'not the idea, the tooling.' },
+      { start: 173.33, end: 176.58, text: 'Fighur AI is the belief turned into a product —' },
+      { start: 176.58, end: 178.20, text: 'not built by a committee,' },
+      { start: 178.23, end: 179.57, text: 'guessing what creators need,' },
+      { start: 179.57, end: 182.58, text: 'built by someone who kept running into the wall' },
+      { start: 182.58, end: 182.92, text: 'myself,' },
+      { start: 182.92, end: 184.92, text: 'and decided to just remove it.' },
+      { start: 184.92, end: 186.26, text: 'Come to Fighur AI' },
+      { start: 186.26, end: 187.93, text: 'and build something with color.' },
+    ];
+
+    const CAPTION_START = 9.73;
+    const CAPTION_END = 187.93;
+    const TOTAL_DURATION = 188;
+    const SNAP_THRESHOLD = 0.35;
+
+    const BRAND = {
+      deep: '#08090d',
+      teal: '#2dd4bf',
+      violet: '#818cf8',
+    };
+
+    const CAPTION_STYLE = {
+      color: '#f5f1ea',
+      maxSize: 56,
+      minSize: 30,
+      maxWidthPct: 0.62,
+      bottomPct: 0.11,
+      tracking: '0.025em',
+    };
+
+    const FONT_CAPTION = '"Cormorant Garamond", Georgia, serif';
+    const FONT_WATERMARK = '"DM Sans", system-ui, sans-serif';
+
+    const video = document.getElementById('video');
+    const videoBg = document.getElementById('videoBg');
+    const stageWrap = document.getElementById('stageWrap');
+    const stageInner = document.getElementById('stageInner');
+    const captionA = document.getElementById('captionA');
+    const captionB = document.getElementById('captionB');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const fitBtn = document.getElementById('fitBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportStatus = document.getElementById('exportStatus');
+    const exportCanvas = document.getElementById('exportCanvas');
+    const scrub = document.getElementById('scrub');
+    const timeReadout = document.getElementById('timeReadout');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const debugPanel = document.getElementById('debugPanel');
+    const debugTime = document.getElementById('debugTime');
+    const debugCaption = document.getElementById('debugCaption');
+    const debugWindow = document.getElementById('debugWindow');
+
+    const debugMode = new URLSearchParams(location.search).get('debug') === '1';
+    if (debugMode) debugPanel.hidden = false;
+
+    let rafId = null;
+    let lastTime = -1;
+    let activeIndex = -1;
+    let activeEl = captionA;
+    let idleEl = captionB;
+    let isScrubbing = false;
+    let exitTimer = null;
+    let objectUrl = null;
+    let fitMode = 'cinematic'; // cinematic = blur bg + contain, cover = full bleed
+    let isExporting = false;
+    let audioHooked = false;
+    let audioCtx = null;
+    let grainCanvas = null;
+    let exportFontsLoaded = false;
+
+    function formatTime(seconds) {
+      const clamped = Math.max(0, Math.min(TOTAL_DURATION, seconds));
+      const m = Math.floor(clamped / 60);
+      const s = clamped % 60;
+      return `${String(m).padStart(2, '0')}:${s.toFixed(2).padStart(5, '0')}`;
+    }
+
+    function updateStageScale() {
+      const rect = stageWrap.getBoundingClientRect();
+      const scale = Math.min(rect.width / 1920, rect.height / 1080);
+      stageInner.style.setProperty('--stage-scale', scale);
+    }
+
+    function findCaptionIndex(t) {
+      if (t < CAPTION_START || t >= CAPTION_END) return -1;
+      for (let i = 0; i < captions.length; i++) {
+        const c = captions[i];
+        if (t >= c.start && t < c.end) return i;
+      }
+      return -1;
+    }
+
+    function resetCaptionClasses(el) {
+      el.classList.remove('is-visible', 'is-exiting', 'is-snapped');
+      const textEl = el.querySelector('.caption-text');
+      if (textEl) textEl.style.fontSize = '';
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function fitCaptionFont(el) {
+      const textEl = el.querySelector('.caption-text');
+      if (!textEl) return;
+      const root = getComputedStyle(document.documentElement);
+      const maxPx = parseFloat(root.getPropertyValue('--caption-font-size-max'));
+      const minPx = parseFloat(root.getPropertyValue('--caption-font-size-min'));
+      let size = maxPx;
+      textEl.style.fontSize = `${size}px`;
+
+      const slot = el.parentElement;
+      const maxWidth = slot.clientWidth;
+
+      while (size > minPx && textEl.scrollWidth > maxWidth) {
+        size -= 1;
+        textEl.style.fontSize = `${size}px`;
+      }
+    }
+
+    function hideAllCaptions() {
+      clearTimeout(exitTimer);
+      [captionA, captionB].forEach((el) => {
+        resetCaptionClasses(el);
+        el.innerHTML = '';
+        el.setAttribute('aria-hidden', 'true');
+      });
+      activeIndex = -1;
+    }
+
+    function showCaption(index, { animate = true } = {}) {
+      if (index === activeIndex) return;
+
+      clearTimeout(exitTimer);
+
+      if (index === -1) {
+        if (activeIndex !== -1 || activeEl.querySelector('.caption-text')) {
+          const el = activeEl;
+          if (animate) {
+            el.classList.remove('is-visible', 'is-snapped');
+            el.classList.add('is-exiting');
+            exitTimer = setTimeout(() => {
+              resetCaptionClasses(el);
+              el.innerHTML = '';
+              el.setAttribute('aria-hidden', 'true');
+            }, 200);
+          } else {
+            hideAllCaptions();
+            return;
+          }
+        }
+        activeIndex = -1;
+        return;
+      }
+
+      const previousEl = activeEl;
+      const previousIndex = activeIndex;
+      const previousHasText = Boolean(previousEl.querySelector('.caption-text'));
+
+      if (previousHasText && previousIndex !== index) {
+        previousEl.classList.remove('is-visible', 'is-snapped');
+        if (animate) {
+          previousEl.classList.add('is-exiting');
+        } else {
+          resetCaptionClasses(previousEl);
+          previousEl.innerHTML = '';
+          previousEl.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      resetCaptionClasses(idleEl);
+      idleEl.innerHTML = '';
+      idleEl.setAttribute('aria-hidden', 'true');
+
+      const nextEl =
+        previousHasText && previousIndex !== index
+          ? (previousEl === captionA ? captionB : captionA)
+          : activeEl;
+
+      resetCaptionClasses(nextEl);
+      nextEl.innerHTML = `<span class="caption-text">${escapeHtml(captions[index].text)}</span>`;
+      nextEl.setAttribute('aria-hidden', 'false');
+      fitCaptionFont(nextEl);
+
+      if (animate) {
+        void nextEl.offsetWidth;
+        nextEl.classList.add('is-visible');
+      } else {
+        nextEl.classList.add('is-snapped');
+      }
+
+      if (previousHasText && previousIndex !== index && animate) {
+        exitTimer = setTimeout(() => {
+          resetCaptionClasses(previousEl);
+          previousEl.innerHTML = '';
+          previousEl.setAttribute('aria-hidden', 'true');
+        }, 200);
+      }
+
+      activeEl = nextEl;
+      idleEl = nextEl === captionA ? captionB : captionA;
+      activeIndex = index;
+    }
+
+    function syncCaption(t, { forceSnap = false } = {}) {
+      const jumped = lastTime >= 0 && Math.abs(t - lastTime) > SNAP_THRESHOLD;
+      const index = findCaptionIndex(t);
+      const shouldSnap = forceSnap || isScrubbing || jumped || video.paused;
+      showCaption(index, { animate: !shouldSnap });
+      lastTime = t;
+
+      if (debugMode) {
+        debugTime.textContent = `time: ${t.toFixed(3)}s / ${TOTAL_DURATION.toFixed(2)}s`;
+        if (index >= 0) {
+          const c = captions[index];
+          debugCaption.textContent = `caption: "${c.text}"`;
+          debugWindow.textContent = `window: ${c.start.toFixed(2)}s → ${c.end.toFixed(2)}s (idx ${index})`;
+        } else if (t < CAPTION_START) {
+          debugCaption.textContent = 'caption: (cold open — silent)';
+          debugWindow.textContent = `window: 0.00s → ${CAPTION_START.toFixed(2)}s`;
+        } else {
+          debugCaption.textContent = 'caption: —';
+          debugWindow.textContent = 'window: —';
+        }
+      }
+    }
+
+    function tick() {
+      const t = video.currentTime;
+      syncBgVideo();
+      syncCaption(t);
+      scrub.value = String(Math.min(t, TOTAL_DURATION));
+      timeReadout.textContent = `${formatTime(t)} / ${formatTime(TOTAL_DURATION)}`;
+      playPauseBtn.textContent = video.paused ? 'Play' : 'Pause';
+
+      if (!video.paused && !video.ended) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        rafId = null;
+      }
+    }
+
+    function startLoop() {
+      if (rafId == null) rafId = requestAnimationFrame(tick);
+    }
+
+    function stopLoop() {
+      if (rafId != null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function setVideoSource(file) {
+      if (!file || !file.type.startsWith('video/')) return;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(file);
+      video.src = objectUrl;
+      videoBg.src = objectUrl;
+      video.load();
+      videoBg.load();
+      dropZone.querySelector('strong').textContent = file.name;
+      exportStatus.textContent = 'Loaded. Scrub to 9.73s to check first caption, then Export video.';
+    }
+
+    function applyFitMode() {
+      const cover = fitMode === 'cover';
+      video.classList.toggle('mode-cover', cover);
+      videoBg.classList.toggle('mode-cover-hidden', cover);
+      fitBtn.textContent = cover ? 'Fit: cover' : 'Fit: cinematic';
+    }
+
+    function syncBgVideo() {
+      if (Math.abs(videoBg.currentTime - video.currentTime) > 0.05) {
+        videoBg.currentTime = video.currentTime;
+      }
+    }
+
+    function updateMuteBtn() {
+      muteBtn.textContent = video.muted ? 'Unmute' : 'Mute';
+    }
+
+    function easeOut(t) {
+      return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+    }
+
+    async function loadExportFonts() {
+      if (exportFontsLoaded) return;
+      const loads = [
+        new FontFace('Cormorant Garamond', "url('fonts/CormorantGaramond-MediumItalic.ttf')", {
+          style: 'italic',
+          weight: '500',
+        }),
+        new FontFace('DM Sans', "url('fonts/DMSans-SemiBold.ttf')", { weight: '600' }),
+      ];
+      const faces = await Promise.all(loads.map((face) => face.load()));
+      faces.forEach((face) => document.fonts.add(face));
+      exportFontsLoaded = true;
+    }
+
+    function applyCaptionFont(ctx, size) {
+      ctx.font = `500 italic ${size}px ${FONT_CAPTION}`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = CAPTION_STYLE.tracking;
+    }
+
+    function measureCaptionFont(ctx, text, maxWidth, maxSize, minSize) {
+      let size = maxSize;
+      applyCaptionFont(ctx, size);
+      while (size > minSize && ctx.measureText(text).width > maxWidth) {
+        size -= 1;
+        applyCaptionFont(ctx, size);
+      }
+      return size;
+    }
+
+    function captionVisualState(t, cap, prevCap) {
+      const enterMs = 0.35;
+      const exitMs = 0.2;
+      let opacity = 1;
+      let y = 0;
+
+      const enterT = Math.min(1, (t - cap.start) / enterMs);
+      opacity *= easeOut(enterT);
+      y = 20 * (1 - easeOut(enterT));
+
+      const timeToEnd = cap.end - t;
+      if (timeToEnd < exitMs) {
+        opacity *= timeToEnd / exitMs;
+      }
+
+      if (prevCap && t - cap.start < enterMs) {
+        const handoff = Math.min(1, (t - cap.start) / enterMs);
+        opacity *= handoff;
+      }
+
+      return { opacity: Math.max(0, opacity), y };
+    }
+
+    function drawVideoCover(ctx, el, w, h) {
+      const vw = el.videoWidth;
+      const vh = el.videoHeight;
+      if (!vw || !vh) return;
+      const scale = Math.max(w / vw, h / vh);
+      const dw = vw * scale;
+      const dh = vh * scale;
+      const dx = (w - dw) / 2;
+      const dy = (h - dh) / 2;
+      ctx.drawImage(el, dx, dy, dw, dh);
+    }
+
+    function drawVideoContain(ctx, el, w, h) {
+      const vw = el.videoWidth;
+      const vh = el.videoHeight;
+      if (!vw || !vh) return;
+      const scale = Math.min(w / vw, h / vh);
+      const dw = vw * scale;
+      const dh = vh * scale;
+      const dx = (w - dw) / 2;
+      const dy = (h - dh) / 2;
+      ctx.drawImage(el, dx, dy, dw, dh);
+    }
+
+    function drawPlaceholder(ctx, w, h) {
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, '#0c1018');
+      g.addColorStop(0.5, '#141820');
+      g.addColorStop(1, '#0a0d12');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawCaptionOnCanvas(ctx, text, opacity, yOffset, w, h) {
+      if (!text || opacity <= 0.01) return;
+      const maxWidth = w * CAPTION_STYLE.maxWidthPct;
+      const size = measureCaptionFont(ctx, text, maxWidth, CAPTION_STYLE.maxSize, CAPTION_STYLE.minSize);
+      const x = w / 2;
+      const y = h * (1 - CAPTION_STYLE.bottomPct) + yOffset;
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      applyCaptionFont(ctx, size);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = CAPTION_STYLE.color;
+
+      ctx.shadowColor = 'rgba(8, 9, 13, 0.35)';
+      ctx.shadowBlur = 80;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.fillText(text, x, y);
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 32;
+      ctx.shadowOffsetY = 8;
+      ctx.fillText(text, x, y);
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetY = 1;
+      ctx.fillText(text, x, y);
+
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawGradeOverlay(ctx, w, h) {
+      let g = ctx.createRadialGradient(w * 0.18, h * 0.12, 0, w * 0.18, h * 0.12, w * 0.45);
+      g.addColorStop(0, 'rgba(45, 212, 191, 0.11)');
+      g.addColorStop(0.55, 'rgba(45, 212, 191, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      g = ctx.createRadialGradient(w * 0.88, h * 0.88, 0, w * 0.88, h * 0.88, w * 0.4);
+      g.addColorStop(0, 'rgba(129, 140, 248, 0.09)');
+      g.addColorStop(0.5, 'rgba(129, 140, 248, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      g = ctx.createRadialGradient(w / 2, h / 2, w * 0.21, w / 2, h / 2, w * 0.6);
+      g.addColorStop(0.42, 'rgba(8, 9, 13, 0)');
+      g.addColorStop(1, 'rgba(8, 9, 13, 0.52)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawBottomScrim(ctx, w, h) {
+      const scrimH = h * 0.46;
+      const g = ctx.createLinearGradient(0, h, 0, h - scrimH);
+      g.addColorStop(0, 'rgba(8, 9, 13, 0.82)');
+      g.addColorStop(0.34, 'rgba(8, 9, 13, 0.48)');
+      g.addColorStop(0.62, 'rgba(8, 9, 13, 0.12)');
+      g.addColorStop(1, 'rgba(8, 9, 13, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, h - scrimH, w, scrimH);
+    }
+
+    function getGrainCanvas(w, h) {
+      if (!grainCanvas || grainCanvas.width !== w || grainCanvas.height !== h) {
+        grainCanvas = document.createElement('canvas');
+        grainCanvas.width = w;
+        grainCanvas.height = h;
+        const gctx = grainCanvas.getContext('2d');
+        const imgData = gctx.createImageData(w, h);
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          const v = (Math.random() * 255) | 0;
+          imgData.data[i] = v;
+          imgData.data[i + 1] = v;
+          imgData.data[i + 2] = v;
+          imgData.data[i + 3] = 255;
+        }
+        gctx.putImageData(imgData, 0, 0);
+      }
+      return grainCanvas;
+    }
+
+    function drawFilmGrain(ctx, w, h) {
+      ctx.save();
+      ctx.globalAlpha = 0.045;
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.drawImage(getGrainCanvas(w, h), 0, 0, w, h);
+      ctx.restore();
+    }
+
+    function drawWatermarkOnCanvas(ctx, t, w) {
+      const pulse = 0.85 + 0.15 * (0.5 + 0.5 * Math.sin((t / 3) * Math.PI * 2));
+      const right = 48;
+      const top = 44;
+      const dotSize = 7;
+      const gap = 9;
+      const fontSize = 15;
+      const label = '@fighurai';
+
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      ctx.font = `600 ${fontSize}px ${FONT_WATERMARK}`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const textX = w - right;
+      const y = top + fontSize * 0.55;
+      const textWidth = ctx.measureText(label).width;
+      const dotX = textX - textWidth - gap - dotSize;
+
+      ctx.shadowColor = 'rgba(45, 212, 191, 0.65)';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = BRAND.teal;
+      ctx.beginPath();
+      ctx.arc(dotX + dotSize / 2, y, dotSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(245, 241, 234, 0.88)';
+      ctx.fillText(label, textX, y);
+      ctx.restore();
+    }
+
+    function getCaptionAtTime(t) {
+      const idx = findCaptionIndex(t);
+      if (idx < 0) return { idx: -1, text: '', prev: null };
+      return {
+        idx,
+        text: captions[idx].text,
+        cap: captions[idx],
+        prev: idx > 0 ? captions[idx - 1] : null,
+      };
+    }
+
+    function renderFrameToCanvas(ctx, t) {
+      const w = 1920;
+      const h = 1080;
+      ctx.clearRect(0, 0, w, h);
+
+      if (video.readyState >= 2 && video.videoWidth) {
+        if (fitMode === 'cover') {
+          ctx.save();
+          ctx.filter = 'contrast(1.06) saturate(1.1) brightness(1.04)';
+          drawVideoCover(ctx, video, w, h);
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.filter = 'blur(42px) brightness(0.38) saturate(1.15) contrast(1.08)';
+          drawVideoCover(ctx, video, w, h);
+          ctx.restore();
+          ctx.save();
+          ctx.filter = 'contrast(1.06) saturate(1.1) brightness(1.04)';
+          drawVideoContain(ctx, video, w, h);
+          ctx.restore();
+        }
+      } else {
+        drawPlaceholder(ctx, w, h);
+      }
+
+      drawGradeOverlay(ctx, w, h);
+      drawBottomScrim(ctx, w, h);
+
+      const { text, cap, prev } = getCaptionAtTime(t);
+      if (cap) {
+        const { opacity, y } = captionVisualState(t, cap, prev);
+        drawCaptionOnCanvas(ctx, text, opacity, y, w, h);
+      }
+
+      drawFilmGrain(ctx, w, h);
+      drawWatermarkOnCanvas(ctx, t, w);
+    }
+
+    async function exportCompositedVideo() {
+      if (!video.src) {
+        exportStatus.textContent = 'Load your .MOV first.';
+        return;
+      }
+      if (isExporting) return;
+
+      await loadExportFonts();
+      await document.fonts.ready;
+      isExporting = true;
+      exportBtn.disabled = true;
+      playPauseBtn.disabled = true;
+
+      const wasMuted = video.muted;
+      video.muted = false;
+      updateMuteBtn();
+
+      const canvas = exportCanvas;
+      const ctx = canvas.getContext('2d');
+      const duration = Math.min(TOTAL_DURATION, video.duration || TOTAL_DURATION);
+
+      video.pause();
+      video.currentTime = 0;
+      await new Promise((r) => video.addEventListener('seeked', r, { once: true }));
+      syncCaption(0, { forceSnap: true });
+
+      const fps = 30;
+      const canvasStream = canvas.captureStream(fps);
+
+      if (!audioHooked) {
+        audioCtx = audioCtx || new AudioContext();
+        const source = audioCtx.createMediaElementSource(video);
+        source.connect(audioCtx.destination);
+        audioHooked = true;
+      }
+      await audioCtx.resume();
+
+      const videoStream = video.captureStream ? video.captureStream() : null;
+      if (videoStream) {
+        videoStream.getAudioTracks().forEach((track) => canvasStream.addTrack(track));
+      }
+
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus'
+        : 'video/webm';
+      const recorder = new MediaRecorder(canvasStream, {
+        mimeType,
+        videoBitsPerSecond: 8_000_000,
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size) chunks.push(e.data);
+      };
+
+      const done = new Promise((resolve) => {
+        recorder.onstop = resolve;
+      });
+
+      recorder.start(250);
+      exportStatus.textContent = 'Exporting… keep this tab focused (~3 min).';
+
+      await video.play();
+      startLoop();
+
+      await new Promise((resolve) => {
+        const step = () => {
+          const t = video.currentTime;
+          renderFrameToCanvas(ctx, t);
+          exportStatus.textContent = `Exporting… ${formatTime(t)} / ${formatTime(duration)}`;
+          syncBgVideo();
+
+          if (video.ended || t >= duration - 0.05) {
+            video.pause();
+            stopLoop();
+            resolve();
+            return;
+          }
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+
+      recorder.stop();
+      await done;
+
+      const blob = new Blob(chunks, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fighur-color-science-captioned.webm';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      video.muted = wasMuted;
+      updateMuteBtn();
+      exportStatus.textContent = 'Export complete — check Downloads for fighur-color-science-captioned.webm';
+      isExporting = false;
+      exportBtn.disabled = false;
+      playPauseBtn.disabled = false;
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+      if (isExporting) return;
+      if (video.paused) {
+        video.play().catch(() => {});
+        videoBg.play().catch(() => {});
+        startLoop();
+      } else {
+        video.pause();
+        videoBg.pause();
+        stopLoop();
+        syncCaption(video.currentTime, { forceSnap: true });
+      }
+    });
+
+    muteBtn.addEventListener('click', () => {
+      video.muted = !video.muted;
+      videoBg.muted = true;
+      updateMuteBtn();
+    });
+
+    fitBtn.addEventListener('click', () => {
+      fitMode = fitMode === 'cinematic' ? 'cover' : 'cinematic';
+      applyFitMode();
+    });
+
+    exportBtn.addEventListener('click', () => {
+      exportCompositedVideo().catch((err) => {
+        console.error(err);
+        exportStatus.textContent = 'Export failed — try Chrome desktop with your .MOV loaded.';
+        isExporting = false;
+        exportBtn.disabled = false;
+        playPauseBtn.disabled = false;
+      });
+    });
+
+    scrub.addEventListener('pointerdown', () => { isScrubbing = true; });
+    scrub.addEventListener('pointerup', () => {
+      isScrubbing = false;
+      syncCaption(video.currentTime, { forceSnap: true });
+    });
+
+    scrub.addEventListener('input', () => {
+      const t = parseFloat(scrub.value);
+      video.currentTime = t;
+      videoBg.currentTime = t;
+      syncCaption(t, { forceSnap: true });
+      timeReadout.textContent = `${formatTime(t)} / ${formatTime(TOTAL_DURATION)}`;
+    });
+
+    video.addEventListener('loadedmetadata', () => {
+      scrub.max = String(Math.max(TOTAL_DURATION, video.duration || TOTAL_DURATION));
+    });
+
+    video.addEventListener('play', startLoop);
+    video.addEventListener('pause', () => {
+      stopLoop();
+      syncCaption(video.currentTime, { forceSnap: true });
+    });
+
+    video.addEventListener('ended', () => {
+      stopLoop();
+      syncCaption(video.currentTime, { forceSnap: true });
+      playPauseBtn.textContent = 'Play';
+    });
+
+    video.addEventListener('seeked', () => {
+      syncCaption(video.currentTime, { forceSnap: true });
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) setVideoSource(file);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('is-dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('is-dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('is-dragover');
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) setVideoSource(file);
+    });
+
+    window.addEventListener('resize', updateStageScale);
+
+    async function tryAutoLoadSource() {
+      const candidates = [
+        'input/source.mov',
+        'input/source.mp4',
+        'input/source.webm',
+        'input/Aug-20-2026-1-1787275557_9094849.MOV',
+      ];
+      for (const path of candidates) {
+        try {
+          const res = await fetch(path, { method: 'HEAD' });
+          if (!res.ok) continue;
+          video.src = path;
+          videoBg.src = path;
+          dropZone.classList.add('is-loaded');
+          const label = dropZone.querySelector('strong');
+          if (label) label.textContent = `Loaded ${path.split('/').pop()}`;
+          exportStatus.textContent = 'Source loaded from environment — preview or export.';
+          return;
+        } catch (_) {
+          /* file:// or missing path */
+        }
+      }
+    }
+
+    scrub.max = String(TOTAL_DURATION);
+    applyFitMode();
+    updateMuteBtn();
+    updateStageScale();
+    syncCaption(0, { forceSnap: true });
+    timeReadout.textContent = `${formatTime(0)} / ${formatTime(TOTAL_DURATION)}`;
+    videoBg.muted = true;
+    tryAutoLoadSource();
+  </script>
+</body>
+</html>
