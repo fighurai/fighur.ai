@@ -222,18 +222,28 @@ function hexLuminance(hex: string): number {
 }
 
 export async function syncNativeStatusBar(bg?: string) {
-  if (!isIosNativeApp()) return;
   const color =
     bg ||
     getComputedStyle(document.documentElement).getPropertyValue("--bg-deep").trim() ||
     "#08090d";
   const normalized = color.startsWith("#") ? color : "#08090d";
+  const light = hexLuminance(normalized) > 0.45;
+  document.documentElement.style.colorScheme = light ? "light" : "dark";
+  if (!isIosNativeApp()) return;
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setOverlaysWebView({ overlay: true });
     await StatusBar.setBackgroundColor({ color: normalized });
     await StatusBar.setStyle({
-      style: hexLuminance(normalized) > 0.45 ? Style.Dark : Style.Light,
+      style: light ? Style.Dark : Style.Light,
+    });
+  } catch {
+    /* plugin not synced yet */
+  }
+  try {
+    const { Keyboard, KeyboardStyle } = await import("@capacitor/keyboard");
+    await Keyboard.setStyle({
+      style: light ? KeyboardStyle.Light : KeyboardStyle.Dark,
     });
   } catch {
     /* plugin not synced yet */

@@ -66,8 +66,23 @@ function parse(hex: string): { r: number; g: number; b: number } | null {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+function hexLuminance(hex: string): number {
+  const parsed = parse(hex);
+  if (!parsed) return 0;
+  const r = parsed.r / 255;
+  const g = parsed.g / 255;
+  const b = parsed.b / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** iOS keyboard can only be light or dark — match the page background. */
+export function themeKeyboardIsLight(p: ThemePrefs): boolean {
+  return p.enabled && hexLuminance(p.bg) > 0.45;
+}
+
 export function applyThemeVars(p: ThemePrefs) {
   const root = document.documentElement;
+  root.style.colorScheme = themeKeyboardIsLight(p) ? "light" : "dark";
   if (!p.enabled) {
     root.style.removeProperty("--bg-deep");
     root.style.removeProperty("--bg-elevated");

@@ -10,13 +10,17 @@ import { PresenceBeacon } from "@/components/presence-beacon";
 import { SiteTutorial } from "@/components/site-tutorial";
 import { configureNativeChrome, syncNativeStatusBar } from "@/lib/native-bridge";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
+import { readTheme } from "@/lib/theme-storage";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
-    void configureNativeChrome();
+    void configureNativeChrome().then(() => {
+      const theme = readTheme();
+      void syncNativeStatusBar(theme.enabled ? theme.bg : "#08090d");
+    });
     const onTheme = (e: Event) => {
       const bg = (e as CustomEvent<{ enabled?: boolean; bg?: string }>).detail;
       void syncNativeStatusBar(bg?.enabled ? bg.bg : "#08090d");

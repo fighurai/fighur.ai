@@ -26,6 +26,13 @@
 
 html {
   overflow-x: hidden;
+  color-scheme: dark;
+}
+
+#smile-chat-input,
+textarea,
+input {
+  color-scheme: inherit;
 }
 
 /* iOS app only: lock the page so focusing the prompt doesn't pan Safari/WKWebView. */
