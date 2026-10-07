@@ -22,8 +22,13 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
       const bg = (e as CustomEvent<{ enabled?: boolean; bg?: string }>).detail;
       void syncNativeStatusBar(bg?.enabled ? bg.bg : "#08090d");
     };
+    const onTutorial = () => setTutorialOpen(true);
     window.addEventListener("smile-theme-changed", onTheme);
-    return () => window.removeEventListener("smile-theme-changed", onTheme);
+    window.addEventListener("smile-open-tutorial", onTutorial);
+    return () => {
+      window.removeEventListener("smile-theme-changed", onTheme);
+      window.removeEventListener("smile-open-tutorial", onTutorial);
+    };
   }, []);
 
   return (
@@ -61,9 +66,17 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
             </Link>
             <button
               type="button"
+              className="native-chats-btn h-7 shrink-0 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 text-xs font-medium text-[var(--text-primary)] transition hover:border-white/[0.18] sm:h-8 sm:px-3"
+              aria-label="Open chats"
+              onClick={() => window.dispatchEvent(new CustomEvent("smile-open-chats"))}
+            >
+              Chats
+            </button>
+            <button
+              type="button"
               onClick={openTutorial}
               aria-label="Quick tutorial"
-              className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2.5 text-[0.65rem] font-semibold leading-none text-[var(--accent)] shadow-[0_0_16px_var(--accent-glow)] transition hover:bg-[var(--accent)]/25 active:scale-95 sm:h-8 sm:px-3 sm:text-xs"
+              className="native-hide-tips inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2.5 text-[0.65rem] font-semibold leading-none text-[var(--accent)] shadow-[0_0_16px_var(--accent-glow)] transition hover:bg-[var(--accent)]/25 active:scale-95 sm:h-8 sm:px-3 sm:text-xs"
             >
               <span className="sm:hidden">Tips</span>
               <span className="hidden sm:inline">Quick tutorial</span>

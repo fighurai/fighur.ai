@@ -67,7 +67,10 @@ import {
   prepareDeviceWriteAccessFromClick,
   type DeviceOpsPayload,
 } from "@/lib/device-file-ops";
+import { AgentsControls } from "@/components/agents-controls";
 import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
+import { LayoutControls } from "@/components/layout-controls";
+import { SettingsControls } from "@/components/settings-controls";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
 import {
@@ -864,8 +867,13 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     const onHome = () => newChat();
+    const onOpenChats = () => setMobileSidebarOpen(true);
     window.addEventListener("smile-go-home", onHome);
-    return () => window.removeEventListener("smile-go-home", onHome);
+    window.addEventListener("smile-open-chats", onOpenChats);
+    return () => {
+      window.removeEventListener("smile-go-home", onHome);
+      window.removeEventListener("smile-open-chats", onOpenChats);
+    };
   }, [newChat]);
 
   const selectConversation = useCallback(
@@ -1758,7 +1766,7 @@ export function SmileChatGeneral() {
             <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:min-w-[9.5rem] max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
               {availableModels.length === 1 ? (
                 <span
-                  className="min-w-0 max-w-[min(100%,14rem)] rounded-full bg-[var(--accent)] px-3 py-1.5 text-left text-xs font-semibold leading-snug text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[11rem] max-md:px-2.5 max-md:py-1 sm:max-w-[16rem] sm:px-4 sm:py-2"
+                  className="native-hide-auto min-w-0 max-w-[min(100%,14rem)] rounded-full bg-[var(--accent)] px-3 py-1.5 text-left text-xs font-semibold leading-snug text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[11rem] max-md:px-2.5 max-md:py-1 sm:max-w-[16rem] sm:px-4 sm:py-2"
                   title={
                     routedModelHint
                       ? `Auto → ${routedModelHint}`
@@ -1785,7 +1793,7 @@ export function SmileChatGeneral() {
                     setRoutedModelHint(null);
                   }}
                   disabled={busy || availableModels.length === 0}
-                  className="min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:max-w-[13rem] sm:px-4 sm:py-2"
+                  className="native-hide-auto min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:max-w-[13rem] sm:px-4 sm:py-2"
                   aria-label="Select model"
                   title={routedModelHint ?? undefined}
                 >
@@ -1961,6 +1969,24 @@ export function SmileChatGeneral() {
           </ul>
         )}
       </div>
+      <div className="native-sidebar-tools shrink-0 flex-col gap-2 border-t border-white/[0.06] p-3">
+        <p className="px-0.5 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
+          More
+        </p>
+        <AgentsControls />
+        <LayoutControls />
+        <SettingsControls />
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSidebarOpen(false);
+            window.dispatchEvent(new CustomEvent("smile-open-tutorial"));
+          }}
+          className="w-full rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/25"
+        >
+          Tips
+        </button>
+      </div>
       <div className="shrink-0 border-t border-white/[0.06] p-3">
         <p className="px-0.5 pb-2 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
           Account
@@ -2077,7 +2103,7 @@ export function SmileChatGeneral() {
             aria-label="Close chat list"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <aside className="absolute bottom-0 left-0 top-[3.25rem] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
+          <aside className="mobile-chats-drawer absolute bottom-0 left-0 top-[3.25rem] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
             {sidebarContent}
           </aside>
         </div>
@@ -2091,7 +2117,7 @@ export function SmileChatGeneral() {
         } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
-        <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
+        <div className="native-mobile-chat-row flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}

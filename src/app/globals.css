@@ -49,6 +49,40 @@ html.native-app[data-kb="1"] .composer-dock {
   padding-bottom: 0.3rem;
 }
 
+/* iOS app chrome: logo + Chats | Colors. Everything else lives in the Chats drawer. */
+.native-chats-btn,
+.native-sidebar-tools {
+  display: none;
+}
+
+html.native-app .native-chats-btn {
+  display: inline-flex;
+}
+
+html.native-app .native-hide-tips,
+html.native-app .native-hide-header-tools,
+html.native-app .native-hide-auto,
+html.native-app .native-mobile-chat-row {
+  display: none !important;
+}
+
+html.native-app .native-sidebar-tools {
+  display: flex;
+}
+
+html.native-app .native-sidebar-tools .relative {
+  width: 100%;
+}
+
+html.native-app .native-sidebar-tools .relative > button {
+  width: 100%;
+  text-align: center;
+}
+
+html.native-app .mobile-chats-drawer {
+  top: calc(3.25rem + env(safe-area-inset-top, 0px));
+}
+
 body {
   background: var(--bg-deep);
   color: var(--text-primary);
