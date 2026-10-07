@@ -8,3 +8,8 @@ export const HEADER_PANEL_BACKDROP_CLASS =
 
 export const HEADER_TRIGGER_CLASS =
   "relative z-[1] shrink-0 rounded-full border border-white/35 bg-white/15 px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] transition hover:border-white/50 sm:px-3";
+
+export function isMobileChatChrome() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 767px)").matches;
+}

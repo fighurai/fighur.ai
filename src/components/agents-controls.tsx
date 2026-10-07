@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { readSession } from "@/lib/auth-storage";
@@ -13,6 +14,7 @@ import {
   HEADER_PANEL_BACKDROP_CLASS,
   HEADER_PANEL_CLASS,
   HEADER_TRIGGER_CLASS,
+  isMobileChatChrome,
 } from "@/lib/header-panel";
 
 type AgentRow = Pick<
@@ -21,6 +23,7 @@ type AgentRow = Pick<
 >;
 
 export function AgentsControls() {
+  const router = useRouter();
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -121,6 +124,10 @@ export function AgentsControls() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
+          if (isMobileChatChrome()) {
+            router.push("/settings?tab=agents");
+            return;
+          }
           setOpen((o) => !o);
           if (!open) void refresh();
         }}

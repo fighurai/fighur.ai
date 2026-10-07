@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import {
@@ -15,9 +16,11 @@ import {
   HEADER_PANEL_BACKDROP_CLASS,
   HEADER_PANEL_CLASS,
   HEADER_TRIGGER_CLASS,
+  isMobileChatChrome,
 } from "@/lib/header-panel";
 
 export function LayoutControls() {
+  const router = useRouter();
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -64,7 +67,13 @@ export function LayoutControls() {
         className={HEADER_TRIGGER_CLASS}
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (isMobileChatChrome()) {
+            router.push("/settings");
+            return;
+          }
+          setOpen((o) => !o);
+        }}
       >
         Layout
       </button>

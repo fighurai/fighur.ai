@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { ConnectStatusResponse } from "@/lib/connect-status-types";
@@ -30,6 +31,7 @@ import {
   HEADER_PANEL_BACKDROP_CLASS,
   HEADER_PANEL_CLASS,
   HEADER_TRIGGER_CLASS,
+  isMobileChatChrome,
 } from "@/lib/header-panel";
 import { WORK_MODE_OPTIONS, workModeLabel, type WorkMode } from "@/lib/work-mode";
 
@@ -89,6 +91,7 @@ const OAUTH_ERROR_HINTS: Record<string, string> = {
 };
 
 export function SettingsControls() {
+  const router = useRouter();
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -704,7 +707,13 @@ export function SettingsControls() {
         className={HEADER_TRIGGER_CLASS}
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (isMobileChatChrome()) {
+            router.push("/settings");
+            return;
+          }
+          setOpen((o) => !o);
+        }}
       >
         Settings
         {local.workMode !== "chat" ? (
