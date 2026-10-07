@@ -31,7 +31,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  interactiveWidget: "resizes-content",
+  interactiveWidget: "overlays-content",
+  themeColor: "#08090d",
 };
 
 export const metadata: Metadata = {
@@ -81,7 +82,7 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[var(--bg-deep)]">
+      <body className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--bg-deep)]">
         <TrackVisit />
         <SmileShell>{children}</SmileShell>
       </body>

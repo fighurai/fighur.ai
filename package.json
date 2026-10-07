@@ -16,6 +16,8 @@
     "@capacitor/app": "^8.1.1",
     "@capacitor/browser": "^8.0.4",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/status-bar": "^8.0.4",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@vercel/blob": "^2.4.0",
     "chrono-node": "^2.9.0",

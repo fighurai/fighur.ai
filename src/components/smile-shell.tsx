@@ -2,23 +2,36 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
 import { PresenceBeacon } from "@/components/presence-beacon";
 import { SiteTutorial } from "@/components/site-tutorial";
 import { HEADER_TRIGGER_CLASS } from "@/lib/header-panel";
+import { configureNativeChrome, syncNativeStatusBar } from "@/lib/native-bridge";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
+import { readTheme, type ThemePrefs } from "@/lib/theme-storage";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const openTutorial = useCallback(() => setTutorialOpen(true), []);
 
+  useEffect(() => {
+    void configureNativeChrome();
+    const onTheme = (e: Event) => {
+      const detail = (e as CustomEvent<ThemePrefs>).detail;
+      void syncNativeStatusBar(detail?.enabled ? detail.bg : "#08090d");
+    };
+    void syncNativeStatusBar(readTheme().enabled ? readTheme().bg : "#08090d");
+    window.addEventListener("smile-theme-changed", onTheme);
+    return () => window.removeEventListener("smile-theme-changed", onTheme);
+  }, []);
+
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[var(--bg-deep)]">
-      <header className="fixed inset-x-0 top-0 z-[100] overflow-visible border-b border-white/[0.06] bg-[var(--bg-deep)]/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-[100] overflow-visible border-b border-white/[0.06] bg-[var(--bg-deep)] pt-[env(safe-area-inset-top,0px)]">
         <div className="flex h-[3.25rem] w-full items-center justify-between gap-2 overflow-visible px-2 sm:px-3">
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             <Link
@@ -69,7 +82,11 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
           <HeaderControls />
         </div>
       </header>
-      <main className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto pt-[calc(3.25rem+env(safe-area-inset-top,0px))]">
+      <main
+        className={`relative z-0 flex min-h-0 min-w-0 flex-1 flex-col pt-[calc(3.25rem+env(safe-area-inset-top,0px))] ${
+          pathname === "/" ? "overflow-hidden" : "overflow-y-auto"
+        }`}
+      >
         {children}
       </main>
       <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />

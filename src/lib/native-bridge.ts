@@ -181,3 +181,83 @@ function requestNativeIap(productId: string, userId?: string): Promise<string | 
 export function canUseNativeAppleSignIn(): boolean {
   return isIosNativeApp();
 }
+
+function pinDocumentScroll() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+function setKbInset(px: number) {
+  document.documentElement.style.setProperty("--kb-inset", `${Math.max(0, Math.round(px))}px`);
+}
+
+function hexLuminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export async function syncNativeStatusBar(bg?: string) {
+  const color =
+    bg ||
+    getComputedStyle(document.documentElement).getPropertyValue("--bg-deep").trim() ||
+    "#08090d";
+  const normalized = color.startsWith("#") ? color : "#08090d";
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", normalized);
+  if (!isIosNativeApp()) return;
+  try {
+    const { StatusBar, Style } = await import("@capacitor/status-bar");
+    await StatusBar.setOverlaysWebView({ overlay: true });
+    await StatusBar.setBackgroundColor({ color: normalized });
+    await StatusBar.setStyle({
+      style: hexLuminance(normalized) > 0.45 ? Style.Dark : Style.Light,
+    });
+  } catch {
+    /* plugin not synced yet */
+  }
+}
+
+/** Hide the iOS form accessory (fighur.ai / next-field bar) and stop the WebView from panning. */
+export async function configureNativeChrome() {
+  const syncKbFromViewport = () => {
+    pinDocumentScroll();
+    const vv = window.visualViewport;
+    if (!vv) {
+      setKbInset(0);
+      return;
+    }
+    setKbInset(window.innerHeight - vv.height - vv.offsetTop);
+  };
+  syncKbFromViewport();
+  window.visualViewport?.addEventListener("resize", syncKbFromViewport);
+  window.visualViewport?.addEventListener("scroll", syncKbFromViewport);
+  window.addEventListener("resize", syncKbFromViewport);
+  window.addEventListener("focusin", pinDocumentScroll);
+
+  void syncNativeStatusBar();
+
+  if (!isIosNativeApp()) return;
+  try {
+    const { Keyboard, KeyboardResize } = await import("@capacitor/keyboard");
+    await Keyboard.setAccessoryBarVisible({ isVisible: false });
+    await Keyboard.setResizeMode({ mode: KeyboardResize.None });
+    await Keyboard.addListener("keyboardWillShow", (info) => {
+      setKbInset(info.keyboardHeight);
+      pinDocumentScroll();
+    });
+    await Keyboard.addListener("keyboardWillHide", () => setKbInset(0));
+  } catch {
+    /* plugin not synced yet */
+  }
+}

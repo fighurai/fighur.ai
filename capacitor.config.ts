@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   server: {
     // Production app loads the live site (Path B hybrid).
     // Query busts WKWebView's stale HTML/JS cache after each UI ship.
-    url: "https://fighur.ai/?n=3",
+    url: "https://fighur.ai/?n=4",
     cleartext: false,
     allowNavigation: ["fighur.ai", "*.fighur.ai", "appleid.apple.com"],
   },
@@ -25,6 +25,15 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
+    },
+    Keyboard: {
+      resize: "none",
+      style: "dark",
+      resizeOnFullScreen: false,
+    },
+    StatusBar: {
+      overlaysWebView: true,
+      style: "LIGHT",
     },
   },
 };

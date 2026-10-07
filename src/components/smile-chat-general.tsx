@@ -401,10 +401,7 @@ export function SmileChatGeneral() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
-  const [keyboardLift, setKeyboardLift] = useState(0);
-  const keyboardLiftRef = useRef(0);
-  keyboardLiftRef.current = keyboardLift;
-  const [composerFocused, setComposerFocused] = useState(false);
+  const [composerPad, setComposerPad] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
   const [customThemeOn, setCustomThemeOn] = useState(false);
@@ -1527,10 +1524,9 @@ export function SmileChatGeneral() {
 
   const resizeComposerField = useCallback(() => {
     const el = inputRef.current;
-    if (!el) return;
+    if (!el || compactPhoneComposer) return;
     el.style.height = "auto";
-    const cap = compactPhoneComposer ? 128 : 220;
-    el.style.height = `${Math.min(el.scrollHeight, cap)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [compactPhoneComposer]);
 
   useEffect(() => {
@@ -1539,40 +1535,14 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     if (showEmpty) setShowScrollToBottom(false);
-    const syncKeyboard = () => {
-      const dock = composerDockRef.current;
-      const vv = window.visualViewport;
-      if (!dock || !vv) {
-        setKeyboardLift(0);
-        return;
-      }
-      const rect = dock.getBoundingClientRect();
-      const bottom = rect.bottom + keyboardLiftRef.current;
-      const vvBottom = vv.offsetTop + vv.height;
-      const overlap = Math.max(0, Math.round(bottom - vvBottom));
-      const next = overlap > 6 ? overlap : 0;
-      if (next !== keyboardLiftRef.current) setKeyboardLift(next);
-    };
-    syncKeyboard();
-    const vv = window.visualViewport;
-    window.addEventListener("resize", syncKeyboard);
-    vv?.addEventListener("resize", syncKeyboard);
-    vv?.addEventListener("scroll", syncKeyboard);
-    return () => {
-      window.removeEventListener("resize", syncKeyboard);
-      vv?.removeEventListener("resize", syncKeyboard);
-      vv?.removeEventListener("scroll", syncKeyboard);
-    };
-  }, [
-    showEmpty,
-    composerFocused,
-    input,
-    error,
-    attachments.length,
-    pending,
-    listening,
-    translatingSpeech,
-  ]);
+    const dock = composerDockRef.current;
+    if (!dock) return;
+    const measure = () => setComposerPad(dock.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(dock);
+    return () => ro.disconnect();
+  }, [showEmpty, compactPhoneComposer, error, attachments.length, pending]);
 
   useEffect(() => {
     if (showEmpty) return;
@@ -1590,7 +1560,7 @@ export function SmileChatGeneral() {
       el.removeEventListener("scroll", updateScrollToBottom);
       ro.disconnect();
     };
-  }, [showEmpty, messages, pending, streamOutputStarted, keyboardLift, updateScrollToBottom]);
+  }, [showEmpty, messages, pending, streamOutputStarted, composerPad, updateScrollToBottom]);
 
   useEffect(() => {
     if (!showEmpty && streamOutputStarted) updateScrollToBottom();
@@ -1695,8 +1665,10 @@ export function SmileChatGeneral() {
             }}
             placeholder={PROMPT_PLACEHOLDER}
             rows={compactPhoneComposer ? 1 : showEmpty ? 3 : 2}
-            onFocus={() => setComposerFocused(true)}
-            onBlur={() => setComposerFocused(false)}
+            autoComplete="off"
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
             disabled={attachingFiles}
             enterKeyHint="send"
@@ -2100,27 +2072,19 @@ export function SmileChatGeneral() {
           ) : null}
 
           {showEmpty ? (
-            <div className={`home-empty-hero ${composerFocused ? "home-empty-hero--typing" : ""}`}>
+            <div className="home-empty-hero">
               <AmbientOmbreBackground active={!customThemeOn} />
-              <div
-                ref={composerDockRef}
-                className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4"
-                style={
-                  keyboardLift
-                    ? { transform: `translateY(-${keyboardLift}px)` }
-                    : undefined
-                }
-              >
-                {composerPanel}
-              </div>
+              {!compactPhoneComposer ? (
+                <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
+              ) : null}
             </div>
           ) : (
             <div
               ref={listRef}
               className="chat-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain"
               style={
-                keyboardLift
-                  ? { paddingBottom: keyboardLift, scrollPaddingBottom: keyboardLift }
+                composerPad > 0
+                  ? { paddingBottom: composerPad + 12, scrollPaddingBottom: composerPad + 12 }
                   : undefined
               }
             >
@@ -2209,15 +2173,10 @@ export function SmileChatGeneral() {
           ) : null}
         </div>
 
-        {!showEmpty ? (
+        {!showEmpty || compactPhoneComposer ? (
           <div
             ref={composerDockRef}
             className={`composer-dock z-40 shrink-0 ${buildSidebarOpen ? "max-md:hidden" : ""}`}
-            style={
-              keyboardLift
-                ? { transform: `translateY(-${keyboardLift}px)` }
-                : undefined
-            }
           >
             <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
               {composerPanel}
