@@ -193,18 +193,19 @@ export function pinNativeIosScroll() {
   pinDocumentScroll();
 }
 
+function applyKeyboardHeight(px: number) {
+  const h = Math.max(0, Math.round(px));
+  const html = document.documentElement;
+  html.dataset.kb = h > 40 ? "1" : "";
+  html.style.setProperty("--kb-height", `${h}px`);
+}
+
 function syncVisualViewport() {
-  if (!isIosNativeApp()) return;
-  pinDocumentScroll();
   const vv = window.visualViewport;
   const inner = window.innerHeight;
   const vvh = vv?.height ?? inner;
   const top = vv?.offsetTop ?? 0;
-  const kb = Math.max(0, inner - vvh - top);
-  const html = document.documentElement;
-  html.classList.add("native-app");
-  html.dataset.kb = kb > 80 ? "1" : "";
-  html.style.setProperty("--kb-height", `${Math.round(kb)}px`);
+  applyKeyboardHeight(inner - vvh - top);
 }
 
 function hexLuminance(hex: string): number {
@@ -256,31 +257,28 @@ export async function configureNativeChrome() {
   }
   nativeChromeReady = true;
   void syncNativeStatusBar();
+  window.visualViewport?.addEventListener("resize", syncVisualViewport);
+  window.addEventListener("resize", syncVisualViewport);
+
   if (!isIosNativeApp()) return;
 
   document.documentElement.classList.add("native-app");
-  syncVisualViewport();
-  window.visualViewport?.addEventListener("resize", syncVisualViewport);
-  window.addEventListener("resize", syncVisualViewport);
-  window.addEventListener("focusin", () => {
-    pinDocumentScroll();
-    requestAnimationFrame(syncVisualViewport);
-  });
   try {
     const { Keyboard, KeyboardResize } = await import("@capacitor/keyboard");
     await Keyboard.setAccessoryBarVisible({ isVisible: false });
     await Keyboard.setResizeMode({ mode: KeyboardResize.None });
     await Keyboard.setScroll({ isDisabled: true });
-    await Keyboard.addListener("keyboardWillShow", () => {
-      pinDocumentScroll();
-      requestAnimationFrame(syncVisualViewport);
+    await Keyboard.addListener("keyboardWillShow", (info) => {
+      applyKeyboardHeight(info.keyboardHeight ?? 0);
     });
-    await Keyboard.addListener("keyboardDidShow", () => {
-      pinDocumentScroll();
-      syncVisualViewport();
+    await Keyboard.addListener("keyboardDidShow", (info) => {
+      applyKeyboardHeight(info.keyboardHeight ?? 0);
     });
     await Keyboard.addListener("keyboardWillHide", () => {
-      requestAnimationFrame(syncVisualViewport);
+      applyKeyboardHeight(0);
+    });
+    await Keyboard.addListener("keyboardDidHide", () => {
+      applyKeyboardHeight(0);
     });
   } catch {
     /* plugin not synced yet */

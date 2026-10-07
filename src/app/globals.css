@@ -58,10 +58,15 @@ html.native-app .home-empty-hero {
   padding-bottom: max(2.15rem, calc(env(safe-area-inset-bottom, 0px) + 0.85rem));
 }
 
-/* Native app: sit the prompt on the keyboard. Leave Safari to resize the page. */
-html.native-app[data-kb="1"] .composer-dock {
+/* Sit the prompt on top of the keyboard (ChatGPT-style). */
+html[data-kb="1"] .composer-dock {
   bottom: var(--kb-height, 0px) !important;
-  padding-bottom: 0.45rem;
+  padding-bottom: 0.35rem;
+}
+
+html[data-kb="1"] .home-empty-hero {
+  justify-content: flex-end;
+  padding-bottom: calc(var(--kb-height, 0px) + 0.5rem);
 }
 
 html[data-kb="1"] .composer-legal {
