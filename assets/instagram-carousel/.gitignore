@@ -1,0 +1,4 @@
+exports/.chrome-profile-*/
+exports/slide-*.html
+**/Crash Reports/
+**/Singleton*
