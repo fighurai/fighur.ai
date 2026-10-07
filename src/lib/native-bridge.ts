@@ -193,22 +193,18 @@ export function pinNativeIosScroll() {
   pinDocumentScroll();
 }
 
-function isIosDevice() {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent) || isIosNativeApp();
-}
-
 function syncVisualViewport() {
+  if (!isIosNativeApp()) return;
+  pinDocumentScroll();
   const vv = window.visualViewport;
   const inner = window.innerHeight;
   const vvh = vv?.height ?? inner;
   const top = vv?.offsetTop ?? 0;
   const kb = Math.max(0, inner - vvh - top);
   const html = document.documentElement;
-  if (isIosNativeApp()) html.classList.add("native-app");
+  html.classList.add("native-app");
   html.dataset.kb = kb > 80 ? "1" : "";
   html.style.setProperty("--kb-height", `${Math.round(kb)}px`);
-  if (isIosNativeApp() || isIosDevice()) pinDocumentScroll();
 }
 
 function hexLuminance(hex: string): number {
@@ -259,27 +255,17 @@ export async function configureNativeChrome() {
     return;
   }
   nativeChromeReady = true;
-  if (isIosNativeApp()) document.documentElement.classList.add("native-app");
+  void syncNativeStatusBar();
+  if (!isIosNativeApp()) return;
+
+  document.documentElement.classList.add("native-app");
   syncVisualViewport();
   window.visualViewport?.addEventListener("resize", syncVisualViewport);
-  window.visualViewport?.addEventListener("scroll", syncVisualViewport);
   window.addEventListener("resize", syncVisualViewport);
   window.addEventListener("focusin", () => {
-    if (!isIosDevice()) return;
     pinDocumentScroll();
     requestAnimationFrame(syncVisualViewport);
   });
-
-  const vk = (
-    navigator as Navigator & {
-      virtualKeyboard?: { overlaysContent: boolean };
-    }
-  ).virtualKeyboard;
-  if (vk) vk.overlaysContent = true;
-
-  void syncNativeStatusBar();
-
-  if (!isIosNativeApp()) return;
   try {
     const { Keyboard, KeyboardResize } = await import("@capacitor/keyboard");
     await Keyboard.setAccessoryBarVisible({ isVisible: false });

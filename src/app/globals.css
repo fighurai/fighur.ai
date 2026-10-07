@@ -50,10 +50,10 @@ html.native-app main {
   padding-top: calc(3.25rem + env(safe-area-inset-top, 0px)) !important;
 }
 
-/* After send, the docked prompt sits on the keyboard; empty home stays put. */
-html[data-kb="1"] .composer-dock {
+/* Native app: sit the prompt on the keyboard. Leave Safari to resize the page. */
+html.native-app[data-kb="1"] .composer-dock {
   bottom: var(--kb-height, 0px) !important;
-  padding-bottom: 0.2rem;
+  padding-bottom: 0.35rem;
 }
 
 html[data-kb="1"] .composer-legal {
@@ -119,9 +119,9 @@ html[data-ombre="on"] body {
   overflow: hidden;
 }
 
-/* Fixed prompt dock at bottom */
+/* Fixed prompt dock — keep the whole box above the home indicator */
 .composer-dock {
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(0.85rem, calc(env(safe-area-inset-bottom, 0px) + 0.55rem));
 }
 
 .composer-dock-inner,
@@ -155,10 +155,6 @@ html[data-ombre="on"] body {
   .composer-float {
     padding: 0.15rem;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-  }
-
-  .composer-dock {
-    padding-bottom: 0.25rem;
   }
 
   .home-empty-hero .composer-column {
