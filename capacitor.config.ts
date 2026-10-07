@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { KeyboardResize, KeyboardStyle } from "@capacitor/keyboard";
 
 /**
  * Hybrid iOS shell: loads production fighur.ai in WKWebView.
@@ -26,8 +27,8 @@ const config: CapacitorConfig = {
       launchAutoHide: true,
     },
     Keyboard: {
-      resize: "none",
-      style: "dark",
+      resize: KeyboardResize.None,
+      style: KeyboardStyle.Dark,
       resizeOnFullScreen: false,
       autoBackdropColor: "dom",
     },
