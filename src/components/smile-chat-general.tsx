@@ -12,7 +12,6 @@ import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace, isDocumentWritingPrompt } from "@/lib/infer-builder-target";
 import {
   applyLayoutCssVars,
-  composerDockInsets,
   defaultLayoutPrefs,
   LAYOUT_CHANGE_EVENT,
   layoutColumnOrders,
@@ -402,7 +401,10 @@ export function SmileChatGeneral() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
-  const [composerInset, setComposerInset] = useState(0);
+  const [keyboardLift, setKeyboardLift] = useState(0);
+  const keyboardLiftRef = useRef(0);
+  keyboardLiftRef.current = keyboardLift;
+  const [composerFocused, setComposerFocused] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
   const [customThemeOn, setCustomThemeOn] = useState(false);
@@ -556,10 +558,6 @@ export function SmileChatGeneral() {
   }, [session?.userId]);
 
   const columnOrders = useMemo(() => layoutColumnOrders(layoutPrefs), [layoutPrefs]);
-  const dockInsets = useMemo(
-    () => composerDockInsets(layoutPrefs, { canvasOpen: buildSidebarOpen }),
-    [layoutPrefs, buildSidebarOpen],
-  );
 
   const onResizeCanvasWidth = useCallback((widthPx: number) => {
     const clamped = Math.min(MAX_CANVAS_WIDTH_PX, Math.max(MIN_CANVAS_WIDTH_PX, Math.round(widthPx)));
@@ -1527,50 +1525,53 @@ export function SmileChatGeneral() {
     setShowScrollToBottom(canScroll && !atBottom);
   }, []);
 
-  useEffect(() => {
-    if (showEmpty) {
-      setComposerInset(0);
-      setShowScrollToBottom(false);
-      return;
-    }
-    const el = composerDockRef.current;
+  const resizeComposerField = useCallback(() => {
+    const el = inputRef.current;
     if (!el) return;
+    el.style.height = "auto";
+    const cap = compactPhoneComposer ? 128 : 220;
+    el.style.height = `${Math.min(el.scrollHeight, cap)}px`;
+  }, [compactPhoneComposer]);
 
-    const measure = () => {
+  useEffect(() => {
+    resizeComposerField();
+  }, [input, showEmpty, resizeComposerField]);
+
+  useEffect(() => {
+    if (showEmpty) setShowScrollToBottom(false);
+    const syncKeyboard = () => {
       const dock = composerDockRef.current;
-      if (!dock) return;
-      const height = dock.offsetHeight;
-      const gap = window.matchMedia("(max-width: 767px)").matches ? 36 : 16;
-      setComposerInset(height + gap);
+      const vv = window.visualViewport;
+      if (!dock || !vv) {
+        setKeyboardLift(0);
+        return;
+      }
+      const rect = dock.getBoundingClientRect();
+      const bottom = rect.bottom + keyboardLiftRef.current;
+      const vvBottom = vv.offsetTop + vv.height;
+      const overlap = Math.max(0, Math.round(bottom - vvBottom));
+      const next = overlap > 6 ? overlap : 0;
+      if (next !== keyboardLiftRef.current) setKeyboardLift(next);
     };
-
-    measure();
-    requestAnimationFrame(measure);
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener("resize", measure);
+    syncKeyboard();
     const vv = window.visualViewport;
-    vv?.addEventListener("resize", measure);
-    vv?.addEventListener("scroll", measure);
+    window.addEventListener("resize", syncKeyboard);
+    vv?.addEventListener("resize", syncKeyboard);
+    vv?.addEventListener("scroll", syncKeyboard);
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-      vv?.removeEventListener("resize", measure);
-      vv?.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", syncKeyboard);
+      vv?.removeEventListener("resize", syncKeyboard);
+      vv?.removeEventListener("scroll", syncKeyboard);
     };
   }, [
     showEmpty,
+    composerFocused,
+    input,
     error,
-    session,
     attachments.length,
     pending,
     listening,
     translatingSpeech,
-    messages.length,
-    buildSidebarOpen,
-    layoutPrefs,
-    dockInsets.left,
-    dockInsets.right,
   ]);
 
   useEffect(() => {
@@ -1589,7 +1590,7 @@ export function SmileChatGeneral() {
       el.removeEventListener("scroll", updateScrollToBottom);
       ro.disconnect();
     };
-  }, [showEmpty, messages, pending, streamOutputStarted, composerInset, updateScrollToBottom]);
+  }, [showEmpty, messages, pending, streamOutputStarted, keyboardLift, updateScrollToBottom]);
 
   useEffect(() => {
     if (!showEmpty && streamOutputStarted) updateScrollToBottom();
@@ -1693,7 +1694,9 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
-            rows={compactPhoneComposer ? (showEmpty ? 2 : 1) : showEmpty ? 3 : 2}
+            rows={compactPhoneComposer ? 1 : showEmpty ? 3 : 2}
+            onFocus={() => setComposerFocused(true)}
+            onBlur={() => setComposerFocused(false)}
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
             disabled={attachingFiles}
             enterKeyHint="send"
@@ -1830,6 +1833,28 @@ export function SmileChatGeneral() {
   const sidebarContent = (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-white/[0.06] p-3">
+        <div className="mb-2 grid grid-cols-2 gap-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              window.dispatchEvent(new CustomEvent("fighur-open-header-agents"));
+            }}
+            className="rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
+          >
+            Agents
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              window.dispatchEvent(new CustomEvent("fighur-open-header-settings"));
+            }}
+            className="rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
+          >
+            Settings
+          </button>
+        </div>
         <button
           type="button"
           onClick={newChat}
@@ -2075,18 +2100,29 @@ export function SmileChatGeneral() {
           ) : null}
 
           {showEmpty ? (
-            <div className="home-empty-hero">
+            <div className={`home-empty-hero ${composerFocused ? "home-empty-hero--typing" : ""}`}>
               <AmbientOmbreBackground active={!customThemeOn} />
-              <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
+              <div
+                ref={composerDockRef}
+                className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4"
+                style={
+                  keyboardLift
+                    ? { transform: `translateY(-${keyboardLift}px)` }
+                    : undefined
+                }
+              >
+                {composerPanel}
+              </div>
             </div>
           ) : (
             <div
               ref={listRef}
               className="chat-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain"
-              style={{
-                paddingBottom: composerInset > 0 ? composerInset : undefined,
-                scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
-              }}
+              style={
+                keyboardLift
+                  ? { paddingBottom: keyboardLift, scrollPaddingBottom: keyboardLift }
+                  : undefined
+              }
             >
               <div className="chat-thread-gutter flex min-h-0 flex-col justify-start">
                 <div className="chat-thread flex w-full flex-col space-y-3 pb-4">
@@ -2144,10 +2180,7 @@ export function SmileChatGeneral() {
           )}
 
           {!showEmpty && (showStreamWaitingDots || showScrollToBottom) ? (
-            <div
-              className="absolute left-1/2 z-30 -translate-x-1/2"
-              style={{ bottom: composerInset > 0 ? composerInset + 10 : 160 }}
-            >
+            <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2">
               {showStreamWaitingDots ? (
                 <StreamLoadingDots variant="fab" />
               ) : (
@@ -2179,55 +2212,16 @@ export function SmileChatGeneral() {
         {!showEmpty ? (
           <div
             ref={composerDockRef}
-            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 max-md:!left-0 max-md:!right-0 ${
-              buildSidebarOpen ? "max-md:hidden" : ""
-            }`}
-            style={{ left: dockInsets.left, right: dockInsets.right }}
+            className={`composer-dock z-40 shrink-0 ${buildSidebarOpen ? "max-md:hidden" : ""}`}
+            style={
+              keyboardLift
+                ? { transform: `translateY(-${keyboardLift}px)` }
+                : undefined
+            }
           >
-            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
-              <div className="mb-0.5 flex flex-wrap items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-[var(--bg-deep)]/90 px-1.5 py-0.5 md:hidden">
-                {session ? (
-                  <>
-                    <span className="max-w-[10rem] truncate text-[0.65rem] text-[var(--text-muted)]">{session.email}</span>
-                    {session.plan !== "pro" ? (
-                      <>
-                        <span className="text-[var(--text-faint)]">·</span>
-                        <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
-                          Upgrade
-                        </Link>
-                      </>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void clearSessionAndServer().then(() => {
-                          setSession(null);
-                          showSignedOutEmpty();
-                        });
-                      }}
-                      className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                    >
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/sign-in" className="text-[0.65rem] font-semibold text-[var(--accent)]">
-                      Sign in
-                    </Link>
-                    <span className="text-[var(--text-faint)]">·</span>
-                    <Link href="/sign-up" className="text-[0.65rem] font-medium text-[var(--text-muted)]">
-                      Create account
-                    </Link>
-                    <span className="text-[var(--text-faint)]">·</span>
-                    <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
-                      Upgrade
-                    </Link>
-                  </>
-                )}
-              </div>
+            <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
               {composerPanel}
-              <p className="mt-0.5 pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] max-md:leading-tight md:mt-1 md:text-[0.6rem]">
+              <p className="mt-0.5 hidden pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] md:block md:mt-1 md:text-[0.6rem]">
                 © {new Date().getFullYear()} FIGHURAI ·{" "}
                 <Link href="/privacy" className="hover:text-[var(--text-muted)]">
                   Privacy

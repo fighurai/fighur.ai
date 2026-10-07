@@ -701,7 +701,7 @@ export function SettingsControls() {
     <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
-        className={HEADER_TRIGGER_CLASS}
+        className={`${HEADER_TRIGGER_CLASS} max-md:hidden`}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}

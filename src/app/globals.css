@@ -83,9 +83,20 @@ html[data-ombre="on"] body {
   box-sizing: border-box;
 }
 
-/* Fixed prompt dock at bottom */
+.home-empty-hero--typing {
+  justify-content: flex-end;
+  padding-bottom: 0.35rem;
+}
+
+/* Prompt dock sits in the chat column so messages stay visible above it */
 .composer-dock {
+  position: relative;
+  flex-shrink: 0;
   padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+.site-mark {
+  background: transparent !important;
 }
 
 .composer-dock-inner,
@@ -110,7 +121,7 @@ html[data-ombre="on"] body {
 
 @media (max-width: 767px) {
   #smile-chat-input {
-    max-height: 3.75rem;
+    max-height: 8rem;
     min-height: 2.25rem;
     line-height: 1.35;
     overflow-y: auto;

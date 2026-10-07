@@ -40,7 +40,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
                 sizes={`${SITE_ICON_DISPLAY_PX}px`}
                 quality={95}
                 unoptimized
-                className="object-contain"
+                className="site-mark object-contain"
                 style={{
                   width: SITE_ICON_DISPLAY_PX,
                   height: SITE_ICON_DISPLAY_PX,

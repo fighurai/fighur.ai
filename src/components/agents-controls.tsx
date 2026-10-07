@@ -76,6 +76,15 @@ export function AgentsControls() {
     return () => document.removeEventListener("pointerdown", onDoc);
   }, [open]);
 
+  useEffect(() => {
+    const openFromSidebar = () => {
+      setOpen(true);
+      void refresh();
+    };
+    window.addEventListener("fighur-open-header-agents", openFromSidebar);
+    return () => window.removeEventListener("fighur-open-header-agents", openFromSidebar);
+  }, [refresh]);
+
   const active = agents.find((a) => a.id === activeAgentId) ?? null;
 
   const selectAgent = async (id: string | null, startChat: boolean) => {
@@ -117,7 +126,7 @@ export function AgentsControls() {
     <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
-        className={HEADER_TRIGGER_CLASS}
+        className={`${HEADER_TRIGGER_CLASS} max-md:hidden`}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
