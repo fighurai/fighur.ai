@@ -66,10 +66,10 @@ export function HeaderControls() {
 
   // Do NOT use overflow-x-auto here — it clips absolute/fixed dropdowns on iOS.
   return (
-    <div className="flex min-w-0 shrink items-center justify-end gap-1 sm:gap-2">
+    <div className="flex min-w-0 shrink-0 items-center justify-end gap-1 overflow-visible sm:gap-2">
       <AgentsControls />
-      <LayoutControls />
       <ThemeControls />
+      <LayoutControls />
       <AdminPeopleLink />
       <SettingsControls />
     </div>

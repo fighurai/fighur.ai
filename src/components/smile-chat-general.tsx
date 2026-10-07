@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import type { ChangeEvent, DragEvent, MouseEvent } from "react";
@@ -89,7 +90,7 @@ import {
   processFileForChatAttachment,
 } from "@/lib/chat-attachments";
 import { videoPreviewDataUrl } from "@/lib/video-attachment";
-import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON, SITE_ICON_DISPLAY_PX } from "@/lib/site-brand";
 import { formatRoutedModelLabel } from "@/lib/chat-models";
 import {
   downloadImageUrl,
@@ -1102,9 +1103,11 @@ export function SmileChatGeneral() {
     const el = listRef.current;
     if (!el) return;
     const users = el.querySelectorAll('[data-role="user"]');
-    const last = users[users.length - 1];
+    const last = users[users.length - 1] as HTMLElement | undefined;
     if (last) {
-      last.scrollIntoView({ block: "start", behavior: "auto" });
+      const elRect = el.getBoundingClientRect();
+      const lastRect = last.getBoundingClientRect();
+      el.scrollTop += lastRect.top - elRect.top;
     } else {
       el.scrollTop = 0;
     }
@@ -1113,6 +1116,11 @@ export function SmileChatGeneral() {
   const followStreamScroll = useCallback(() => {
     /* Do not pin the thread to the bottom while streaming. */
   }, []);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    requestAnimationFrame(() => scrollLatestTurnToTop());
+  }, [messages.length, activeId, scrollLatestTurnToTop]);
 
   const followStreamScrollRaf = useRef(0);
   const scheduleFollowStreamScroll = useCallback(() => {
@@ -1755,25 +1763,6 @@ export function SmileChatGeneral() {
               ) : null}
             </div>
             <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
-              {availableModels.length > 1 ? (
-                <select
-                  value={selectedModel}
-                  onChange={(e) => {
-                    setSelectedModel(e.target.value);
-                    setRoutedModelHint(null);
-                  }}
-                  disabled={busy || availableModels.length === 0}
-                  className="hidden min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:block sm:max-w-[13rem] sm:px-4 sm:py-2"
-                  aria-label="Select model"
-                  title={routedModelHint ?? undefined}
-                >
-                  {availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
               <div className="flex shrink-0 items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
@@ -2066,19 +2055,28 @@ export function SmileChatGeneral() {
         style={{ order: columnOrders.main }}
       >
         <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
+          <Image
+            src={SITE_ICON}
+            alt=""
+            width={SITE_ICON_DISPLAY_PX}
+            height={SITE_ICON_DISPLAY_PX}
+            sizes={`${SITE_ICON_DISPLAY_PX}px`}
+            quality={95}
+            unoptimized
+            className="object-contain"
+            style={{
+              width: SITE_ICON_DISPLAY_PX,
+              height: SITE_ICON_DISPLAY_PX,
+              background: "transparent",
+            }}
+            aria-hidden
+          />
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
             className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]"
           >
             Chats
-          </button>
-          <button
-            type="button"
-            onClick={newChat}
-            className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)]"
-          >
-            New
           </button>
         </div>
 
@@ -2115,7 +2113,7 @@ export function SmileChatGeneral() {
                 scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
               }}
             >
-              <div className="chat-thread-gutter flex min-h-full flex-col justify-start">
+              <div className="chat-thread-gutter flex min-h-0 flex-col justify-start">
                 <div className="chat-thread flex w-full flex-col space-y-3 pb-4">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;

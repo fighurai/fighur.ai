@@ -59,6 +59,12 @@ html[data-ombre="on"] body {
 
 .chat-thread-gutter {
   box-sizing: border-box;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+.chat-scroll .chat-thread {
+  justify-content: flex-start;
 }
 
 /* Empty home — prompt box centered in viewport */
