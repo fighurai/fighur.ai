@@ -25,13 +25,17 @@
 }
 
 html {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+html.native-app {
   position: fixed;
   top: var(--vv-top, 0px);
   left: 0;
   width: 100%;
-  height: var(--vv-height, 100dvh);
-  overflow: hidden;
-  background: var(--bg-deep);
+  height: var(--vv-height, 100%);
 }
 
 body {
@@ -92,8 +96,12 @@ html[data-ombre="on"] body {
 .composer-dock {
   position: relative;
   flex-shrink: 0;
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
   background: var(--bg-deep);
+}
+
+html[data-kb="1"] .composer-dock {
+  padding-bottom: 0.3rem;
 }
 
 .site-mark {
@@ -143,12 +151,8 @@ html[data-ombre="on"] body {
 
   .composer-dock {
     position: relative;
-    left: auto;
-    right: auto;
-    bottom: auto;
     z-index: 40;
     overflow: hidden;
-    padding-bottom: 0.35rem;
     background: var(--bg-deep);
   }
 

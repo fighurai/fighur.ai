@@ -191,10 +191,15 @@ function pinDocumentScroll() {
 function syncVisualViewport() {
   pinDocumentScroll();
   const vv = window.visualViewport;
-  const height = Math.round(vv?.height ?? window.innerHeight);
-  const top = Math.round(vv?.offsetTop ?? 0);
-  document.documentElement.style.setProperty("--vv-height", `${height}px`);
-  document.documentElement.style.setProperty("--vv-top", `${top}px`);
+  const inner = window.innerHeight;
+  const vvh = vv?.height ?? inner;
+  const top = vv?.offsetTop ?? 0;
+  const kb = Math.max(0, inner - vvh - top);
+  document.documentElement.dataset.kb = kb > 80 ? "1" : "";
+  if (!isIosNativeApp()) return;
+  document.documentElement.classList.add("native-app");
+  document.documentElement.style.setProperty("--vv-height", `${Math.round(vvh)}px`);
+  document.documentElement.style.setProperty("--vv-top", `${Math.round(top)}px`);
 }
 
 function hexLuminance(hex: string): number {
@@ -243,6 +248,13 @@ export async function configureNativeChrome() {
     pinDocumentScroll();
     requestAnimationFrame(syncVisualViewport);
   });
+
+  const vk = (
+    navigator as Navigator & {
+      virtualKeyboard?: { overlaysContent: boolean };
+    }
+  ).virtualKeyboard;
+  if (vk) vk.overlaysContent = false;
 
   void syncNativeStatusBar();
 
