@@ -144,8 +144,16 @@ html[data-ombre="on"] body {
     right: 0;
     bottom: calc(var(--kb-inset, 0px) + max(0.85rem, env(safe-area-inset-bottom, 0px)));
     z-index: 40;
+    overflow: hidden;
     padding-bottom: 0.35rem;
     background: var(--bg-deep);
+  }
+
+  .composer-dock-inner {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    max-width: none;
+    overflow: hidden;
   }
 }
 

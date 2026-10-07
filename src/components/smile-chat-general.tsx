@@ -2178,7 +2178,7 @@ export function SmileChatGeneral() {
             ref={composerDockRef}
             className={`composer-dock z-40 shrink-0 ${buildSidebarOpen ? "max-md:hidden" : ""}`}
           >
-            <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
+            <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
               {composerPanel}
               <p className="mt-0.5 hidden pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] md:block md:mt-1 md:text-[0.6rem]">
                 © {new Date().getFullYear()} FIGHURAI ·{" "}
