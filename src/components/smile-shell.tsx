@@ -32,7 +32,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[var(--bg-deep)]">
-      <header className="fixed inset-x-0 top-0 z-[100] overflow-visible border-b border-white/[0.06] bg-[var(--bg-deep)]/95 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-[100] overflow-visible border-b border-white/20 bg-[var(--bg-deep)] pt-[max(env(safe-area-inset-top,0px),54px)] md:pt-0">
         <div className="flex h-[3.25rem] w-full items-center justify-between gap-2 overflow-visible px-2 sm:px-3">
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             <Link
@@ -54,18 +54,18 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
                 sizes={`${SITE_ICON_DISPLAY_PX}px`}
                 quality={95}
                 unoptimized
-                className="object-contain"
+                className="rounded-md bg-white/20 object-contain p-0.5"
                 style={{
                   width: SITE_ICON_DISPLAY_PX,
                   height: SITE_ICON_DISPLAY_PX,
-                  background: "transparent",
+                  background: "rgba(255,255,255,0.2)",
                 }}
                 priority
               />
             </Link>
             <button
               type="button"
-              className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 text-xs font-medium text-[var(--text-primary)] transition hover:border-white/[0.18] sm:h-8 sm:px-3"
+              className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/15 px-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:border-white/50 sm:h-8 sm:px-3"
               aria-label="Open chats"
               onClick={() => window.dispatchEvent(new CustomEvent("smile-open-chats"))}
             >
@@ -75,7 +75,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
           <HeaderControls />
         </div>
       </header>
-      <main className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto pt-[3.25rem]">
+      <main className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto pt-[calc(3.25rem+max(env(safe-area-inset-top,0px),54px))] md:pt-[3.25rem]">
         {children}
       </main>
       <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
