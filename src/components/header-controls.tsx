@@ -4,15 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { AgentsControls } from "@/components/agents-controls";
-import { LayoutControls } from "@/components/layout-controls";
-import { SettingsControls } from "@/components/settings-controls";
 import { ThemeControls } from "@/components/theme-controls";
 import { hydrateServerSession, readSession } from "@/lib/auth-storage";
 import { HEADER_TRIGGER_CLASS } from "@/lib/header-panel";
 import { isPlatformAdminEmail } from "@/lib/platform-admin";
 
-function AdminPeopleLink() {
+export function AdminPeopleLink() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const sync = () => setShow(isPlatformAdminEmail(readSession()?.email));
@@ -44,7 +41,6 @@ export function HeaderControls() {
         >
           Chat
         </Link>
-        <AdminPeopleLink />
         <ThemeControls />
       </div>
     );
@@ -67,15 +63,7 @@ export function HeaderControls() {
   // Do NOT use overflow-x-auto here — it clips absolute/fixed dropdowns on iOS.
   return (
     <div className="flex min-w-0 shrink items-center justify-end gap-1 sm:gap-2">
-      <div className="native-hide-header-tools contents">
-        <AgentsControls />
-        <LayoutControls />
-      </div>
       <ThemeControls />
-      <div className="native-hide-header-tools contents">
-        <AdminPeopleLink />
-        <SettingsControls />
-      </div>
     </div>
   );
 }

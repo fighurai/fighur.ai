@@ -69,6 +69,7 @@ import {
 } from "@/lib/device-file-ops";
 import { AgentsControls } from "@/components/agents-controls";
 import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
+import { AdminPeopleLink } from "@/components/header-controls";
 import { LayoutControls } from "@/components/layout-controls";
 import { SettingsControls } from "@/components/settings-controls";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
@@ -1763,51 +1764,7 @@ export function SmileChatGeneral() {
                 </button>
               ) : null}
             </div>
-            <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:min-w-[9.5rem] max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
-              {availableModels.length === 1 ? (
-                <span
-                  className="native-hide-auto min-w-0 max-w-[min(100%,14rem)] rounded-full bg-[var(--accent)] px-3 py-1.5 text-left text-xs font-semibold leading-snug text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[11rem] max-md:px-2.5 max-md:py-1 sm:max-w-[16rem] sm:px-4 sm:py-2"
-                  title={
-                    routedModelHint
-                      ? `Auto → ${routedModelHint}`
-                      : "Auto uses Claude Sonnet 4.5"
-                  }
-                >
-                  {routedModelHint && selectedModel === "auto" ? (
-                    <span className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-1">
-                      <span className="shrink-0">Auto</span>
-                      <span className="truncate font-medium opacity-90">
-                        <span className="hidden sm:inline">· </span>
-                        {routedModelHint}
-                      </span>
-                    </span>
-                  ) : (
-                    availableModels[0].label
-                  )}
-                </span>
-              ) : (
-                <select
-                  value={selectedModel}
-                  onChange={(e) => {
-                    setSelectedModel(e.target.value);
-                    setRoutedModelHint(null);
-                  }}
-                  disabled={busy || availableModels.length === 0}
-                  className="native-hide-auto min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:max-w-[13rem] sm:px-4 sm:py-2"
-                  aria-label="Select model"
-                  title={routedModelHint ?? undefined}
-                >
-                  {availableModels.length === 0 ? (
-                    <option value="">No models</option>
-                  ) : (
-                    availableModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))
-                  )}
-                </select>
-              )}
+            <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
               <div className="flex shrink-0 items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
@@ -1969,13 +1926,14 @@ export function SmileChatGeneral() {
           </ul>
         )}
       </div>
-      <div className="native-sidebar-tools shrink-0 flex-col gap-2 border-t border-white/[0.06] p-3">
+      <div className="sidebar-tools flex shrink-0 flex-col gap-2 border-t border-white/[0.06] p-3">
         <p className="px-0.5 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
           More
         </p>
         <AgentsControls />
         <LayoutControls />
         <SettingsControls />
+        <AdminPeopleLink />
         <button
           type="button"
           onClick={() => {
@@ -2117,23 +2075,6 @@ export function SmileChatGeneral() {
         } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
-        <div className="native-mobile-chat-row flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileSidebarOpen(true)}
-            className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]"
-          >
-            Chats
-          </button>
-          <button
-            type="button"
-            onClick={newChat}
-            className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)]"
-          >
-            New
-          </button>
-        </div>
-
         <div
           className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
