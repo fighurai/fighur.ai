@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { HeaderControls } from "@/components/header-controls";
 import { PresenceBeacon } from "@/components/presence-beacon";
 import { SiteTutorial } from "@/components/site-tutorial";
+import { HEADER_TRIGGER_CLASS } from "@/lib/header-panel";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
@@ -50,12 +51,19 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
             </Link>
             <button
               type="button"
+              className={`${HEADER_TRIGGER_CLASS} md:hidden`}
+              aria-label="Open chats"
+              onClick={() => window.dispatchEvent(new CustomEvent("smile-open-chats"))}
+            >
+              Chats
+            </button>
+            <button
+              type="button"
               onClick={openTutorial}
               aria-label="Quick tutorial"
-              className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2.5 text-[0.65rem] font-semibold leading-none text-[var(--accent)] shadow-[0_0_16px_var(--accent-glow)] transition hover:bg-[var(--accent)]/25 active:scale-95 sm:h-8 sm:px-3 sm:text-xs"
+              className="hidden h-7 shrink-0 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-2.5 text-[0.65rem] font-semibold leading-none text-[var(--accent)] shadow-[0_0_16px_var(--accent-glow)] transition hover:bg-[var(--accent)]/25 active:scale-95 md:inline-flex sm:h-8 sm:px-3 sm:text-xs"
             >
-              <span className="sm:hidden">Tips</span>
-              <span className="hidden sm:inline">Quick tutorial</span>
+              Quick tutorial
             </button>
           </div>
           <HeaderControls />

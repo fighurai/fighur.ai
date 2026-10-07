@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import type { ChangeEvent, DragEvent, MouseEvent } from "react";
@@ -90,7 +89,7 @@ import {
   processFileForChatAttachment,
 } from "@/lib/chat-attachments";
 import { videoPreviewDataUrl } from "@/lib/video-attachment";
-import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER, SITE_ICON, SITE_ICON_DISPLAY_PX } from "@/lib/site-brand";
+import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import { formatRoutedModelLabel } from "@/lib/chat-models";
 import {
   downloadImageUrl,
@@ -401,6 +400,7 @@ export function SmileChatGeneral() {
   const messagesRef = useRef<ChatMessage[]>([]);
   const sendInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
   const [composerInset, setComposerInset] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -863,8 +863,13 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     const onHome = () => newChat();
+    const onOpenChats = () => setMobileSidebarOpen(true);
     window.addEventListener("smile-go-home", onHome);
-    return () => window.removeEventListener("smile-go-home", onHome);
+    window.addEventListener("smile-open-chats", onOpenChats);
+    return () => {
+      window.removeEventListener("smile-go-home", onHome);
+      window.removeEventListener("smile-open-chats", onOpenChats);
+    };
   }, [newChat]);
 
   const selectConversation = useCallback(
@@ -1183,7 +1188,10 @@ export function SmileChatGeneral() {
       setStreamingMessageId(assistantId);
       setStreamOutputStarted(false);
     });
-    requestAnimationFrame(() => scrollLatestTurnToTop());
+    requestAnimationFrame(() => {
+      scrollLatestTurnToTop();
+      inputRef.current?.focus({ preventScroll: true });
+    });
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
     const preferDocument = isDocumentWritingPrompt(trimmed);
     if (isBuildRequest) {
@@ -1669,6 +1677,7 @@ export function SmileChatGeneral() {
           ) : null}
           <textarea
             id="smile-chat-input"
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onPaste={(e) => {
@@ -1686,7 +1695,8 @@ export function SmileChatGeneral() {
             placeholder={PROMPT_PLACEHOLDER}
             rows={compactPhoneComposer ? (showEmpty ? 2 : 1) : showEmpty ? 3 : 2}
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
-            disabled={busy || attachingFiles}
+            disabled={attachingFiles}
+            enterKeyHint="send"
           />
           <input
             ref={fileInputRef}
@@ -1788,6 +1798,7 @@ export function SmileChatGeneral() {
                 <button
                   type="submit"
                   disabled={busy || !input.trim()}
+                  onPointerDown={(e) => e.preventDefault()}
                   className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 max-md:px-3 max-md:py-1 sm:px-4 sm:py-2"
                 >
                   Send
@@ -1982,13 +1993,7 @@ export function SmileChatGeneral() {
   );
 
   return (
-    <div
-      className={`flex flex-1 flex-col md:flex-row ${
-        showEmpty
-          ? "min-h-[calc(100dvh-3.25rem)]"
-          : "h-full max-h-full min-h-0 overflow-hidden"
-      }`}
-    >
+    <div className="flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
       {layoutPrefs.sidebarVisible ? (
         <aside
           className={`relative hidden h-full max-h-full min-h-0 shrink-0 flex-col overflow-hidden bg-[var(--bg-elevated)]/90 md:flex ${
@@ -2040,46 +2045,16 @@ export function SmileChatGeneral() {
             aria-label="Close chat list"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <aside className="absolute bottom-0 left-0 top-[3.25rem] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
+          <aside className="absolute bottom-0 left-0 top-[calc(3.25rem+env(safe-area-inset-top,0px))] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
             {sidebarContent}
           </aside>
         </div>
       ) : null}
 
       <div
-        className={`flex flex-1 flex-col ${
-          showEmpty
-            ? "min-h-[calc(100dvh-3.25rem)]"
-            : "h-full max-h-full min-h-0 overflow-hidden"
-        } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
+        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
-        <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
-          <Image
-            src={SITE_ICON}
-            alt=""
-            width={SITE_ICON_DISPLAY_PX}
-            height={SITE_ICON_DISPLAY_PX}
-            sizes={`${SITE_ICON_DISPLAY_PX}px`}
-            quality={95}
-            unoptimized
-            className="object-contain"
-            style={{
-              width: SITE_ICON_DISPLAY_PX,
-              height: SITE_ICON_DISPLAY_PX,
-              background: "transparent",
-            }}
-            aria-hidden
-          />
-          <button
-            type="button"
-            onClick={() => setMobileSidebarOpen(true)}
-            className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]"
-          >
-            Chats
-          </button>
-        </div>
-
         <div
           className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
