@@ -8,6 +8,7 @@ const config: CapacitorConfig = {
   appId: "ai.fighur.app",
   appName: "FIGHURAI",
   webDir: "native/www",
+  backgroundColor: "#08090d",
   server: {
     // Production app loads the live site (Path B hybrid).
     url: "https://fighur.ai",
@@ -15,7 +16,8 @@ const config: CapacitorConfig = {
     allowNavigation: ["fighur.ai", "*.fighur.ai", "appleid.apple.com"],
   },
   ios: {
-    contentInset: "automatic",
+    // never = color fills the whole screen; safe areas via CSS env()
+    contentInset: "never",
     preferredContentMode: "mobile",
     scheme: "fighur",
   },

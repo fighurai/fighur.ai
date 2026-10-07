@@ -51,7 +51,7 @@ function getAppleSignIn(): AppleSignInPlugin | null {
 function getIap(): IapPlugin | null {
   const plugins = (window as unknown as { Capacitor?: { Plugins?: Record<string, IapPlugin> } }).Capacitor
     ?.Plugins;
-  return plugins?.InAppPurchase ?? plugins?.NativePurchases ?? null;
+  return plugins?.FigHurIAP ?? plugins?.InAppPurchase ?? plugins?.NativePurchases ?? null;
 }
 
 export async function nativeSignInWithApple(): Promise<{ ok: boolean; error?: string }> {

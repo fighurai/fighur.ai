@@ -13,10 +13,9 @@ Research: [Apple Developer Program](https://developer.apple.com/programs/) · [R
    - Auto-renewable **subscription** product (suggested: `ai.fighur.app.pro.monthly`)
    - App Store Server Notifications V2 → `https://fighur.ai/api/billing/apple/notifications`
 4. Paste secrets into Vercel (see `env.example` `APPLE_*` section) and redeploy
-5. On a Mac with Xcode: `npm run ios:add && npm run cap:sync && npm run cap:open`
-6. Copy `native/ios-templates/PrivacyInfo.xcprivacy` into the Xcode target
-7. Wire `FigHurIAP.swift.template` (StoreKit bridge) for IAP
-8. Archive → TestFlight → Submit
+5. On a Mac with Xcode: `npx cap sync ios && npx cap open ios` (the `ios/` project is in the repo)
+6. Signing: Team `2U43WGJYTC`, bundle `ai.fighur.app`, Sign in with Apple capability
+7. Archive → TestFlight → Submit
 
 ## Already implemented in this repo
 
