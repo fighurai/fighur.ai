@@ -36,11 +36,11 @@ html.native-app body {
 }
 
 html.native-app header {
-  padding-top: max(env(safe-area-inset-top, 0px), 54px);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 html.native-app main {
-  padding-top: calc(3.25rem + max(env(safe-area-inset-top, 0px), 54px)) !important;
+  padding-top: calc(3.25rem + env(safe-area-inset-top, 0px)) !important;
 }
 
 /* After send, the docked prompt sits on the keyboard; empty home stays put. */
@@ -59,7 +59,7 @@ html.native-app[data-kb="1"] .composer-dock {
 }
 
 html.native-app .mobile-chats-drawer {
-  top: calc(3.25rem + max(env(safe-area-inset-top, 0px), 54px));
+  top: calc(3.25rem + env(safe-area-inset-top, 0px));
 }
 
 body {
@@ -92,7 +92,7 @@ html[data-ombre="on"] body {
   box-sizing: border-box;
 }
 
-/* Empty home — prompt box centered in viewport */
+/* Empty home — prompt centered, no page scroll */
 .home-empty-hero {
   position: relative;
   display: flex;
@@ -101,19 +101,11 @@ html[data-ombre="on"] body {
   justify-content: center;
   flex: 1 1 auto;
   width: 100%;
-  min-height: calc(100dvh - 3.25rem);
+  min-height: 0;
+  height: 100%;
   padding: 1rem;
   box-sizing: border-box;
-}
-
-@media (max-width: 767px) {
-  .home-empty-hero {
-    /* Fill space under the Chats/New bar; don't re-subtract header height or the box sits low */
-    min-height: 0;
-    flex: 1 1 auto;
-    justify-content: center;
-    padding: 1rem;
-  }
+  overflow: hidden;
 }
 
 /* Fixed prompt dock at bottom */

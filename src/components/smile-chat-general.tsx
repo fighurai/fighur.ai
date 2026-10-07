@@ -2004,11 +2004,7 @@ export function SmileChatGeneral() {
 
   return (
     <div
-      className={`flex flex-1 flex-col md:flex-row ${
-        showEmpty
-          ? "min-h-[calc(100dvh-3.25rem)]"
-          : "h-full max-h-full min-h-0 overflow-hidden"
-      }`}
+      className="flex h-full min-h-0 max-h-full flex-1 flex-col overflow-hidden md:flex-row"
     >
       {layoutPrefs.sidebarVisible ? (
         <aside
@@ -2068,11 +2064,7 @@ export function SmileChatGeneral() {
       ) : null}
 
       <div
-        className={`flex flex-1 flex-col ${
-          showEmpty
-            ? "min-h-[calc(100dvh-3.25rem)]"
-            : "h-full max-h-full min-h-0 overflow-hidden"
-        } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
+        className={`flex h-full min-h-0 max-h-full flex-1 flex-col overflow-hidden ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
         <div

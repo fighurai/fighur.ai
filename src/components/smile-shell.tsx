@@ -32,7 +32,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[var(--bg-deep)]">
-      <header className="fixed inset-x-0 top-0 z-[100] overflow-visible border-b border-white/20 bg-[var(--bg-deep)] pt-[max(env(safe-area-inset-top,0px),54px)] md:pt-0">
+      <header className="fixed inset-x-0 top-0 z-[100] overflow-visible border-b border-white/20 bg-[var(--bg-deep)]">
         <div className="flex h-[3.25rem] w-full items-center justify-between gap-2 overflow-visible px-2 sm:px-3">
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             <Link
@@ -75,7 +75,7 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
           <HeaderControls />
         </div>
       </header>
-      <main className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto pt-[calc(3.25rem+max(env(safe-area-inset-top,0px),54px))] md:pt-[3.25rem]">
+      <main className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pt-[3.25rem]">
         {children}
       </main>
       <SiteTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
