@@ -1098,20 +1098,14 @@ export function SmileChatGeneral() {
     [addFilesFromList, pending, translatingSpeech, attachingFiles],
   );
 
-  const scrollLatestTurnToTop = useCallback(() => {
+  const followStreamScroll = useCallback(() => {
     const el = listRef.current;
     if (!el) return;
-    const users = el.querySelectorAll('[data-role="user"]');
-    const last = users[users.length - 1];
-    if (last) {
-      last.scrollIntoView({ block: "start", behavior: "auto" });
-    } else {
-      el.scrollTop = 0;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const nearBottom = scrollTop + clientHeight >= scrollHeight - 96;
+    if (nearBottom) {
+      el.scrollTop = scrollHeight;
     }
-  }, []);
-
-  const followStreamScroll = useCallback(() => {
-    /* Do not pin the thread to the bottom while streaming. */
   }, []);
 
   const followStreamScrollRaf = useRef(0);
@@ -1125,8 +1119,7 @@ export function SmileChatGeneral() {
 
   const markStreamOutputStarted = useCallback(() => {
     setStreamOutputStarted(true);
-    requestAnimationFrame(() => scrollLatestTurnToTop());
-  }, [scrollLatestTurnToTop]);
+  }, []);
 
   const send = useCallback(async () => {
     const trimmed = input.trim();
@@ -1175,7 +1168,6 @@ export function SmileChatGeneral() {
       setStreamingMessageId(assistantId);
       setStreamOutputStarted(false);
     });
-    requestAnimationFrame(() => scrollLatestTurnToTop());
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
     const preferDocument = isDocumentWritingPrompt(trimmed);
     if (isBuildRequest) {
@@ -1447,7 +1439,6 @@ export function SmileChatGeneral() {
     followStreamScroll,
     scheduleFollowStreamScroll,
     markStreamOutputStarted,
-    scrollLatestTurnToTop,
     setCanvasOpen,
     activeAgent?.id,
   ]);
@@ -1754,8 +1745,29 @@ export function SmileChatGeneral() {
                 </button>
               ) : null}
             </div>
-            <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
-              {availableModels.length > 1 ? (
+            <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:min-w-[9.5rem] max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
+              {availableModels.length === 1 ? (
+                <span
+                  className="min-w-0 max-w-[min(100%,14rem)] rounded-full bg-[var(--accent)] px-3 py-1.5 text-left text-xs font-semibold leading-snug text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] max-md:max-w-[11rem] max-md:px-2.5 max-md:py-1 sm:max-w-[16rem] sm:px-4 sm:py-2"
+                  title={
+                    routedModelHint
+                      ? `Auto → ${routedModelHint}`
+                      : "Auto uses Claude Sonnet 4.5"
+                  }
+                >
+                  {routedModelHint && selectedModel === "auto" ? (
+                    <span className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-1">
+                      <span className="shrink-0">Auto</span>
+                      <span className="truncate font-medium opacity-90">
+                        <span className="hidden sm:inline">· </span>
+                        {routedModelHint}
+                      </span>
+                    </span>
+                  ) : (
+                    availableModels[0].label
+                  )}
+                </span>
+              ) : (
                 <select
                   value={selectedModel}
                   onChange={(e) => {
@@ -1763,17 +1775,21 @@ export function SmileChatGeneral() {
                     setRoutedModelHint(null);
                   }}
                   disabled={busy || availableModels.length === 0}
-                  className="hidden min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:block sm:max-w-[13rem] sm:px-4 sm:py-2"
+                  className="min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 max-md:max-w-[7.5rem] max-md:px-2.5 max-md:py-1 sm:max-w-[13rem] sm:px-4 sm:py-2"
                   aria-label="Select model"
                   title={routedModelHint ?? undefined}
                 >
-                  {availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
+                  {availableModels.length === 0 ? (
+                    <option value="">No models</option>
+                  ) : (
+                    availableModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))
+                  )}
                 </select>
-              ) : null}
+              )}
               <div className="flex shrink-0 items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
@@ -2115,8 +2131,8 @@ export function SmileChatGeneral() {
                 scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
               }}
             >
-              <div className="chat-thread-gutter flex min-h-full flex-col justify-start">
-                <div className="chat-thread flex w-full flex-col space-y-3 pb-4">
+              <div className="chat-thread-gutter flex min-h-full flex-col justify-end">
+                <div className="chat-thread flex w-full flex-col space-y-3">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
@@ -2127,7 +2143,6 @@ export function SmileChatGeneral() {
                 return (
                   <div
                     key={m.id}
-                    data-role={m.role}
                     className={`group flex w-full min-w-0 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
@@ -2137,8 +2152,18 @@ export function SmileChatGeneral() {
                           : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
                       }`}
                     >
+                      {canCopy ? (
+                        <button
+                          type="button"
+                          onClick={() => void copyMessage(m.id, copyableAssistantText(m.content))}
+                          className={`absolute right-2 top-2 rounded-full border border-white/[0.1] bg-[var(--bg-deep)]/80 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--text-muted)] backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-[var(--text-primary)] sm:opacity-0 sm:group-hover:opacity-100 ${copiedMessageId === m.id ? "opacity-100 text-[var(--accent)]" : "opacity-100"}`}
+                          aria-label={copiedMessageId === m.id ? "Copied" : "Copy reply"}
+                        >
+                          {copiedMessageId === m.id ? "Copied" : "Copy"}
+                        </button>
+                      ) : null}
                       {isAssistant ? (
-                        <>
+                        <div className={canCopy ? "pt-5" : undefined}>
                           <AssistantMessageBody
                             content={m.content}
                             isStreaming={isStreaming}
@@ -2147,17 +2172,7 @@ export function SmileChatGeneral() {
                             onStreamUpdate={isStreaming ? scheduleFollowStreamScroll : undefined}
                             onStreamFirstOutput={isStreaming ? markStreamOutputStarted : undefined}
                           />
-                          {canCopy ? (
-                            <button
-                              type="button"
-                              onClick={() => void copyMessage(m.id, copyableAssistantText(m.content))}
-                              className={`mt-2 block text-[0.7rem] font-medium text-[var(--text-faint)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline ${copiedMessageId === m.id ? "text-[var(--accent)]" : ""}`}
-                              aria-label={copiedMessageId === m.id ? "Copied" : "Copy reply"}
-                            >
-                              {copiedMessageId === m.id ? "Copied" : "Copy"}
-                            </button>
-                          ) : null}
-                        </>
+                        </div>
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
