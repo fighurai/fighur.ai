@@ -114,6 +114,8 @@ html[data-ombre="on"] body {
 
 .chat-thread-gutter {
   box-sizing: border-box;
+  justify-content: flex-start;
+  min-height: 0;
 }
 
 /* Empty home — prompt centered, no page scroll */

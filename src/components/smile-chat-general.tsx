@@ -1109,15 +1109,21 @@ export function SmileChatGeneral() {
     [addFilesFromList, pending, translatingSpeech, attachingFiles],
   );
 
-  const followStreamScroll = useCallback(() => {
+  const pinChatScroll = useCallback(() => {
     const el = listRef.current;
     if (!el) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    const nearBottom = scrollTop + clientHeight >= scrollHeight - 96;
-    if (nearBottom) {
-      el.scrollTop = scrollHeight;
+    const thread = el.querySelector(".chat-thread") as HTMLElement | null;
+    const threadH = thread?.offsetHeight ?? 0;
+    if (threadH <= el.clientHeight - 24) {
+      el.scrollTop = 0;
+      return;
     }
+    el.scrollTop = el.scrollHeight;
   }, []);
+
+  const followStreamScroll = useCallback(() => {
+    pinChatScroll();
+  }, [pinChatScroll]);
 
   const followStreamScrollRaf = useRef(0);
   const scheduleFollowStreamScroll = useCallback(() => {
@@ -1505,9 +1511,12 @@ export function SmileChatGeneral() {
   const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     const el = listRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
+    const thread = el.querySelector(".chat-thread") as HTMLElement | null;
+    const threadH = thread?.offsetHeight ?? 0;
+    const top = threadH <= el.clientHeight - 24 ? 0 : el.scrollHeight;
+    el.scrollTo({ top, behavior });
     requestAnimationFrame(() => {
-      el.scrollTop = el.scrollHeight;
+      el.scrollTop = top;
     });
   }, []);
 
@@ -1565,6 +1574,11 @@ export function SmileChatGeneral() {
     dockInsets.left,
     dockInsets.right,
   ]);
+
+  useEffect(() => {
+    if (showEmpty) return;
+    requestAnimationFrame(() => pinChatScroll());
+  }, [showEmpty, messages.length, composerInset, pinChatScroll]);
 
   useEffect(() => {
     if (showEmpty) return;
