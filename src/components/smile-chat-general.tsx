@@ -2121,18 +2121,8 @@ export function SmileChatGeneral() {
                           : "chat-output-bubble w-fit max-w-[88%] bg-white/[0.03] text-[var(--text-muted)] ring-1 ring-white/[0.06] sm:max-w-[85%]"
                       }`}
                     >
-                      {canCopy ? (
-                        <button
-                          type="button"
-                          onClick={() => void copyMessage(m.id, copyableAssistantText(m.content))}
-                          className={`absolute right-2 top-2 rounded-full border border-white/[0.1] bg-[var(--bg-deep)]/80 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--text-muted)] backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-[var(--text-primary)] sm:opacity-0 sm:group-hover:opacity-100 ${copiedMessageId === m.id ? "opacity-100 text-[var(--accent)]" : "opacity-100"}`}
-                          aria-label={copiedMessageId === m.id ? "Copied" : "Copy reply"}
-                        >
-                          {copiedMessageId === m.id ? "Copied" : "Copy"}
-                        </button>
-                      ) : null}
                       {isAssistant ? (
-                        <div className={canCopy ? "pt-5" : undefined}>
+                        <div>
                           <AssistantMessageBody
                             content={m.content}
                             isStreaming={isStreaming}
@@ -2141,6 +2131,25 @@ export function SmileChatGeneral() {
                             onStreamUpdate={isStreaming ? scheduleFollowStreamScroll : undefined}
                             onStreamFirstOutput={isStreaming ? markStreamOutputStarted : undefined}
                           />
+                          {canCopy ? (
+                            <button
+                              type="button"
+                              onClick={() => void copyMessage(m.id, copyableAssistantText(m.content))}
+                              className={`mt-2 inline-flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-faint)] transition hover:bg-white/[0.08] hover:text-[var(--text-primary)] ${copiedMessageId === m.id ? "text-[var(--accent)]" : ""}`}
+                              aria-label={copiedMessageId === m.id ? "Copied" : "Copy reply"}
+                            >
+                              {copiedMessageId === m.id ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                                  <path d="M20 6 9 17l-5-5" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                              )}
+                            </button>
+                          ) : null}
                         </div>
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
@@ -2196,47 +2205,6 @@ export function SmileChatGeneral() {
             style={{ left: dockInsets.left, right: dockInsets.right }}
           >
             <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
-              <div className="mb-0.5 flex flex-wrap items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-[var(--bg-deep)]/90 px-1.5 py-0.5 md:hidden">
-                {session ? (
-                  <>
-                    <span className="max-w-[10rem] truncate text-[0.65rem] text-[var(--text-muted)]">{session.email}</span>
-                    {session.plan !== "pro" ? (
-                      <>
-                        <span className="text-[var(--text-faint)]">·</span>
-                        <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
-                          Upgrade
-                        </Link>
-                      </>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void clearSessionAndServer().then(() => {
-                          setSession(null);
-                          showSignedOutEmpty();
-                        });
-                      }}
-                      className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
-                    >
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/sign-in" className="text-[0.65rem] font-semibold text-[var(--accent)]">
-                      Sign in
-                    </Link>
-                    <span className="text-[var(--text-faint)]">·</span>
-                    <Link href="/sign-up" className="text-[0.65rem] font-medium text-[var(--text-muted)]">
-                      Create account
-                    </Link>
-                    <span className="text-[var(--text-faint)]">·</span>
-                    <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
-                      Upgrade
-                    </Link>
-                  </>
-                )}
-              </div>
               {composerPanel}
               <p className="mt-0.5 pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] max-md:leading-tight md:mt-1 md:text-[0.6rem]">
                 © {new Date().getFullYear()} FIGHURAI ·{" "}
