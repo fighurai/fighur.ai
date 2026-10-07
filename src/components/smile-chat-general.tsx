@@ -1643,13 +1643,7 @@ export function SmileChatGeneral() {
             </p>
           </div>
         ) : null}
-        <form
-          className="box-border flex w-full min-w-0 max-w-full flex-col"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send();
-          }}
-        >
+        <div className="box-border flex w-full min-w-0 max-w-full flex-col">
           {translatingSpeech ? (
             <p className="px-3 py-2 text-xs text-[var(--accent)]">Refining your speech into clean text…</p>
           ) : null}
@@ -1685,18 +1679,13 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
+            enterKeyHint="send"
+            autoComplete="off"
+            autoCorrect="on"
             onFocus={() => pinNativeIosScroll()}
             rows={compactPhoneComposer ? (showEmpty ? 2 : 1) : showEmpty ? 3 : 2}
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
             disabled={busy || attachingFiles}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={onPickFiles}
-            className="hidden"
-            accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
           />
           {attachments.length > 0 ? (
             <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
@@ -1788,7 +1777,8 @@ export function SmileChatGeneral() {
                   </button>
                 ) : null}
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void send()}
                   disabled={busy || !input.trim()}
                   className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 max-md:px-3 max-md:py-1 sm:px-4 sm:py-2"
                 >
@@ -1797,8 +1787,17 @@ export function SmileChatGeneral() {
               </div>
             </div>
           </div>
-        </form>
+        </div>
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        onChange={onPickFiles}
+        className="hidden"
+        tabIndex={-1}
+        accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
+      />
       {error ? (
         <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
       ) : !showEmpty ? (
@@ -2206,7 +2205,7 @@ export function SmileChatGeneral() {
           >
             <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
               {composerPanel}
-              <p className="mt-0.5 pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] max-md:leading-tight md:mt-1 md:text-[0.6rem]">
+              <p className="composer-legal mt-0.5 hidden pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] md:mt-1 md:block md:text-[0.6rem]">
                 © {new Date().getFullYear()} FIGHURAI ·{" "}
                 <Link href="/privacy" className="hover:text-[var(--text-muted)]">
                   Privacy

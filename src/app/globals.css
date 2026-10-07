@@ -44,9 +44,13 @@ html.native-app main {
 }
 
 /* After send, the docked prompt sits on the keyboard; empty home stays put. */
-html.native-app[data-kb="1"] .composer-dock {
+html[data-kb="1"] .composer-dock {
   bottom: var(--kb-height, 0px) !important;
-  padding-bottom: 0.3rem;
+  padding-bottom: 0.2rem;
+}
+
+html[data-kb="1"] .composer-legal {
+  display: none;
 }
 
 .sidebar-tools .relative {
@@ -143,6 +147,11 @@ html[data-ombre="on"] body {
 
   .composer-float {
     padding: 0.15rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .composer-dock {
+    padding-bottom: 0.25rem;
   }
 
   .home-empty-hero .composer-column {
