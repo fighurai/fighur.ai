@@ -188,8 +188,13 @@ function pinDocumentScroll() {
   document.body.scrollTop = 0;
 }
 
-function setKbInset(px: number) {
-  document.documentElement.style.setProperty("--kb-inset", `${Math.max(0, Math.round(px))}px`);
+function syncVisualViewport() {
+  pinDocumentScroll();
+  const vv = window.visualViewport;
+  const height = Math.round(vv?.height ?? window.innerHeight);
+  const top = Math.round(vv?.offsetTop ?? 0);
+  document.documentElement.style.setProperty("--vv-height", `${height}px`);
+  document.documentElement.style.setProperty("--vv-top", `${top}px`);
 }
 
 function hexLuminance(hex: string): number {
@@ -228,22 +233,16 @@ export async function syncNativeStatusBar(bg?: string) {
   }
 }
 
-/** Hide the iOS form accessory (fighur.ai / next-field bar) and stop the WebView from panning. */
+/** ChatGPT-style: lock the page to the visible viewport, hide the iOS form bar, don't pan. */
 export async function configureNativeChrome() {
-  const syncKbFromViewport = () => {
+  syncVisualViewport();
+  window.visualViewport?.addEventListener("resize", syncVisualViewport);
+  window.visualViewport?.addEventListener("scroll", syncVisualViewport);
+  window.addEventListener("resize", syncVisualViewport);
+  window.addEventListener("focusin", () => {
     pinDocumentScroll();
-    const vv = window.visualViewport;
-    if (!vv) {
-      setKbInset(0);
-      return;
-    }
-    setKbInset(window.innerHeight - vv.height - vv.offsetTop);
-  };
-  syncKbFromViewport();
-  window.visualViewport?.addEventListener("resize", syncKbFromViewport);
-  window.visualViewport?.addEventListener("scroll", syncKbFromViewport);
-  window.addEventListener("resize", syncKbFromViewport);
-  window.addEventListener("focusin", pinDocumentScroll);
+    requestAnimationFrame(syncVisualViewport);
+  });
 
   void syncNativeStatusBar();
 
@@ -252,11 +251,18 @@ export async function configureNativeChrome() {
     const { Keyboard, KeyboardResize } = await import("@capacitor/keyboard");
     await Keyboard.setAccessoryBarVisible({ isVisible: false });
     await Keyboard.setResizeMode({ mode: KeyboardResize.None });
-    await Keyboard.addListener("keyboardWillShow", (info) => {
-      setKbInset(info.keyboardHeight);
+    await Keyboard.setScroll({ isDisabled: true });
+    await Keyboard.addListener("keyboardWillShow", () => {
       pinDocumentScroll();
+      requestAnimationFrame(syncVisualViewport);
     });
-    await Keyboard.addListener("keyboardWillHide", () => setKbInset(0));
+    await Keyboard.addListener("keyboardDidShow", () => {
+      pinDocumentScroll();
+      syncVisualViewport();
+    });
+    await Keyboard.addListener("keyboardWillHide", () => {
+      requestAnimationFrame(syncVisualViewport);
+    });
   } catch {
     /* plugin not synced yet */
   }

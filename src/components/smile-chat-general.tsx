@@ -1672,14 +1672,9 @@ export function SmileChatGeneral() {
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
             disabled={attachingFiles}
             enterKeyHint="send"
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={onPickFiles}
-            className="hidden"
-            accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
+            onFocus={() => {
+              window.scrollTo(0, 0);
+            }}
           />
           {attachments.length > 0 ? (
             <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
@@ -1782,6 +1777,15 @@ export function SmileChatGeneral() {
             </div>
           </div>
         </form>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          tabIndex={-1}
+          onChange={onPickFiles}
+          className="hidden"
+          accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
+        />
       </div>
       {error ? (
         <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
