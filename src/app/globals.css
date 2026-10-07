@@ -50,10 +50,18 @@ html.native-app main {
   padding-top: calc(3.25rem + env(safe-area-inset-top, 0px)) !important;
 }
 
+html.native-app .composer-dock {
+  padding-bottom: max(2.15rem, calc(env(safe-area-inset-bottom, 0px) + 0.85rem));
+}
+
+html.native-app .home-empty-hero {
+  padding-bottom: max(2.15rem, calc(env(safe-area-inset-bottom, 0px) + 0.85rem));
+}
+
 /* Native app: sit the prompt on the keyboard. Leave Safari to resize the page. */
 html.native-app[data-kb="1"] .composer-dock {
   bottom: var(--kb-height, 0px) !important;
-  padding-bottom: 0.35rem;
+  padding-bottom: 0.45rem;
 }
 
 html[data-kb="1"] .composer-legal {
