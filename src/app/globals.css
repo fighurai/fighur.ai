@@ -28,6 +28,27 @@ html {
   overflow-x: hidden;
 }
 
+/* iOS app only: lock the page so focusing the prompt doesn't pan Safari/WKWebView. */
+html.native-app,
+html.native-app body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html.native-app header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+html.native-app main {
+  padding-top: calc(3.25rem + env(safe-area-inset-top, 0px)) !important;
+}
+
+/* After send, the docked prompt sits on the keyboard; empty home stays put. */
+html.native-app[data-kb="1"] .composer-dock {
+  bottom: var(--kb-height, 0px) !important;
+  padding-bottom: 0.3rem;
+}
+
 body {
   background: var(--bg-deep);
   color: var(--text-primary);

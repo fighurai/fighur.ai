@@ -181,3 +181,99 @@ function requestNativeIap(productId: string, userId?: string): Promise<string | 
 export function canUseNativeAppleSignIn(): boolean {
   return isIosNativeApp();
 }
+
+function pinDocumentScroll() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+export function pinNativeIosScroll() {
+  if (!isIosNativeApp()) return;
+  pinDocumentScroll();
+}
+
+function syncVisualViewport() {
+  if (!isIosNativeApp()) return;
+  pinDocumentScroll();
+  const vv = window.visualViewport;
+  const inner = window.innerHeight;
+  const vvh = vv?.height ?? inner;
+  const top = vv?.offsetTop ?? 0;
+  const kb = Math.max(0, inner - vvh - top);
+  const html = document.documentElement;
+  html.classList.add("native-app");
+  html.dataset.kb = kb > 80 ? "1" : "";
+  html.style.setProperty("--kb-height", `${Math.round(kb)}px`);
+}
+
+function hexLuminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export async function syncNativeStatusBar(bg?: string) {
+  if (!isIosNativeApp()) return;
+  const color =
+    bg ||
+    getComputedStyle(document.documentElement).getPropertyValue("--bg-deep").trim() ||
+    "#08090d";
+  const normalized = color.startsWith("#") ? color : "#08090d";
+  try {
+    const { StatusBar, Style } = await import("@capacitor/status-bar");
+    await StatusBar.setOverlaysWebView({ overlay: true });
+    await StatusBar.setBackgroundColor({ color: normalized });
+    await StatusBar.setStyle({
+      style: hexLuminance(normalized) > 0.45 ? Style.Dark : Style.Light,
+    });
+  } catch {
+    /* plugin not synced yet */
+  }
+}
+
+let nativeChromeReady = false;
+
+/** iOS app only: don't pan the page on prompt focus; dock uses --kb-height after send. */
+export async function configureNativeChrome() {
+  if (!isIosNativeApp() || nativeChromeReady) {
+    if (isIosNativeApp()) syncVisualViewport();
+    return;
+  }
+  nativeChromeReady = true;
+  document.documentElement.classList.add("native-app");
+  syncVisualViewport();
+  window.visualViewport?.addEventListener("resize", syncVisualViewport);
+  window.visualViewport?.addEventListener("scroll", syncVisualViewport);
+  window.addEventListener("resize", syncVisualViewport);
+  window.addEventListener("focusin", () => {
+    pinDocumentScroll();
+    requestAnimationFrame(syncVisualViewport);
+  });
+
+  void syncNativeStatusBar();
+
+  try {
+    const { Keyboard, KeyboardResize } = await import("@capacitor/keyboard");
+    await Keyboard.setAccessoryBarVisible({ isVisible: false });
+    await Keyboard.setResizeMode({ mode: KeyboardResize.None });
+    await Keyboard.setScroll({ isDisabled: true });
+    await Keyboard.addListener("keyboardWillShow", () => {
+      pinDocumentScroll();
+      requestAnimationFrame(syncVisualViewport);
+    });
+    await Keyboard.addListener("keyboardDidShow", () => {
+      pinDocumentScroll();
+      syncVisualViewport();
+    });
+    await Keyboard.addListener("keyboardWillHide", () => {
+      requestAnimationFrame(syncVisualViewport);
+    });
+  } catch {
+    /* plugin not synced yet */
+  }
+}

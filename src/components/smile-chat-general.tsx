@@ -89,6 +89,8 @@ import {
   processFileForChatAttachment,
 } from "@/lib/chat-attachments";
 import { videoPreviewDataUrl } from "@/lib/video-attachment";
+import { pinNativeIosScroll } from "@/lib/native-bridge";
+import { isIosNativeApp } from "@/lib/native-platform";
 import { DEFAULT_CHAT_MODEL_ID, PROMPT_PLACEHOLDER } from "@/lib/site-brand";
 import { formatRoutedModelLabel } from "@/lib/chat-models";
 import {
@@ -1158,6 +1160,7 @@ export function SmileChatGeneral() {
     const assistantId = id();
     const assistantPlaceholder: ChatMessage = { id: assistantId, role: "assistant", content: "" };
     const nextMessages: ChatMessage[] = [...messagesRef.current, userMsg, assistantPlaceholder];
+    const dockPromptAfterSend = messages.length === 0;
     messagesRef.current = nextMessages;
     setMessages(nextMessages);
     setInput("");
@@ -1168,6 +1171,12 @@ export function SmileChatGeneral() {
       setStreamingMessageId(assistantId);
       setStreamOutputStarted(false);
     });
+    if (dockPromptAfterSend && isIosNativeApp()) {
+      requestAnimationFrame(() => {
+        document.getElementById("smile-chat-input")?.focus();
+        pinNativeIosScroll();
+      });
+    }
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
     const preferDocument = isDocumentWritingPrompt(trimmed);
     if (isBuildRequest) {
@@ -1667,6 +1676,7 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
+            onFocus={() => pinNativeIosScroll()}
             rows={compactPhoneComposer ? (showEmpty ? 2 : 1) : showEmpty ? 3 : 2}
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
             disabled={busy || attachingFiles}

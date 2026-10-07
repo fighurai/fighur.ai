@@ -2,18 +2,29 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
 import { PresenceBeacon } from "@/components/presence-beacon";
 import { SiteTutorial } from "@/components/site-tutorial";
+import { configureNativeChrome, syncNativeStatusBar } from "@/lib/native-bridge";
 import { SITE_ICON, SITE_ICON_DISPLAY_PX, SITE_TITLE } from "@/lib/site-brand";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const openTutorial = useCallback(() => setTutorialOpen(true), []);
+
+  useEffect(() => {
+    void configureNativeChrome();
+    const onTheme = (e: Event) => {
+      const bg = (e as CustomEvent<{ enabled?: boolean; bg?: string }>).detail;
+      void syncNativeStatusBar(bg?.enabled ? bg.bg : "#08090d");
+    };
+    window.addEventListener("smile-theme-changed", onTheme);
+    return () => window.removeEventListener("smile-theme-changed", onTheme);
+  }, []);
 
   return (
     <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[var(--bg-deep)]">
