@@ -2067,7 +2067,7 @@ export function SmileChatGeneral() {
         style={{ order: columnOrders.main }}
       >
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-2 sm:pt-3 md:pt-4"}`}
         >
           {!session?.userId && usage?.signupRequired ? (
             <div
@@ -2099,8 +2099,8 @@ export function SmileChatGeneral() {
                 scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
               }}
             >
-              <div className="chat-thread-gutter flex min-h-full flex-col justify-end">
-                <div className="chat-thread flex w-full flex-col space-y-3">
+              <div className="chat-thread-gutter flex flex-col justify-start">
+                <div className="chat-thread flex w-full flex-col space-y-3 pt-1">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
                 const isAssistant = m.role === "assistant";
