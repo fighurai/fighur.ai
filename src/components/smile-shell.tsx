@@ -54,11 +54,11 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
                 sizes={`${SITE_ICON_DISPLAY_PX}px`}
                 quality={95}
                 unoptimized
-                className="rounded-md bg-white/20 object-contain p-0.5"
+                className="object-contain"
                 style={{
                   width: SITE_ICON_DISPLAY_PX,
                   height: SITE_ICON_DISPLAY_PX,
-                  background: "rgba(255,255,255,0.2)",
+                  background: "transparent",
                 }}
                 priority
               />
