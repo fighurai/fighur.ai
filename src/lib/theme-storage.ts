@@ -75,8 +75,6 @@ export function applyThemeVars(p: ThemePrefs) {
     root.style.removeProperty("--text-muted");
     root.style.removeProperty("--text-faint");
     root.style.removeProperty("--card");
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", "#08090d");
     return;
   }
   const bg = p.bg;
@@ -87,6 +85,4 @@ export function applyThemeVars(p: ThemePrefs) {
   root.style.setProperty("--text-primary", fg);
   root.style.setProperty("--text-muted", mixHex(fg, bg, 0.38));
   root.style.setProperty("--text-faint", mixHex(fg, bg, 0.55));
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", bg);
 }

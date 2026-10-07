@@ -12,6 +12,7 @@ import type { ChatBuildArtifact, ChatMessage } from "@/lib/chat-types";
 import { promptRequestsBuildWorkspace, isDocumentWritingPrompt } from "@/lib/infer-builder-target";
 import {
   applyLayoutCssVars,
+  composerDockInsets,
   defaultLayoutPrefs,
   LAYOUT_CHANGE_EVENT,
   layoutColumnOrders,
@@ -399,9 +400,8 @@ export function SmileChatGeneral() {
   const messagesRef = useRef<ChatMessage[]>([]);
   const sendInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const composerDockRef = useRef<HTMLDivElement>(null);
-  const [composerPad, setComposerPad] = useState(0);
+  const [composerInset, setComposerInset] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [compactPhoneComposer, setCompactPhoneComposer] = useState(false);
   const [customThemeOn, setCustomThemeOn] = useState(false);
@@ -555,6 +555,10 @@ export function SmileChatGeneral() {
   }, [session?.userId]);
 
   const columnOrders = useMemo(() => layoutColumnOrders(layoutPrefs), [layoutPrefs]);
+  const dockInsets = useMemo(
+    () => composerDockInsets(layoutPrefs, { canvasOpen: buildSidebarOpen }),
+    [layoutPrefs, buildSidebarOpen],
+  );
 
   const onResizeCanvasWidth = useCallback((widthPx: number) => {
     const clamped = Math.min(MAX_CANVAS_WIDTH_PX, Math.max(MIN_CANVAS_WIDTH_PX, Math.round(widthPx)));
@@ -858,13 +862,8 @@ export function SmileChatGeneral() {
 
   useEffect(() => {
     const onHome = () => newChat();
-    const onOpenChats = () => setMobileSidebarOpen(true);
     window.addEventListener("smile-go-home", onHome);
-    window.addEventListener("smile-open-chats", onOpenChats);
-    return () => {
-      window.removeEventListener("smile-go-home", onHome);
-      window.removeEventListener("smile-open-chats", onOpenChats);
-    };
+    return () => window.removeEventListener("smile-go-home", onHome);
   }, [newChat]);
 
   const selectConversation = useCallback(
@@ -1103,11 +1102,9 @@ export function SmileChatGeneral() {
     const el = listRef.current;
     if (!el) return;
     const users = el.querySelectorAll('[data-role="user"]');
-    const last = users[users.length - 1] as HTMLElement | undefined;
+    const last = users[users.length - 1];
     if (last) {
-      const elRect = el.getBoundingClientRect();
-      const lastRect = last.getBoundingClientRect();
-      el.scrollTop += lastRect.top - elRect.top;
+      last.scrollIntoView({ block: "start", behavior: "auto" });
     } else {
       el.scrollTop = 0;
     }
@@ -1116,11 +1113,6 @@ export function SmileChatGeneral() {
   const followStreamScroll = useCallback(() => {
     /* Do not pin the thread to the bottom while streaming. */
   }, []);
-
-  useEffect(() => {
-    if (messages.length === 0) return;
-    requestAnimationFrame(() => scrollLatestTurnToTop());
-  }, [messages.length, activeId, scrollLatestTurnToTop]);
 
   const followStreamScrollRaf = useRef(0);
   const scheduleFollowStreamScroll = useCallback(() => {
@@ -1183,10 +1175,7 @@ export function SmileChatGeneral() {
       setStreamingMessageId(assistantId);
       setStreamOutputStarted(false);
     });
-    requestAnimationFrame(() => {
-      scrollLatestTurnToTop();
-      inputRef.current?.focus({ preventScroll: true });
-    });
+    requestAnimationFrame(() => scrollLatestTurnToTop());
     const isBuildRequest = promptRequestsBuildWorkspace(trimmed);
     const preferDocument = isDocumentWritingPrompt(trimmed);
     if (isBuildRequest) {
@@ -1522,27 +1511,51 @@ export function SmileChatGeneral() {
     setShowScrollToBottom(canScroll && !atBottom);
   }, []);
 
-  const resizeComposerField = useCallback(() => {
-    const el = inputRef.current;
-    if (!el || compactPhoneComposer) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
-  }, [compactPhoneComposer]);
-
   useEffect(() => {
-    resizeComposerField();
-  }, [input, showEmpty, resizeComposerField]);
+    if (showEmpty) {
+      setComposerInset(0);
+      setShowScrollToBottom(false);
+      return;
+    }
+    const el = composerDockRef.current;
+    if (!el) return;
 
-  useEffect(() => {
-    if (showEmpty) setShowScrollToBottom(false);
-    const dock = composerDockRef.current;
-    if (!dock) return;
-    const measure = () => setComposerPad(dock.offsetHeight);
+    const measure = () => {
+      const dock = composerDockRef.current;
+      if (!dock) return;
+      const height = dock.offsetHeight;
+      const gap = window.matchMedia("(max-width: 767px)").matches ? 36 : 16;
+      setComposerInset(height + gap);
+    };
+
     measure();
+    requestAnimationFrame(measure);
     const ro = new ResizeObserver(measure);
-    ro.observe(dock);
-    return () => ro.disconnect();
-  }, [showEmpty, compactPhoneComposer, error, attachments.length, pending]);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", measure);
+    vv?.addEventListener("scroll", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+      vv?.removeEventListener("resize", measure);
+      vv?.removeEventListener("scroll", measure);
+    };
+  }, [
+    showEmpty,
+    error,
+    session,
+    attachments.length,
+    pending,
+    listening,
+    translatingSpeech,
+    messages.length,
+    buildSidebarOpen,
+    layoutPrefs,
+    dockInsets.left,
+    dockInsets.right,
+  ]);
 
   useEffect(() => {
     if (showEmpty) return;
@@ -1560,7 +1573,7 @@ export function SmileChatGeneral() {
       el.removeEventListener("scroll", updateScrollToBottom);
       ro.disconnect();
     };
-  }, [showEmpty, messages, pending, streamOutputStarted, composerPad, updateScrollToBottom]);
+  }, [showEmpty, messages, pending, streamOutputStarted, composerInset, updateScrollToBottom]);
 
   useEffect(() => {
     if (!showEmpty && streamOutputStarted) updateScrollToBottom();
@@ -1601,7 +1614,7 @@ export function SmileChatGeneral() {
   const composerPanel = (
     <>
       <div
-        className={`composer-float relative box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-[var(--bg-elevated)] p-1 sm:rounded-2xl ${
+        className={`composer-float relative box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl ${
           isDraggingFiles
             ? "border-[var(--accent)]/50 ring-2 ring-[var(--accent)]/25"
             : "border-white/[0.14]"
@@ -1648,7 +1661,6 @@ export function SmileChatGeneral() {
           ) : null}
           <textarea
             id="smile-chat-input"
-            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onPaste={(e) => {
@@ -1664,17 +1676,17 @@ export function SmileChatGeneral() {
               }
             }}
             placeholder={PROMPT_PLACEHOLDER}
-            rows={compactPhoneComposer ? 1 : showEmpty ? 3 : 2}
-            autoComplete="off"
-            autoCorrect="on"
-            autoCapitalize="sentences"
-            spellCheck
+            rows={compactPhoneComposer ? (showEmpty ? 2 : 1) : showEmpty ? 3 : 2}
             className="box-border w-full max-w-full resize-none break-words bg-transparent px-3 py-2.5 text-base leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-faint)] focus:outline-none max-md:px-2.5 max-md:py-1.5 max-md:leading-snug"
-            disabled={attachingFiles}
-            enterKeyHint="send"
-            onFocus={() => {
-              window.scrollTo(0, 0);
-            }}
+            disabled={busy || attachingFiles}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={onPickFiles}
+            className="hidden"
+            accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
           />
           {attachments.length > 0 ? (
             <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-2 py-2">
@@ -1743,6 +1755,25 @@ export function SmileChatGeneral() {
               ) : null}
             </div>
             <div className="flex min-w-0 max-w-full flex-1 items-center justify-end gap-1.5 max-md:gap-1 sm:w-auto sm:flex-none sm:flex-wrap">
+              {availableModels.length > 1 ? (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => {
+                    setSelectedModel(e.target.value);
+                    setRoutedModelHint(null);
+                  }}
+                  disabled={busy || availableModels.length === 0}
+                  className="hidden min-w-0 max-w-[11rem] truncate appearance-none rounded-full bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] shadow-[0_0_20px_var(--accent-glow)] outline-none transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:block sm:max-w-[13rem] sm:px-4 sm:py-2"
+                  aria-label="Select model"
+                  title={routedModelHint ?? undefined}
+                >
+                  {availableModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <div className="flex shrink-0 items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
                 {latestBuildArtifact && !buildSidebarOpen ? (
                   <button
@@ -1768,7 +1799,6 @@ export function SmileChatGeneral() {
                 <button
                   type="submit"
                   disabled={busy || !input.trim()}
-                  onPointerDown={(e) => e.preventDefault()}
                   className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-foreground)] disabled:opacity-40 max-md:px-3 max-md:py-1 sm:px-4 sm:py-2"
                 >
                   Send
@@ -1777,15 +1807,6 @@ export function SmileChatGeneral() {
             </div>
           </div>
         </form>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          tabIndex={-1}
-          onChange={onPickFiles}
-          className="hidden"
-          accept="image/*,video/*,.mp4,.mov,.webm,.mkv,.m4v,.pdf,.txt,.md,.csv,.json"
-        />
       </div>
       {error ? (
         <p className="mt-2 px-1 text-center text-xs text-red-300/90">{error}</p>
@@ -1809,28 +1830,6 @@ export function SmileChatGeneral() {
   const sidebarContent = (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-white/[0.06] p-3">
-        <div className="mb-2 grid grid-cols-2 gap-2 md:hidden">
-          <button
-            type="button"
-            onClick={() => {
-              setMobileSidebarOpen(false);
-              window.dispatchEvent(new CustomEvent("fighur-open-header-agents"));
-            }}
-            className="rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
-          >
-            Agents
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMobileSidebarOpen(false);
-              window.dispatchEvent(new CustomEvent("fighur-open-header-settings"));
-            }}
-            className="rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
-          >
-            Settings
-          </button>
-        </div>
         <button
           type="button"
           onClick={newChat}
@@ -1994,7 +1993,13 @@ export function SmileChatGeneral() {
   );
 
   return (
-    <div className="flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+    <div
+      className={`flex flex-1 flex-col md:flex-row ${
+        showEmpty
+          ? "min-h-[calc(100dvh-3.25rem)]"
+          : "h-full max-h-full min-h-0 overflow-hidden"
+      }`}
+    >
       {layoutPrefs.sidebarVisible ? (
         <aside
           className={`relative hidden h-full max-h-full min-h-0 shrink-0 flex-col overflow-hidden bg-[var(--bg-elevated)]/90 md:flex ${
@@ -2046,16 +2051,37 @@ export function SmileChatGeneral() {
             aria-label="Close chat list"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <aside className="absolute bottom-0 left-0 top-[calc(3.25rem+env(safe-area-inset-top,0px))] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
+          <aside className="absolute bottom-0 left-0 top-[3.25rem] flex min-h-0 w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/[0.06] bg-[var(--bg-elevated)] shadow-2xl">
             {sidebarContent}
           </aside>
         </div>
       ) : null}
 
       <div
-        className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden ${buildSidebarOpen ? "max-md:hidden" : ""}`}
+        className={`flex flex-1 flex-col ${
+          showEmpty
+            ? "min-h-[calc(100dvh-3.25rem)]"
+            : "h-full max-h-full min-h-0 overflow-hidden"
+        } ${buildSidebarOpen ? "max-md:hidden" : ""}`}
         style={{ order: columnOrders.main }}
       >
+        <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] px-3 py-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="shrink-0 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)]"
+          >
+            Chats
+          </button>
+          <button
+            type="button"
+            onClick={newChat}
+            className="shrink-0 rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)]"
+          >
+            New
+          </button>
+        </div>
+
         <div
           className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0" : "relative min-h-0 pt-3 sm:pt-4 md:pt-6"}`}
         >
@@ -2078,21 +2104,18 @@ export function SmileChatGeneral() {
           {showEmpty ? (
             <div className="home-empty-hero">
               <AmbientOmbreBackground active={!customThemeOn} />
-              {!compactPhoneComposer ? (
-                <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
-              ) : null}
+              <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
             <div
               ref={listRef}
               className="chat-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain"
-              style={
-                composerPad > 0
-                  ? { paddingBottom: composerPad + 12, scrollPaddingBottom: composerPad + 12 }
-                  : undefined
-              }
+              style={{
+                paddingBottom: composerInset > 0 ? composerInset : undefined,
+                scrollPaddingBottom: composerInset > 0 ? composerInset : undefined,
+              }}
             >
-              <div className="chat-thread-gutter flex min-h-0 flex-col justify-start">
+              <div className="chat-thread-gutter flex min-h-full flex-col justify-start">
                 <div className="chat-thread flex w-full flex-col space-y-3 pb-4">
               {messages.map((m) => {
                 const isStreaming = pending && streamingMessageId === m.id;
@@ -2148,7 +2171,10 @@ export function SmileChatGeneral() {
           )}
 
           {!showEmpty && (showStreamWaitingDots || showScrollToBottom) ? (
-            <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2">
+            <div
+              className="absolute left-1/2 z-30 -translate-x-1/2"
+              style={{ bottom: composerInset > 0 ? composerInset + 10 : 160 }}
+            >
               {showStreamWaitingDots ? (
                 <StreamLoadingDots variant="fab" />
               ) : (
@@ -2177,14 +2203,58 @@ export function SmileChatGeneral() {
           ) : null}
         </div>
 
-        {!showEmpty || compactPhoneComposer ? (
+        {!showEmpty ? (
           <div
             ref={composerDockRef}
-            className={`composer-dock z-40 shrink-0 ${buildSidebarOpen ? "max-md:hidden" : ""}`}
+            className={`composer-dock pointer-events-none fixed inset-x-0 bottom-0 z-40 max-md:!left-0 max-md:!right-0 ${
+              buildSidebarOpen ? "max-md:hidden" : ""
+            }`}
+            style={{ left: dockInsets.left, right: dockInsets.right }}
           >
-            <div className="composer-dock-inner composer-column mx-auto w-full min-w-0 max-w-2xl px-3 sm:px-4">
+            <div className="composer-dock-inner composer-column pointer-events-auto mx-auto w-full min-w-0 max-w-2xl px-3 max-md:px-2 sm:px-4">
+              <div className="mb-0.5 flex flex-wrap items-center justify-center gap-2 rounded-lg border border-white/[0.06] bg-[var(--bg-deep)]/90 px-1.5 py-0.5 md:hidden">
+                {session ? (
+                  <>
+                    <span className="max-w-[10rem] truncate text-[0.65rem] text-[var(--text-muted)]">{session.email}</span>
+                    {session.plan !== "pro" ? (
+                      <>
+                        <span className="text-[var(--text-faint)]">·</span>
+                        <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                          Upgrade
+                        </Link>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void clearSessionAndServer().then(() => {
+                          setSession(null);
+                          showSignedOutEmpty();
+                        });
+                      }}
+                      className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/sign-in" className="text-[0.65rem] font-semibold text-[var(--accent)]">
+                      Sign in
+                    </Link>
+                    <span className="text-[var(--text-faint)]">·</span>
+                    <Link href="/sign-up" className="text-[0.65rem] font-medium text-[var(--text-muted)]">
+                      Create account
+                    </Link>
+                    <span className="text-[var(--text-faint)]">·</span>
+                    <Link href="/upgrade" className="text-[0.65rem] font-medium text-[var(--accent)] underline-offset-2 hover:underline">
+                      Upgrade
+                    </Link>
+                  </>
+                )}
+              </div>
               {composerPanel}
-              <p className="mt-0.5 hidden pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] md:block md:mt-1 md:text-[0.6rem]">
+              <p className="mt-0.5 pb-0.5 text-center text-[0.55rem] text-[var(--text-faint)] max-md:leading-tight md:mt-1 md:text-[0.6rem]">
                 © {new Date().getFullYear()} FIGHURAI ·{" "}
                 <Link href="/privacy" className="hover:text-[var(--text-muted)]">
                   Privacy

@@ -25,28 +25,19 @@
 }
 
 html {
-  height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
   background: var(--bg-deep);
-}
-
-html.native-app {
-  position: fixed;
-  top: var(--vv-top, 0px);
-  left: 0;
-  width: 100%;
-  height: var(--vv-height, 100%);
+  min-height: 100%;
 }
 
 body {
   background: var(--bg-deep);
   color: var(--text-primary);
   font-family: var(--font-dm-sans), system-ui, sans-serif;
-  overflow: hidden;
+  overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
   transition: background-color 0.9s ease;
-  height: 100%;
-  width: 100%;
+  min-height: 100%;
 }
 
 html[data-ombre="on"] body {
@@ -68,15 +59,9 @@ html[data-ombre="on"] body {
 
 .chat-thread-gutter {
   box-sizing: border-box;
-  min-height: 0;
-  justify-content: flex-start;
 }
 
-.chat-scroll .chat-thread {
-  justify-content: flex-start;
-}
-
-/* Empty home — prompt box centered in the remaining viewport, no page scroll */
+/* Empty home — prompt box centered in viewport */
 .home-empty-hero {
   position: relative;
   display: flex;
@@ -85,27 +70,24 @@ html[data-ombre="on"] body {
   justify-content: center;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  min-height: calc(100dvh - 3.25rem);
   padding: 1rem;
   box-sizing: border-box;
 }
 
-/* Prompt dock sits in the chat column so messages stay visible above it */
+@media (max-width: 767px) {
+  .home-empty-hero {
+    /* Fill space under the Chats/New bar; don't re-subtract header height or the box sits low */
+    min-height: 0;
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 1rem;
+  }
+}
+
+/* Fixed prompt dock at bottom */
 .composer-dock {
-  position: relative;
-  flex-shrink: 0;
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
-  background: var(--bg-deep);
-}
-
-html[data-kb="1"] .composer-dock {
-  padding-bottom: 0.3rem;
-}
-
-.site-mark {
-  background: transparent !important;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
 }
 
 .composer-dock-inner,
@@ -130,7 +112,7 @@ html[data-kb="1"] .composer-dock {
 
 @media (max-width: 767px) {
   #smile-chat-input {
-    max-height: 2.6rem;
+    max-height: 3.75rem;
     min-height: 2.25rem;
     line-height: 1.35;
     overflow-y: auto;
@@ -140,27 +122,8 @@ html[data-kb="1"] .composer-dock {
     padding: 0.15rem;
   }
 
-  .home-empty-hero {
-    justify-content: center;
-    padding: 0.75rem;
-  }
-
   .home-empty-hero .composer-column {
     max-width: 100%;
-  }
-
-  .composer-dock {
-    position: relative;
-    z-index: 40;
-    overflow: hidden;
-    background: var(--bg-deep);
-  }
-
-  .composer-dock-inner {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    max-width: none;
-    overflow: hidden;
   }
 }
 
@@ -224,11 +187,12 @@ html[data-kb="1"] .composer-dock {
   padding-bottom: 0;
 }
 
+/* Floating chat composer — lifted above bottom edge */
 .composer-float {
-  box-shadow: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .chat-scroll::-webkit-scrollbar {

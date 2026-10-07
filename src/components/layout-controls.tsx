@@ -58,7 +58,7 @@ export function LayoutControls() {
   };
 
   return (
-    <div className="relative hidden shrink-0 md:block" ref={wrapRef}>
+    <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
         className={HEADER_TRIGGER_CLASS}
