@@ -131,7 +131,7 @@ html[data-ombre="on"] body {
 
   .home-empty-hero {
     justify-content: flex-end;
-    padding: 0.5rem 0.75rem calc(5.5rem + var(--kb-inset, 0px));
+    padding: 0.5rem 0.75rem calc(6.25rem + var(--kb-inset, 0px));
   }
 
   .home-empty-hero .composer-column {
@@ -142,12 +142,11 @@ html[data-ombre="on"] body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: var(--kb-inset, 0px);
+    bottom: calc(var(--kb-inset, 0px) + max(0.85rem, env(safe-area-inset-bottom, 0px)));
     z-index: 40;
     padding-bottom: 0.35rem;
     background: var(--bg-deep);
   }
-}
 }
 
 .composer-dock select {
@@ -210,12 +209,8 @@ html[data-ombre="on"] body {
   padding-bottom: 0;
 }
 
-/* Floating chat composer — lifted above bottom edge */
 .composer-float {
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.55),
-    0 6px 16px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: none;
 }
 
 .chat-scroll::-webkit-scrollbar {

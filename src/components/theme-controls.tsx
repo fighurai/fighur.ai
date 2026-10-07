@@ -10,11 +10,7 @@ import {
   writeTheme,
   type ThemePrefs,
 } from "@/lib/theme-storage";
-import {
-  HEADER_PANEL_BACKDROP_CLASS,
-  HEADER_PANEL_CLASS,
-  HEADER_TRIGGER_CLASS,
-} from "@/lib/header-panel";
+import { HEADER_TRIGGER_CLASS } from "@/lib/header-panel";
 
 export function ThemeControls() {
   const panelId = useId();
@@ -77,14 +73,18 @@ export function ThemeControls() {
           <button
             type="button"
             aria-label="Close colors"
-            className={HEADER_PANEL_BACKDROP_CLASS}
+            className="fixed inset-x-0 bottom-0 z-[210] bg-black/25"
+            style={{ top: "calc(3.25rem + env(safe-area-inset-top, 0px))" }}
             onClick={() => setOpen(false)}
           />
           <div
             id={panelId}
             role="dialog"
             aria-label="Colors"
-            className={`${HEADER_PANEL_CLASS} p-4 md:w-[min(18rem,calc(100vw-1.5rem))]`}
+            className="fixed left-1/2 z-[220] w-[min(19rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/[0.12] bg-[var(--bg-elevated)] p-4 shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+            style={{
+              top: "calc(50% + (3.25rem + env(safe-area-inset-top, 0px)) / 2)",
+            }}
           >
           <p className="text-xs font-medium text-[var(--text-primary)]">Page colors</p>
           <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--text-faint)]">
