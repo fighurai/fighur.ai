@@ -11,7 +11,8 @@ const config: CapacitorConfig = {
   backgroundColor: "#08090d",
   server: {
     // Production app loads the live site (Path B hybrid).
-    url: "https://fighur.ai",
+    // Query busts WKWebView's stale HTML/JS cache after each UI ship.
+    url: "https://fighur.ai/?n=3",
     cleartext: false,
     allowNavigation: ["fighur.ai", "*.fighur.ai", "appleid.apple.com"],
   },

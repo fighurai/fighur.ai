@@ -1,4 +1,5 @@
 import UIKit
+import WebKit
 import Capacitor
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -9,10 +10,19 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         window?.backgroundColor = UIColor(red: 8 / 255, green: 9 / 255, blue: 13 / 255, alpha: 1)
-        window?.rootViewController = CAPBridgeViewController()
-        window?.makeKeyAndVisible()
 
-        SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+        URLCache.shared.removeAllCachedResponses()
+        let cacheTypes: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+        ]
+        WKWebsiteDataStore.default().removeData(ofTypes: cacheTypes, modifiedSince: .distantPast) {
+            DispatchQueue.main.async {
+                self.window?.rootViewController = CAPBridgeViewController()
+                self.window?.makeKeyAndVisible()
+                SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+            }
+        }
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
