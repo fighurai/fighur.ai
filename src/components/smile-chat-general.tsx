@@ -1658,7 +1658,7 @@ export function SmileChatGeneral() {
   const composerPanel = (
     <>
       <div
-        className={`composer-float relative box-border w-full min-w-0 max-w-full rounded-xl border bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl max-md:overflow-visible max-md:border-transparent sm:overflow-hidden ${
+        className={`composer-float relative box-border w-full min-w-0 max-w-full overflow-hidden rounded-xl border bg-[var(--bg-elevated)]/95 p-1 backdrop-blur-xl sm:rounded-2xl ${
           isDraggingFiles
             ? "border-[var(--accent)]/50 ring-2 ring-[var(--accent)]/25"
             : "border-white/[0.14]"
@@ -1759,7 +1759,7 @@ export function SmileChatGeneral() {
               })}
             </div>
           ) : null}
-          <div className="flex min-w-0 flex-row flex-wrap items-center justify-between gap-1.5 px-2 py-2 max-md:gap-1 max-md:px-1.5 max-md:py-1 sm:gap-2 sm:border-t sm:border-white/[0.06]">
+          <div className="flex min-w-0 flex-row flex-wrap items-center justify-between gap-1.5 px-2 py-2 max-md:gap-1 max-md:px-1.5 max-md:py-1 sm:gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-1 max-md:gap-0.5 sm:gap-1.5">
               <button
                 type="button"
@@ -2107,7 +2107,7 @@ export function SmileChatGeneral() {
         style={{ order: columnOrders.main }}
       >
         <div
-          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0 max-md:overflow-visible max-md:px-0" : "relative min-h-0 pt-2 sm:pt-3 md:pt-4"}`}
+          className={`flex w-full min-w-0 flex-1 flex-col overflow-hidden px-4 pb-0 sm:px-6 md:px-8 ${showEmpty ? "min-h-0 flex-1 justify-center pt-0 max-md:overflow-visible" : "relative min-h-0 pt-2 sm:pt-3 md:pt-4"}`}
         >
           {!session?.userId && usage?.signupRequired ? (
             <div
@@ -2128,7 +2128,7 @@ export function SmileChatGeneral() {
           {showEmpty ? (
             <div className="home-empty-hero">
               <AmbientOmbreBackground active={!customThemeOn} />
-              <div className="composer-column mx-auto w-full max-w-2xl px-2 sm:px-4">{composerPanel}</div>
+              <div className="composer-column mx-auto w-full max-w-2xl px-3 sm:px-4">{composerPanel}</div>
             </div>
           ) : (
             <div

@@ -177,15 +177,11 @@ html[data-ombre="on"] body {
   }
 
   .home-empty-hero {
-    padding-left: 0;
-    padding-right: 0;
     overflow: visible;
   }
 
   .home-empty-hero .composer-column {
     max-width: 100%;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
   }
 }
 
@@ -260,8 +256,8 @@ html[data-ombre="on"] body {
   .composer-float {
     padding: 0.15rem;
     box-shadow:
-      0 16px 48px rgba(0, 0, 0, 0.42),
-      0 0 56px 18px rgba(0, 0, 0, 0.22);
+      0 14px 36px rgba(0, 0, 0, 0.38),
+      0 0 72px 28px rgba(0, 0, 0, 0.2);
   }
 }
 
