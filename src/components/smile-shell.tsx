@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { HeaderControls } from "@/components/header-controls";
 import { PresenceBeacon } from "@/components/presence-beacon";
@@ -14,6 +14,7 @@ import { readTheme } from "@/lib/theme-storage";
 
 export function SmileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
@@ -71,7 +72,13 @@ export function SmileShell({ children }: { children: React.ReactNode }) {
               type="button"
               className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/15 px-2.5 text-xs font-semibold text-[var(--text-primary)] transition hover:border-white/50 sm:h-8 sm:px-3"
               aria-label="Open chats"
-              onClick={() => window.dispatchEvent(new CustomEvent("smile-open-chats"))}
+              onClick={() => {
+                if (pathname === "/") {
+                  window.dispatchEvent(new CustomEvent("smile-open-chats"));
+                  return;
+                }
+                router.push("/");
+              }}
             >
               Chats
             </button>
