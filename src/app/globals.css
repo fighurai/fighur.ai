@@ -176,13 +176,16 @@ html[data-ombre="on"] body {
     overflow-y: auto;
   }
 
-  .composer-float {
-    padding: 0.15rem;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  .home-empty-hero {
+    padding-left: 0;
+    padding-right: 0;
+    overflow: visible;
   }
 
   .home-empty-hero .composer-column {
     max-width: 100%;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
 }
 
@@ -250,8 +253,16 @@ html[data-ombre="on"] body {
 .composer-float {
   box-shadow:
     0 16px 48px rgba(0, 0, 0, 0.55),
-    0 6px 16px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
+    0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 767px) {
+  .composer-float {
+    padding: 0.15rem;
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.42),
+      0 0 56px 18px rgba(0, 0, 0, 0.22);
+  }
 }
 
 .chat-scroll::-webkit-scrollbar {
