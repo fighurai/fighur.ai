@@ -90,7 +90,7 @@ const OAUTH_ERROR_HINTS: Record<string, string> = {
   access_denied: "You cancelled or Google denied access.",
 };
 
-export function SettingsControls() {
+export function SettingsControls({ inSidebar = false }: { inSidebar?: boolean }) {
   const router = useRouter();
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -708,7 +708,8 @@ export function SettingsControls() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
-          if (isMobileChatChrome()) {
+          if (inSidebar || isMobileChatChrome()) {
+            window.dispatchEvent(new CustomEvent("smile-close-chats"));
             router.push("/settings");
             return;
           }

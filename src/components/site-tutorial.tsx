@@ -67,7 +67,7 @@ export function SiteTutorial({ open, onClose, onFinished }: SiteTutorialProps) {
   const isLast = step === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center p-3 sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-[240] flex items-center justify-center px-4 py-[max(1.25rem,env(safe-area-inset-top,0px))] pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
       <button
         type="button"
         className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
@@ -78,7 +78,7 @@ export function SiteTutorial({ open, onClose, onFinished }: SiteTutorialProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-white/[0.12] bg-[var(--bg-elevated)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-6"
+        className="relative z-10 max-h-[min(36rem,calc(100dvh-2.5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] w-full max-w-md overflow-y-auto rounded-2xl border border-white/[0.12] bg-[var(--bg-elevated)] p-5 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-6"
       >
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
           Quick tutorial · {step + 1}/{STEPS.length}

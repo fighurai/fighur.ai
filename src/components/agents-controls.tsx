@@ -22,7 +22,7 @@ type AgentRow = Pick<
   "id" | "name" | "description" | "deepResearch" | "effort" | "enabled"
 >;
 
-export function AgentsControls() {
+export function AgentsControls({ inSidebar = false }: { inSidebar?: boolean }) {
   const router = useRouter();
   const panelId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -124,7 +124,8 @@ export function AgentsControls() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
-          if (isMobileChatChrome()) {
+          if (inSidebar || isMobileChatChrome()) {
+            window.dispatchEvent(new CustomEvent("smile-close-chats"));
             router.push("/settings?tab=agents");
             return;
           }

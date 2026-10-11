@@ -70,7 +70,7 @@ import {
 import { AgentsControls } from "@/components/agents-controls";
 import { AmbientOmbreBackground } from "@/components/ambient-ombre-background";
 import { AdminPeopleLink } from "@/components/header-controls";
-import { LayoutControls } from "@/components/layout-controls";
+import { isMobileChatChrome } from "@/lib/header-panel";
 import { SettingsControls } from "@/components/settings-controls";
 import { DeviceOpsModal } from "@/components/device-ops-modal";
 import { downloadSafariOrganizeScript } from "@/lib/device-ops-safari";
@@ -362,6 +362,8 @@ export function SmileChatGeneral() {
   const conversationOwnerRef = useRef<string>(ANONYMOUS_STORAGE_USER);
   /** After a signed-out boot/sign-out wipe, don't re-clobber in-session guest drafts. */
   const signedOutBootDoneRef = useRef(false);
+  /** iPhone: chat reload/sync must not reopen the last thread after + New chat. */
+  const blankChatRef = useRef(false);
   const [models, setModels] = useState<ChatModelInfo[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [routedModelHint, setRoutedModelHint] = useState<string | null>(null);
@@ -590,6 +592,14 @@ export function SmileChatGeneral() {
     if (storageUser === ANONYMOUS_STORAGE_USER && session?.userId) return;
     conversationOwnerRef.current = storageUser;
     setConversations(list);
+    if (blankChatRef.current) {
+      setActiveId(null);
+      setMessages([]);
+      setLatestBuildArtifact(null);
+      setBuildSidebarOpen(resolveCanvasOpen(false));
+      saveLastActiveId(null, "assistant", storageUser);
+      return;
+    }
     const last = loadLastActiveId("assistant", storageUser);
     if (last && list.some((c) => c.id === last)) {
       const c = list.find((x) => x.id === last)!;
@@ -853,6 +863,7 @@ export function SmileChatGeneral() {
   }, []);
 
   const newChat = useCallback(() => {
+    blankChatRef.current = true;
     stopAll();
     setActiveId(null);
     setMessages([]);
@@ -863,17 +874,25 @@ export function SmileChatGeneral() {
     setCanvasOpen(false);
     setAttachments([]);
     saveLastActiveId(null, "assistant", liveConversationStorageUser(readSession));
-    setMobileSidebarOpen(false);
+    // Closing the drawer in the same tap lets iOS click-through onto the old thread.
+    if (isMobileChatChrome()) {
+      window.setTimeout(() => setMobileSidebarOpen(false), 120);
+    } else {
+      setMobileSidebarOpen(false);
+    }
   }, [stopAll, setCanvasOpen]);
 
   useEffect(() => {
     const onHome = () => newChat();
     const onOpenChats = () => setMobileSidebarOpen(true);
+    const onCloseChats = () => setMobileSidebarOpen(false);
     window.addEventListener("smile-go-home", onHome);
     window.addEventListener("smile-open-chats", onOpenChats);
+    window.addEventListener("smile-close-chats", onCloseChats);
     return () => {
       window.removeEventListener("smile-go-home", onHome);
       window.removeEventListener("smile-open-chats", onOpenChats);
+      window.removeEventListener("smile-close-chats", onCloseChats);
     };
   }, [newChat]);
 
@@ -881,6 +900,7 @@ export function SmileChatGeneral() {
     (c: SavedConversation) => {
       // Only open chats that are in the currently authorized list.
       if (!conversations.some((x) => x.id === c.id)) return;
+      blankChatRef.current = false;
       stopAll();
       const fallbackArtifact =
         c.buildArtifact ??
@@ -1167,6 +1187,7 @@ export function SmileChatGeneral() {
     let convId = activeId;
     if (!convId) {
       convId = id();
+      blankChatRef.current = false;
       setActiveId(convId);
     }
 
@@ -1836,7 +1857,11 @@ export function SmileChatGeneral() {
       <div className="shrink-0 border-b border-white/[0.06] p-3">
         <button
           type="button"
-          onClick={newChat}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            newChat();
+          }}
           className="w-full rounded-xl bg-[var(--accent)]/15 px-3 py-2.5 text-sm font-semibold text-[var(--accent)] ring-1 ring-[var(--accent)]/25 transition hover:bg-[var(--accent)]/25"
         >
           + New chat
@@ -1943,15 +1968,16 @@ export function SmileChatGeneral() {
         <p className="px-0.5 text-[0.65rem] font-medium uppercase tracking-wider text-[var(--text-faint)]">
           More
         </p>
-        <AgentsControls />
-        <LayoutControls />
-        <SettingsControls />
+        <AgentsControls inSidebar />
+        <SettingsControls inSidebar />
         <AdminPeopleLink />
         <button
           type="button"
           onClick={() => {
             setMobileSidebarOpen(false);
-            window.dispatchEvent(new CustomEvent("smile-open-tutorial"));
+            window.setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("smile-open-tutorial"));
+            }, 80);
           }}
           className="w-full rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/25"
         >
